@@ -14,6 +14,7 @@ import ContactForm from "@/Components/Order/ContactForm.vue";
 import VoucherSection from "@/Components/Order/VoucherSection.vue";
 import ProductDescription from "@/Components/Order/ProductDescription.vue";
 import FaqSection from "@/Components/Order/FaqSection.vue";
+import OrderConfirmationModal from "@/Components/Order/OrderConfirmationModal.vue";
 import { useToast } from "@/Composables/useToast";
 
 const props = defineProps({
@@ -44,6 +45,10 @@ const selectedPayment = ref(null);
 const contactData = ref({ email: "", phone: "", country: "ID" });
 const selectedVoucher = ref(null);
 const paymentSectionHighlight = ref(false);
+const accountData = ref({});
+const showConfirmationModal = ref(false);
+const orderData = ref(null);
+const isProcessingOrder = ref(false);
 
 const totalAmount = computed(() => {
     if (!selectedService.value) return 0;
@@ -131,6 +136,10 @@ const handleVoucherUpdate = (voucher) => {
     selectedVoucher.value = voucher;
 };
 
+const handleAccountDataUpdate = (data) => {
+    accountData.value = data;
+};
+
 const handleCheckout = () => {
     if (!selectedService.value) {
         toast.error("Please select a service first");
@@ -144,14 +153,37 @@ const handleCheckout = () => {
         toast.error("Please enter a valid WhatsApp number");
         return;
     }
-    toast.success(
-        `Processing ${quantity.value} x ${
-            selectedService.value.nama_layanan
-        } with ${paymentInfo.value?.methodLabel ?? "payment"}`
-    );
+    
+    // Prepare order data
+    orderData.value = {
+        layanan_id: selectedService.value.id,
+        quantity: quantity.value,
+        payment_method: selectedPayment.value,
+        email: contactData.value.email,
+        phone: contactData.value.phone,
+        voucher_code: selectedVoucher.value?.code || null,
+        ...accountData.value // Spread dynamic input fields
+    };
+
+    // If it's a flashsale item, add the flashsale_item_id
+    if (selectedService.value.flashSaleItem) {
+        orderData.value.flashsale_item_id = selectedService.value.flashSaleItem.id;
+    }
+
+    // Show confirmation modal
+    showConfirmationModal.value = true;
+};
+
+const handleOrderConfirmed = (response) => {
+    // Reset form after successful order
     contactData.value = { email: "", phone: "", country: "ID" };
     selectedPayment.value = null;
     paymentInfo.value = null;
+    
+    // Save the data to local storage if needed
+    // This will be handled by the components now
+    
+    toast.success("Order processed successfully!");
 };
 
 onMounted(() => {
@@ -255,6 +287,7 @@ const initPriceAnimations = () => {
                     <UserDataCard
                         :input-fields="inputFields"
                         :produk="produk"
+                        @update:account-data="handleAccountDataUpdate"
                     />
                     <ServiceList
                         :services="layanans"
@@ -335,6 +368,14 @@ const initPriceAnimations = () => {
                 <FaqSection :faqs="faqs" />
             </div>
         </section>
+        
+        <!-- Order Confirmation Modal - Moved to root level -->
+        <OrderConfirmationModal
+            :show-modal="showConfirmationModal"
+            :order-data="orderData"
+            @close="showConfirmationModal = false"
+            @confirmed="handleOrderConfirmed"
+        />
     </GuestLayout>
 </template>
 

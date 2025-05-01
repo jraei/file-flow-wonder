@@ -1,3 +1,4 @@
+
 <?php
 
 namespace App\Models;
@@ -15,6 +16,10 @@ class ProdukInputField extends Model
         'id'
     ];
 
+    protected $casts = [
+        'required' => 'boolean',
+    ];
+
     public function options(): HasMany
     {
         return $this->hasMany(ProdukInputOption::class, 'produk_input_field_id');
@@ -23,5 +28,25 @@ class ProdukInputField extends Model
     public function produk(): BelongsTo
     {
         return $this->belongsTo(Produk::class);
+    }
+
+    /**
+     * Check if this input field is for the user ID
+     * 
+     * @return bool
+     */
+    public function isUserIdField(): bool
+    {
+        return $this->name === 'user_id' || $this->name === 'player_id';
+    }
+
+    /**
+     * Check if this input field is for the server/zone ID
+     * 
+     * @return bool
+     */
+    public function isServerField(): bool
+    {
+        return $this->name === 'server_id' || $this->name === 'zone_id';
     }
 }

@@ -1,3 +1,4 @@
+
 <?php
 
 namespace App\Models;
@@ -13,8 +14,23 @@ class ProdukInputOption extends Model
 
     protected $guarded = [];
 
+    protected $hidden = [
+        'created_at',
+        'updated_at'
+    ];
+
     public function inputField(): BelongsTo
     {
         return $this->belongsTo(ProdukInputField::class, 'produk_input_field_id');
+    }
+
+    /**
+     * Get the option value suitable for display
+     * 
+     * @return string
+     */
+    public function getDisplayValue(): string
+    {
+        return $this->label;
     }
 }

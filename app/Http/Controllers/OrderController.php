@@ -210,10 +210,9 @@ class OrderController extends Controller
      */
     public function confirmOrder(Request $request)
     {
+        // Validate the core fields
         $validator = Validator::make($request->all(), [
             'layanan_id' => 'required|exists:layanans,id',
-            // 'input_id' => 'required|string',
-            'input_zone' => 'nullable|string',
             'quantity' => 'required|integer|min:1',
             'payment_method' => 'required',
             'email' => 'nullable|email',
@@ -231,6 +230,27 @@ class OrderController extends Controller
 
         $layanan = \App\Models\Layanan::with('produk')->findOrFail($request->layanan_id);
         $produk = $layanan->produk;
+
+        // Extract input ID and zone from dynamically named fields
+        $inputId = null;
+        $inputZone = null;
+        
+        // Get the input fields configuration for this product
+        $inputFields = $produk->inputFields()->with('options')->get();
+        
+        // Find the user ID and zone/server fields
+        foreach ($inputFields as $field) {
+            $fieldName = $field->name;
+            
+            // Check if the field exists in the request
+            if ($request->has($fieldName)) {
+                if ($field->isUserIdField()) {
+                    $inputId = $request->input($fieldName);
+                } elseif ($field->isServerField()) {
+                    $inputZone = $request->input($fieldName);
+                }
+            }
+        }
 
         // Check if it's a flashsale item
         $flashsaleItem = null;
@@ -298,11 +318,11 @@ class OrderController extends Controller
                 $usernameController = new CheckUsernameController();
                 $data = [
                     'game' => $produk->validasi_id,
-                    'user_id' => $request->input_id
+                    'user_id' => $inputId
                 ];
 
-                if ($request->input_zone) {
-                    $data['zone_id'] = $request->input_zone;
+                if ($inputZone) {
+                    $data['zone_id'] = $inputZone;
                 }
 
                 $response = $usernameController->getAccountUsername($data);
@@ -338,13 +358,15 @@ class OrderController extends Controller
             ], 400);
         }
 
+        // Return response with updated structure to include dynamic fields
         return response()->json([
             'status' => 'success',
             'orderSummary' => [
                 'nickname' => $username,
                 'validation_error' => $validationError,
-                'account_id' => $request->input_id,
-                'server_id' => $request->input_zone,
+                'account_id' => $inputId,
+                'server_id' => $inputZone,
+                'dynamic_fields' => $request->except(['layanan_id', 'quantity', 'payment_method', 'email', 'phone', 'voucher_code']),
                 'layanan' => $layanan->nama_layanan,
                 'quantity' => $request->quantity,
                 'basePrice' => $basePrice,
@@ -375,8 +397,6 @@ class OrderController extends Controller
 
         $validator = Validator::make($request->all(), [
             'layanan_id' => 'required|exists:layanans,id',
-            'input_id' => 'required|string',
-            'input_zone' => 'nullable|string',
             'quantity' => 'required|integer|min:1',
             'payment_method' => 'required',
             'email' => 'nullable|email',
@@ -394,7 +414,28 @@ class OrderController extends Controller
 
         $layanan = \App\Models\Layanan::with('produk')->findOrFail($request->layanan_id);
         $produk = $layanan->produk;
-
+        
+        // Extract input ID and zone from dynamically named fields
+        $inputId = null;
+        $inputZone = null;
+        
+        // Get the input fields configuration for this product
+        $inputFields = $produk->inputFields()->with('options')->get();
+        
+        // Find the user ID and zone/server fields
+        foreach ($inputFields as $field) {
+            $fieldName = $field->name;
+            
+            // Check if the field exists in the request
+            if ($request->has($fieldName)) {
+                if ($field->isUserIdField()) {
+                    $inputId = $request->input($fieldName);
+                } elseif ($field->isServerField()) {
+                    $inputZone = $request->input($fieldName);
+                }
+            }
+        }
+        
         // Check if it's a flashsale item
         $flashsaleItem = null;
         $flashsaleDiscount = 0;
@@ -483,6 +524,12 @@ class OrderController extends Controller
         // Generate unique order ID
         $orderId = $this->generateUniqueOrderId();
 
+        // Prepare additional data for dynamic fields
+        $additionalData = [];
+        foreach ($request->except(['layanan_id', 'quantity', 'payment_method', 'email', 'phone', 'voucher_code', 'flashsale_item_id']) as $key => $value) {
+            $additionalData[$key] = $value;
+        }
+
         // Create the pembelian record
         $pembelian = new Pembelian();
         $pembelian->order_id = $orderId;
@@ -490,11 +537,17 @@ class OrderController extends Controller
         $pembelian->user_id = Auth::id();
         $pembelian->layanan_id = $layanan->id;
         $pembelian->nickname = $request->nickname;
-        $pembelian->input_id = $request->input_id;
-        $pembelian->input_zone = $request->input_zone;
+        $pembelian->input_id = $inputId;
+        $pembelian->input_zone = $inputZone;
         $pembelian->price = $finalPrice;
         $pembelian->profit = $totalPrice - $hargaBeli;
         $pembelian->status = 'pending';
+        
+        // Store additional fields as JSON
+        if (!empty($additionalData)) {
+            $pembelian->callback_data = $additionalData;
+        }
+        
         $pembelian->save();
 
         // Process payment based on method
