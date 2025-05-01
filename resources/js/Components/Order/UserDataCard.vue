@@ -47,7 +47,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed, watch } from 'vue';
+import { ref, computed, watch, onMounted } from 'vue';
 import CosmicCard from '@/Components/Order/CosmicCard.vue';
 import DynamicInput from '@/Components/Order/DynamicInput.vue';
 import { useGameAccount } from '@/Composables/useGameAccount';

@@ -237,13 +237,20 @@ class OrderController extends Controller
 
         // Get the input fields configuration for this product
         $inputFields = $produk->inputFields()->with('options')->get();
+        
+        // Dynamic fields container for all product-specific inputs
+        $dynamicFields = [];
 
-        // Find the user ID and zone/server fields
+        // Find the user ID and zone/server fields from inputs
         foreach ($inputFields as $field) {
             $fieldName = $field->name;
 
             // Check if the field exists in the request
             if ($request->has($fieldName)) {
+                // Add to dynamic fields collection
+                $dynamicFields[$fieldName] = $request->input($fieldName);
+                
+                // Set special fields for validation
                 if ($field->isUserIdField()) {
                     $inputId = $request->input($fieldName);
                 } elseif ($field->isServerField()) {
@@ -313,7 +320,7 @@ class OrderController extends Controller
         // Get username if validation is required
         $username = null;
         $validationError = null;
-        if ($produk->validasi_id !== 'tidak') {
+        if ($produk->validasi_id !== 'tidak' && $produk->validasi_id !== null) {
             try {
                 $usernameController = new CheckUsernameController();
                 $data = [
@@ -366,7 +373,7 @@ class OrderController extends Controller
                 'validation_error' => $validationError,
                 'account_id' => $inputId,
                 'server_id' => $inputZone,
-                'dynamic_fields' => $request->except(['layanan_id', 'quantity', 'payment_method', 'email', 'phone', 'voucher_code']),
+                'dynamic_fields' => $dynamicFields,
                 'layanan' => $layanan->nama_layanan,
                 'quantity' => $request->quantity,
                 'basePrice' => $basePrice,
@@ -421,13 +428,20 @@ class OrderController extends Controller
 
         // Get the input fields configuration for this product
         $inputFields = $produk->inputFields()->with('options')->get();
+        
+        // Dynamic fields container for all product-specific inputs
+        $dynamicFields = [];
 
-        // Find the user ID and zone/server fields
+        // Find the user ID and zone/server fields from inputs
         foreach ($inputFields as $field) {
             $fieldName = $field->name;
 
             // Check if the field exists in the request
             if ($request->has($fieldName)) {
+                // Add to dynamic fields collection
+                $dynamicFields[$fieldName] = $request->input($fieldName);
+                
+                // Set special fields for validation
                 if ($field->isUserIdField()) {
                     $inputId = $request->input($fieldName);
                 } elseif ($field->isServerField()) {

@@ -1,63 +1,77 @@
 
-import { ref, watch } from 'vue';
-import { useCookies } from './useCookies';
+import { ref, reactive, computed } from 'vue';
+import { useCookies } from "@/Composables/useCookies";
 
 export function useGameAccount(productSlug) {
     const { setCookie, getCookie } = useCookies();
-    const COOKIE_KEY = 'game_accounts';
+    const cookieName = 'saved_game_accounts';
+    const expiryDays = 30;
     
     const accountData = ref({});
     const saveAccount = ref(false);
+    const hasLoadedData = ref(false);
     
-    // Load saved account data if available
+    // Load saved account data on initialization
     const loadSavedAccount = () => {
-        const savedAccounts = getCookie(COOKIE_KEY) || {};
-        if (savedAccounts[productSlug]) {
-            accountData.value = savedAccounts[productSlug].fields || {};
-            return true;
+        try {
+            const savedAccounts = getCookie(cookieName);
+            if (savedAccounts && savedAccounts[productSlug]) {
+                // Load the account data for this specific product
+                accountData.value = { ...savedAccounts[productSlug].fields };
+                saveAccount.value = true;
+                hasLoadedData.value = true;
+            }
+        } catch (error) {
+            console.error("Error loading saved account:", error);
         }
-        return false;
     };
     
     // Save account data to cookie
-    const saveAccountData = () => {
-        if (!saveAccount.value || !productSlug) return;
+    const saveAccountToCookie = () => {
+        if (!saveAccount.value || !productSlug || Object.keys(accountData.value).length === 0) {
+            return;
+        }
         
-        const allAccounts = getCookie(COOKIE_KEY) || {};
-        allAccounts[productSlug] = {
-            fields: accountData.value,
-            timestamp: new Date().toISOString()
-        };
-        
-        setCookie(COOKIE_KEY, allAccounts, 30);
+        try {
+            let savedAccounts = getCookie(cookieName) || {};
+            
+            // Update or create account data for this product
+            savedAccounts[productSlug] = {
+                fields: { ...accountData.value },
+                timestamp: new Date().toISOString()
+            };
+            
+            // Save to cookie
+            setCookie(cookieName, savedAccounts, expiryDays);
+        } catch (error) {
+            console.error("Error saving account:", error);
+        }
     };
     
-    // Watch for changes to save account flag
-    watch(saveAccount, (newVal) => {
-        if (newVal) {
-            saveAccountData();
-        }
-    });
-    
+    // Update a specific field in the account data
     const updateAccountData = (fieldName, value) => {
-        accountData.value = {
-            ...accountData.value,
-            [fieldName]: value
-        };
+        accountData.value = { ...accountData.value, [fieldName]: value };
         
+        // Auto-save if the save checkbox is checked
         if (saveAccount.value) {
-            saveAccountData();
+            saveAccountToCookie();
         }
     };
     
-    // Initialize by loading saved data
-    const hasLoadedData = loadSavedAccount();
+    // Watch for changes in the save checkbox
+    const watchSaveAccount = (newValue) => {
+        if (newValue) {
+            saveAccountToCookie();
+        }
+    };
+    
+    // Load saved data on initialization
+    loadSavedAccount();
     
     return {
         accountData,
         saveAccount,
         updateAccountData,
-        saveAccountData,
         hasLoadedData
     };
 }

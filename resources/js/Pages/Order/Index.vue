@@ -51,8 +51,7 @@ const showConfirmationModal = ref(false);
 const orderData = ref(null);
 const isProcessingOrder = ref(false);
 const userDataCardRef = ref(null);
-const { isValidating, validationError, validateGameAccount } =
-    useAccountValidation();
+const { validateInputFields } = useAccountValidation();
 const validationErrorMessage = ref(null);
 
 const totalAmount = computed(() => {
@@ -167,23 +166,35 @@ const openModal = async (data) => {
         return;
     }
 
-    // If the product requires validation (validasi_id is not 'tidak')
-    if (
-        props.produk.validasi_id !== "tidak" &&
-        props.produk.validasi_id !== null
-    ) {
-        isProcessingOrder.value = true;
+    isProcessingOrder.value = true;
 
-        try {
-            // Prepare inputs for validation
-            const validationResult = await validateGameAccount(
-                props.produk.slug,
-                props.produk.validasi_id,
-                accountData.value
-            );
+    try {
+        // Prepare the payload for the single-call order confirmation and validation
+        const payload = {
+            layanan_id: selectedService.value.id,
+            quantity: quantity.value,
+            payment_method: selectedPayment.value,
+            email: contactData.value.email,
+            phone: contactData.value.phone,
+            voucher_code: selectedVoucher.value?.code || null,
+            // Add any flashsale item ID if applicable
+            ...(selectedService.value.flashSaleItem ? {
+                flashsale_item_id: selectedService.value.flashSaleItem.id
+            } : {}),
+            // Include all dynamic account data fields
+            ...accountData.value
+        };
 
-            if (validationResult.status === "error") {
-                validationErrorMessage.value = validationResult.message;
+        // Make a single API call to order.confirm endpoint
+        const response = await axios.post(route('order.confirm'), payload);
+
+        if (response.data.status === 'success') {
+            // Extract order summary from the response
+            const summary = response.data.orderSummary;
+            
+            // Check for validation errors
+            if (summary.validation_error) {
+                validationErrorMessage.value = summary.validation_error;
                 isProcessingOrder.value = false;
                 return;
             }
@@ -192,38 +203,27 @@ const openModal = async (data) => {
             orderData.value = {
                 ...data,
                 ...accountData.value,
-                nickname: validationResult.username,
+                nickname: summary.nickname,
+                // Include all order summary data for confirmation modal
+                layanan_id: selectedService.value.id,
+                quantity: quantity.value,
+                payment_method: selectedPayment.value,
+                voucher_code: selectedVoucher.value?.code || null,
             };
 
-            // If it's a flashsale item, add the flashsale_item_id
-            if (selectedService.value.flashSaleItem) {
-                orderData.value.flashsale_item_id =
-                    selectedService.value.flashSaleItem.id;
-            }
-
-            // Show confirmation modal with verified username
+            // Show confirmation modal with verified information
             showConfirmationModal.value = true;
-        } catch (error) {
-            toast.error("Account validation failed. Please try again.");
-            console.error("Validation error:", error);
-        } finally {
-            isProcessingOrder.value = false;
+        } else {
+            // Handle unexpected response format
+            toast.error("Failed to validate order. Please try again.");
         }
-    } else {
-        // No validation needed, proceed directly
-        orderData.value = {
-            ...data,
-            ...accountData.value,
-        };
-
-        // If it's a flashsale item, add the flashsale_item_id
-        if (selectedService.value.flashSaleItem) {
-            orderData.value.flashsale_item_id =
-                selectedService.value.flashSaleItem.id;
-        }
-
-        // Show confirmation modal
-        showConfirmationModal.value = true;
+    } catch (error) {
+        // Handle API errors
+        const errorMessage = error.response?.data?.message || "Failed to process order. Please try again.";
+        validationErrorMessage.value = errorMessage;
+        toast.error(errorMessage);
+    } finally {
+        isProcessingOrder.value = false;
     }
 };
 
@@ -409,7 +409,7 @@ const initPriceAnimations = () => {
                             :payment-info="paymentInfo"
                             :contact="contactData"
                             :voucher="selectedVoucher"
-                            :is-validating="isValidating || isProcessingOrder"
+                            :is-validating="isProcessingOrder"
                             @openModal="openModal"
                         />
                     </div>
@@ -419,12 +419,11 @@ const initPriceAnimations = () => {
             <!-- Product Description Section - Full Width -->
             <div class="relative z-10 mx-auto mt-8 max-w-7xl">
                 <ProductDescription :description="produk.deskripsi_game" />
-
                 <FaqSection :faqs="faqs" />
             </div>
         </section>
 
-        <!-- Order Confirmation Modal - Moved to root level -->
+        <!-- Order Confirmation Modal - At root level -->
         <OrderConfirmationModal
             :show-modal="showConfirmationModal"
             :order-data="orderData"

@@ -1,3 +1,4 @@
+
 import { ref, reactive } from "vue";
 import { useToast } from "@/Composables/useToast";
 import axios from "axios";
@@ -8,69 +9,6 @@ export function useAccountValidation() {
     const validationError = ref(null);
     const cachedUsernames = reactive({});
     const validationTimeout = 5 * 60 * 1000; // 5 minutes
-
-    const validateGameAccount = async (produkSlug, validasiId, inputs) => {
-        // Check if we have a cached username that's still valid
-        const cacheKey = `${produkSlug}-${JSON.stringify(inputs)}`;
-        const cachedData = cachedUsernames[cacheKey];
-
-        if (
-            cachedData &&
-            Date.now() - cachedData.timestamp < validationTimeout
-        ) {
-            return {
-                status: "success",
-                username: cachedData.username,
-                timestamp: cachedData.timestamp,
-            };
-        }
-
-        isValidating.value = true;
-        validationError.value = null;
-
-        try {
-            // Prepare API payload
-            const payload = {
-                produk_slug: produkSlug,
-                inputs: inputs,
-                validasi_id: validasiId,
-            };
-
-            // Call the API endpoint
-            const response = await axios.post("/api/validate-account", payload);
-
-            if (response.data.status === "success") {
-                // Cache the successful response
-                cachedUsernames[cacheKey] = {
-                    username: response.data.username,
-                    timestamp: Date.now(),
-                };
-
-                return {
-                    status: "success",
-                    username: response.data.username,
-                };
-            } else {
-                validationError.value =
-                    response.data.message || "Failed to validate account";
-                return {
-                    status: "error",
-                    message: validationError.value,
-                };
-            }
-        } catch (error) {
-            const errorMessage =
-                error.response?.data?.message || "Error validating account";
-            validationError.value = errorMessage;
-            toast.error(errorMessage);
-            return {
-                status: "error",
-                message: errorMessage,
-            };
-        } finally {
-            isValidating.value = false;
-        }
-    };
 
     // Basic validation function for account input fields
     const validateInputFields = (fields, inputData) => {
@@ -107,7 +45,6 @@ export function useAccountValidation() {
     return {
         isValidating,
         validationError,
-        validateGameAccount,
         validateInputFields,
         cachedUsernames,
     };
