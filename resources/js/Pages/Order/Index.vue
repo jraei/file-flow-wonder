@@ -140,7 +140,7 @@ const handleAccountDataUpdate = (data) => {
     accountData.value = data;
 };
 
-const handleCheckout = () => {
+const openModal = (data) => {
     if (!selectedService.value) {
         toast.error("Please select a service first");
         return;
@@ -153,36 +153,68 @@ const handleCheckout = () => {
         toast.error("Please enter a valid WhatsApp number");
         return;
     }
-    
+
     // Prepare order data
     orderData.value = {
-        layanan_id: selectedService.value.id,
-        quantity: quantity.value,
-        payment_method: selectedPayment.value,
-        email: contactData.value.email,
-        phone: contactData.value.phone,
-        voucher_code: selectedVoucher.value?.code || null,
-        ...accountData.value // Spread dynamic input fields
+        ...data,
+        ...accountData.value, // Spread dynamic input fields
     };
+    console.log("data", orderData.value);
 
     // If it's a flashsale item, add the flashsale_item_id
     if (selectedService.value.flashSaleItem) {
-        orderData.value.flashsale_item_id = selectedService.value.flashSaleItem.id;
+        orderData.value.flashsale_item_id =
+            selectedService.value.flashSaleItem.id;
     }
 
     // Show confirmation modal
     showConfirmationModal.value = true;
 };
 
+// const handleCheckout = () => {
+//     if (!selectedService.value) {
+//         toast.error("Please select a service first");
+//         return;
+//     }
+//     if (!selectedPayment.value) {
+//         toast.error("Please select a payment method");
+//         return;
+//     }
+//     if (!contactData.value.phone || contactData.value.phone.length < 7) {
+//         toast.error("Please enter a valid WhatsApp number");
+//         return;
+//     }
+
+//     // Prepare order data
+//     orderData.value = {
+//         layanan_id: selectedService.value.id,
+//         quantity: quantity.value,
+//         payment_method: selectedPayment.value,
+//         email: contactData.value.email,
+//         phone: contactData.value.phone,
+//         voucher_code: selectedVoucher.value?.code || null,
+//         ...accountData.value, // Spread dynamic input fields
+//     };
+
+//     // If it's a flashsale item, add the flashsale_item_id
+//     if (selectedService.value.flashSaleItem) {
+//         orderData.value.flashsale_item_id =
+//             selectedService.value.flashSaleItem.id;
+//     }
+
+//     // Show confirmation modal
+//     showConfirmationModal.value = true;
+// };
+
 const handleOrderConfirmed = (response) => {
     // Reset form after successful order
     contactData.value = { email: "", phone: "", country: "ID" };
     selectedPayment.value = null;
     paymentInfo.value = null;
-    
+
     // Save the data to local storage if needed
     // This will be handled by the components now
-    
+
     toast.success("Order processed successfully!");
 };
 
@@ -356,6 +388,7 @@ const initPriceAnimations = () => {
                             :contact="contactData"
                             :voucher="selectedVoucher"
                             @checkout="handleCheckout"
+                            @openModal="openModal"
                         />
                     </div>
                 </div>
@@ -368,7 +401,7 @@ const initPriceAnimations = () => {
                 <FaqSection :faqs="faqs" />
             </div>
         </section>
-        
+
         <!-- Order Confirmation Modal - Moved to root level -->
         <OrderConfirmationModal
             :show-modal="showConfirmationModal"

@@ -1,4 +1,3 @@
-
 <?php
 
 namespace App\Http\Controllers\Admin;
@@ -13,14 +12,14 @@ class CheckUsernameController extends Controller
     public function getAccountUsername(array $data)
     {
         $provider = Provider::where('provider_name', 'checkUsername')->first();
-        
+
         if (!$provider) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'Username checking provider not configured'
             ], 404);
         }
-        
+
         $api_key = $provider->api_key;
         $base_url = $provider->base_url;
 
@@ -48,17 +47,17 @@ class CheckUsernameController extends Controller
             // check if status success
             if ($responseData['status'] != 'success') {
                 return response()->json([
-                    'status' => $responseData['status'], 
+                    'status' => $responseData['status'],
                     'message' => $responseData['message'] ?? 'Account validation failed'
                 ], Response::HTTP_BAD_REQUEST);
             }
-            
+
             $username = $responseData['result']['username'] ?? null;
 
             return response()->json(['status' => 'success', 'username' => $username]);
         } catch (\Exception $e) {
             return response()->json([
-                'status' => 'error', 
+                'status' => 'error',
                 'message' => $e->getMessage()
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }

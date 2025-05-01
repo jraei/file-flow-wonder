@@ -234,14 +234,14 @@ class OrderController extends Controller
         // Extract input ID and zone from dynamically named fields
         $inputId = null;
         $inputZone = null;
-        
+
         // Get the input fields configuration for this product
         $inputFields = $produk->inputFields()->with('options')->get();
-        
+
         // Find the user ID and zone/server fields
         foreach ($inputFields as $field) {
             $fieldName = $field->name;
-            
+
             // Check if the field exists in the request
             if ($request->has($fieldName)) {
                 if ($field->isUserIdField()) {
@@ -414,18 +414,18 @@ class OrderController extends Controller
 
         $layanan = \App\Models\Layanan::with('produk')->findOrFail($request->layanan_id);
         $produk = $layanan->produk;
-        
+
         // Extract input ID and zone from dynamically named fields
         $inputId = null;
         $inputZone = null;
-        
+
         // Get the input fields configuration for this product
         $inputFields = $produk->inputFields()->with('options')->get();
-        
+
         // Find the user ID and zone/server fields
         foreach ($inputFields as $field) {
             $fieldName = $field->name;
-            
+
             // Check if the field exists in the request
             if ($request->has($fieldName)) {
                 if ($field->isUserIdField()) {
@@ -435,7 +435,7 @@ class OrderController extends Controller
                 }
             }
         }
-        
+
         // Check if it's a flashsale item
         $flashsaleItem = null;
         $flashsaleDiscount = 0;
@@ -542,12 +542,12 @@ class OrderController extends Controller
         $pembelian->price = $finalPrice;
         $pembelian->profit = $totalPrice - $hargaBeli;
         $pembelian->status = 'pending';
-        
+
         // Store additional fields as JSON
         if (!empty($additionalData)) {
             $pembelian->callback_data = $additionalData;
         }
-        
+
         $pembelian->save();
 
         // Process payment based on method

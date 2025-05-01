@@ -163,12 +163,12 @@
             </button>
 
             <!-- Order Confirmation Modal -->
-            <OrderConfirmationModal
+            <!-- <OrderConfirmationModal
                 :show-modal="showConfirmationModal"
                 :order-data="orderData"
                 @close="showConfirmationModal = false"
                 @confirmed="handleOrderConfirmed"
-            />
+            /> -->
         </div>
     </CosmicCard>
 </template>
@@ -193,7 +193,7 @@ const props = defineProps({
     voucher: Object,
 });
 
-const emit = defineEmits(["checkout"]);
+const emit = defineEmits(["checkout", "openModal"]);
 const { toast } = useToast();
 
 const showConfirmationModal = ref(false);
@@ -316,7 +316,8 @@ const handleOrderProcess = () => {
     }
 
     // Show confirmation modal
-    showConfirmationModal.value = true;
+    // showConfirmationModal.value = true;
+    emit("openModal", orderData.value);
 };
 
 const handleOrderConfirmed = (response) => {
