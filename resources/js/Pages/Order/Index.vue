@@ -1,4 +1,3 @@
-
 <script setup>
 import { ref, computed, onMounted, onUnmounted, nextTick, watch } from "vue";
 import GuestLayout from "@/Layouts/GuestLayout.vue";
@@ -52,7 +51,8 @@ const showConfirmationModal = ref(false);
 const orderData = ref(null);
 const isProcessingOrder = ref(false);
 const userDataCardRef = ref(null);
-const { isValidating, validationError, validateGameAccount } = useAccountValidation();
+const { isValidating, validationError, validateGameAccount } =
+    useAccountValidation();
 const validationErrorMessage = ref(null);
 
 const totalAmount = computed(() => {
@@ -168,9 +168,12 @@ const openModal = async (data) => {
     }
 
     // If the product requires validation (validasi_id is not 'tidak')
-    if (props.produk.validasi_id !== 'tidak') {
+    if (
+        props.produk.validasi_id !== "tidak" &&
+        props.produk.validasi_id !== null
+    ) {
         isProcessingOrder.value = true;
-        
+
         try {
             // Prepare inputs for validation
             const validationResult = await validateGameAccount(
@@ -179,27 +182,27 @@ const openModal = async (data) => {
                 accountData.value
             );
 
-            if (validationResult.status === 'error') {
+            if (validationResult.status === "error") {
                 validationErrorMessage.value = validationResult.message;
                 isProcessingOrder.value = false;
                 return;
             }
-            
+
             // If validation successful, prepare order data with the verified username
             orderData.value = {
                 ...data,
                 ...accountData.value,
-                nickname: validationResult.username
+                nickname: validationResult.username,
             };
-            
+
             // If it's a flashsale item, add the flashsale_item_id
             if (selectedService.value.flashSaleItem) {
-                orderData.value.flashsale_item_id = selectedService.value.flashSaleItem.id;
+                orderData.value.flashsale_item_id =
+                    selectedService.value.flashSaleItem.id;
             }
-            
+
             // Show confirmation modal with verified username
             showConfirmationModal.value = true;
-            
         } catch (error) {
             toast.error("Account validation failed. Please try again.");
             console.error("Validation error:", error);
@@ -210,14 +213,15 @@ const openModal = async (data) => {
         // No validation needed, proceed directly
         orderData.value = {
             ...data,
-            ...accountData.value
+            ...accountData.value,
         };
-        
+
         // If it's a flashsale item, add the flashsale_item_id
         if (selectedService.value.flashSaleItem) {
-            orderData.value.flashsale_item_id = selectedService.value.flashSaleItem.id;
+            orderData.value.flashsale_item_id =
+                selectedService.value.flashSaleItem.id;
         }
-        
+
         // Show confirmation modal
         showConfirmationModal.value = true;
     }

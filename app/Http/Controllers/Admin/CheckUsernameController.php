@@ -1,4 +1,3 @@
-
 <?php
 
 namespace App\Http\Controllers\Admin;
@@ -72,7 +71,7 @@ class CheckUsernameController extends Controller
                 $errorData = json_decode($response->getBody()->getContents(), true);
                 $errorMessage = $errorData['message'] ?? $errorMessage;
             }
-            
+
             return response()->json([
                 'status' => 'error',
                 'message' => $errorMessage

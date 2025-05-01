@@ -1,7 +1,6 @@
-
-import { ref, reactive } from 'vue';
-import { useToast } from '@/Composables/useToast';
-import axios from 'axios';
+import { ref, reactive } from "vue";
+import { useToast } from "@/Composables/useToast";
+import axios from "axios";
 
 export function useAccountValidation() {
     const { toast } = useToast();
@@ -14,12 +13,15 @@ export function useAccountValidation() {
         // Check if we have a cached username that's still valid
         const cacheKey = `${produkSlug}-${JSON.stringify(inputs)}`;
         const cachedData = cachedUsernames[cacheKey];
-        
-        if (cachedData && (Date.now() - cachedData.timestamp < validationTimeout)) {
+
+        if (
+            cachedData &&
+            Date.now() - cachedData.timestamp < validationTimeout
+        ) {
             return {
-                status: 'success',
+                status: "success",
                 username: cachedData.username,
-                timestamp: cachedData.timestamp
+                timestamp: cachedData.timestamp,
             };
         }
 
@@ -31,37 +33,39 @@ export function useAccountValidation() {
             const payload = {
                 produk_slug: produkSlug,
                 inputs: inputs,
-                validasi_id: validasiId
+                validasi_id: validasiId,
             };
 
             // Call the API endpoint
-            const response = await axios.post('/api/validate-account', payload);
-            
-            if (response.data.status === 'success') {
+            const response = await axios.post("/api/validate-account", payload);
+
+            if (response.data.status === "success") {
                 // Cache the successful response
                 cachedUsernames[cacheKey] = {
                     username: response.data.username,
-                    timestamp: Date.now()
+                    timestamp: Date.now(),
                 };
-                
+
                 return {
-                    status: 'success',
-                    username: response.data.username
+                    status: "success",
+                    username: response.data.username,
                 };
             } else {
-                validationError.value = response.data.message || 'Failed to validate account';
+                validationError.value =
+                    response.data.message || "Failed to validate account";
                 return {
-                    status: 'error',
-                    message: validationError.value
+                    status: "error",
+                    message: validationError.value,
                 };
             }
         } catch (error) {
-            const errorMessage = error.response?.data?.message || 'Error validating account';
+            const errorMessage =
+                error.response?.data?.message || "Error validating account";
             validationError.value = errorMessage;
             toast.error(errorMessage);
             return {
-                status: 'error',
-                message: errorMessage
+                status: "error",
+                message: errorMessage,
             };
         } finally {
             isValidating.value = false;
@@ -73,18 +77,21 @@ export function useAccountValidation() {
         const errors = {};
         let isValid = true;
 
-        fields.forEach(field => {
+        fields.forEach((field) => {
             const value = inputData[field.name];
-            
+
             // Check required fields
-            if (field.required && (!value || value.trim() === '')) {
+            if (
+                field.required &&
+                (!value || (typeof value === "string" && value.trim() === ""))
+            ) {
                 errors[field.name] = `${field.label} is required`;
                 isValid = false;
                 return;
             }
 
             // Check numeric fields
-            if (field.type === 'number' && value && !/^[0-9]+$/.test(value)) {
+            if (field.type === "number" && value && !/^[0-9]+$/.test(value)) {
                 errors[field.name] = `${field.label} must contain only numbers`;
                 isValid = false;
                 return;
@@ -93,7 +100,7 @@ export function useAccountValidation() {
 
         return {
             isValid,
-            errors
+            errors,
         };
     };
 
@@ -102,6 +109,6 @@ export function useAccountValidation() {
         validationError,
         validateGameAccount,
         validateInputFields,
-        cachedUsernames
+        cachedUsernames,
     };
 }
