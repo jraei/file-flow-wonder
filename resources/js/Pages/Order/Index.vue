@@ -14,7 +14,10 @@ import ContactForm from "@/Components/Order/ContactForm.vue";
 import VoucherSection from "@/Components/Order/VoucherSection.vue";
 import ProductDescription from "@/Components/Order/ProductDescription.vue";
 import FaqSection from "@/Components/Order/FaqSection.vue";
+import OrderConfirmationModal from "@/Components/Order/OrderConfirmationModal.vue";
 import { useToast } from "@/Composables/useToast";
+import { usePhoneFormatting } from "@/Composables/usePhoneFormatting";
+import { useCookieStorage } from "@/Composables/useCookieStorage";
 
 const props = defineProps({
     produk: Object,
@@ -33,6 +36,8 @@ const props = defineProps({
 const selectedService = ref(null);
 const quantity = ref(1);
 const { toast } = useToast();
+const { validatePhoneNumber } = usePhoneFormatting();
+const { setCookie, getCookie } = useCookieStorage();
 const sidebarRef = ref(null);
 const isSidebarSticky = ref(false);
 const footerVisible = ref(false);
@@ -41,9 +46,39 @@ const orderQuantityRef = ref(null);
 const contactSectionRef = ref(null);
 const paymentInfo = ref(null);
 const selectedPayment = ref(null);
-const contactData = ref({ email: "", phone: "", country: "ID" });
+const userInputData = ref({
+    inputValues: {},
+    countryCode: "ID",
+    saveForFuture: false
+});
 const selectedVoucher = ref(null);
 const paymentSectionHighlight = ref(false);
+const showConfirmationModal = ref(false);
+
+// Prepare order data for confirmation/processing
+const orderData = computed(() => {
+    if (!selectedService.value) return null;
+    
+    return {
+        layanan_id: selectedService.value.id,
+        flashsale_item_id: selectedService.value.flashSaleItem?.id,
+        input_id: userInputData.value.inputValues.user_id || 
+                 userInputData.value.inputValues.account_id || 
+                 userInputData.value.inputValues.id || '',
+        input_zone: userInputData.value.inputValues.zone_id || 
+                    userInputData.value.inputValues.server || 
+                    userInputData.value.inputValues.zone || '',
+        quantity: quantity.value,
+        payment_method: selectedPayment.value,
+        email: userInputData.value.inputValues.email || '',
+        phone: userInputData.value.inputValues.phone || '',
+        country: userInputData.value.countryCode,
+        voucher_code: selectedVoucher.value?.code || '',
+        saveForFuture: userInputData.value.saveForFuture,
+        produk: props.produk,
+        inputValues: userInputData.value.inputValues
+    };
+});
 
 const totalAmount = computed(() => {
     if (!selectedService.value) return 0;
@@ -123,8 +158,8 @@ const handleFeeChange = (info) => {
     paymentInfo.value = info;
 };
 
-const handleContactUpdate = (contact) => {
-    contactData.value = contact;
+const handleInputDataChange = (data) => {
+    userInputData.value = data;
 };
 
 const handleVoucherUpdate = (voucher) => {
@@ -132,30 +167,88 @@ const handleVoucherUpdate = (voucher) => {
 };
 
 const handleCheckout = () => {
+    // Validation checks
     if (!selectedService.value) {
         toast.error("Please select a service first");
         return;
     }
+    
     if (!selectedPayment.value) {
         toast.error("Please select a payment method");
         return;
     }
-    if (!contactData.value.phone || contactData.value.phone.length < 7) {
+    
+    if (!userInputData.value.inputValues.phone || 
+        !validatePhoneNumber(userInputData.value.inputValues.phone)) {
         toast.error("Please enter a valid WhatsApp number");
         return;
     }
-    toast.success(
-        `Processing ${quantity.value} x ${
-            selectedService.value.nama_layanan
-        } with ${paymentInfo.value?.methodLabel ?? "payment"}`
-    );
-    contactData.value = { email: "", phone: "", country: "ID" };
-    selectedPayment.value = null;
-    paymentInfo.value = null;
+    
+    // Check if we have required game account ID fields
+    const requiredFields = props.inputFields.filter(field => field.required);
+    for (const field of requiredFields) {
+        if (!userInputData.value.inputValues[field.name]) {
+            toast.error(`Please enter ${field.label}`);
+            return;
+        }
+    }
+    
+    // Show confirmation modal
+    showConfirmationModal.value = true;
 };
 
+// Handle order confirmation result
+const handleOrderConfirmed = (result) => {
+    console.log("Order confirmed:", result);
+    
+    // Reset form if order was successful and not redirecting
+    if (!result.redirect) {
+        resetForm();
+    }
+};
+
+// Reset form after successful order (non-redirect)
+const resetForm = () => {
+    selectedService.value = null;
+    selectedPayment.value = null;
+    paymentInfo.value = null;
+    // Keep existing quantities
+    // Keep game account data if saved
+};
+
+// Set up intersection observer for sticky sidebar
+const setupStickyObserver = () => {
+    const observer = new IntersectionObserver(
+        (entries) => {
+            entries.forEach((entry) => {
+                if (entry.target === sidebarRef.value) {
+                    isSidebarSticky.value = !entry.isIntersecting;
+                }
+            });
+        },
+        {
+            root: null,
+            rootMargin: `-${navbarHeight.value}px 0px 0px 0px`,
+            threshold: 0,
+        }
+    );
+
+    if (sidebarRef.value) {
+        observer.observe(sidebarRef.value);
+    }
+
+    return observer;
+};
+
+// Initialize event listeners and observers
 onMounted(() => {
     initPriceAnimations();
+    const observer = setupStickyObserver();
+    
+    // Clean up observer on unmount
+    onUnmounted(() => {
+        observer.disconnect();
+    });
 });
 
 const initPriceAnimations = () => {
@@ -236,6 +329,14 @@ const initPriceAnimations = () => {
 
 <template>
     <GuestLayout>
+        <!-- Order Confirmation Modal (positioned at root level) -->
+        <OrderConfirmationModal 
+            :show-modal="showConfirmationModal" 
+            :order-data="orderData"
+            @close="showConfirmationModal = false"
+            @confirmed="handleOrderConfirmed"
+        />
+
         <section>
             <div class="relative">
                 <ProductBanner :banner="produk.banner" />
@@ -255,6 +356,7 @@ const initPriceAnimations = () => {
                     <UserDataCard
                         :input-fields="inputFields"
                         :produk="produk"
+                        @input-data-change="handleInputDataChange"
                     />
                     <ServiceList
                         :services="layanans"
@@ -275,7 +377,6 @@ const initPriceAnimations = () => {
                             @update:quantity="handleQuantityUpdate"
                         />
                     </div>
-                    <!-- Payment section with ref for scrolling and highlighting -->
 
                     <PaymentSelector
                         :static-methods="staticMethods"
@@ -297,14 +398,6 @@ const initPriceAnimations = () => {
                         :selected-service="selectedService"
                         @update:voucher="handleVoucherUpdate"
                     />
-                    <div ref="contactSectionRef">
-                        <ContactForm
-                            :initial-email="contactData.email"
-                            :initial-phone="contactData.phone"
-                            :initial-country="contactData.country"
-                            @update:contact="handleContactUpdate"
-                        />
-                    </div>
                 </div>
 
                 <div class="space-y-4 lg:col-span-2">
@@ -320,7 +413,7 @@ const initPriceAnimations = () => {
                             :quantity="quantity"
                             :selected-payment="selectedPayment"
                             :payment-info="paymentInfo"
-                            :contact="contactData"
+                            :contact="userInputData.inputValues"
                             :voucher="selectedVoucher"
                             @checkout="handleCheckout"
                         />
@@ -458,3 +551,5 @@ const initPriceAnimations = () => {
     transition-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 </style>
+
+</template>

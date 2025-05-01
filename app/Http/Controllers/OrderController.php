@@ -1,3 +1,4 @@
+
 <?php
 
 namespace App\Http\Controllers;
@@ -21,6 +22,7 @@ class OrderController extends Controller
 {
     public function index(Produk $produk)
     {
+        // Get all input fields for this product, ordered by their defined order
         $inputFields = $produk->inputFields()->with('options')->orderBy('order')->get();
         $waNumber = WebConfig::get('support_whatsapp', '');
 
@@ -212,13 +214,14 @@ class OrderController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'layanan_id' => 'required|exists:layanans,id',
-            // 'input_id' => 'required|string',
+            'input_id' => 'nullable|string',
             'input_zone' => 'nullable|string',
             'quantity' => 'required|integer|min:1',
             'payment_method' => 'required',
             'email' => 'nullable|email',
             'phone' => 'required|string|min:7',
             'voucher_code' => 'nullable|string',
+            // Additional validations for dynamic input fields can be added here
         ]);
 
         if ($validator->fails()) {
@@ -382,6 +385,8 @@ class OrderController extends Controller
             'email' => 'nullable|email',
             'phone' => 'required|string|min:7',
             'voucher_code' => 'nullable|string',
+            'country' => 'nullable|string|size:2', // Country code for phone international format
+            // Additional validations for dynamic input fields can be added here
         ]);
 
         if ($validator->fails()) {
@@ -483,6 +488,17 @@ class OrderController extends Controller
         // Generate unique order ID
         $orderId = $this->generateUniqueOrderId();
 
+        // Prepare contact info with international format
+        $contactInfo = [
+            'email' => $request->email,
+            'phone' => $request->phone,
+        ];
+
+        // If we have country code, store that too
+        if ($request->has('country')) {
+            $contactInfo['country_code'] = $request->country;
+        }
+
         // Create the pembelian record
         $pembelian = new Pembelian();
         $pembelian->order_id = $orderId;
@@ -495,6 +511,7 @@ class OrderController extends Controller
         $pembelian->price = $finalPrice;
         $pembelian->profit = $totalPrice - $hargaBeli;
         $pembelian->status = 'pending';
+        $pembelian->contact_info = json_encode($contactInfo); // Store structured contact info
         $pembelian->save();
 
         // Process payment based on method

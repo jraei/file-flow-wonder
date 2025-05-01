@@ -1,16 +1,105 @@
+
 <script setup>
-import { ref } from "vue";
+import { ref, computed, onMounted, watch } from "vue";
 import Modal from "@/Components/Modal.vue";
 import Checkbox from "@/Components/Checkbox.vue";
 import CosmicCard from "@/Components/Order/CosmicCard.vue";
 import CosmicParticles from "@/Components/User/Flashsale/CosmicParticles.vue";
+import { useCookieStorage } from "@/Composables/useCookieStorage";
+import { usePhoneFormatting } from "@/Composables/usePhoneFormatting";
+import { useToast } from "@/Composables/useToast";
+
 const props = defineProps({
     inputFields: Array,
     produk: Object,
 });
 
+const emit = defineEmits(['input-data-change']);
+
+const { setCookie, getCookie } = useCookieStorage();
+const { formatInternationalPhone } = usePhoneFormatting();
+const { toast } = useToast();
+
 const showModal = ref(false);
-const savedIdForFuture = ref(false);
+const saveIdForFuture = ref(false);
+const inputValues = ref({});
+const countryCode = ref('ID');
+
+// Initialize form values
+onMounted(() => {
+    // Initialize with empty values for all fields
+    props.inputFields.forEach(field => {
+        inputValues.value[field.name] = '';
+    });
+    
+    // Try to load saved values from cookie
+    loadSavedGameAccount();
+});
+
+// Watch for changes in saved fields checkbox
+watch(saveIdForFuture, (newVal) => {
+    if (newVal) {
+        // Show a toast message that ID will be saved for future use
+        toast.info("Your game ID will be saved for future purchases");
+    }
+});
+
+// Watch for any changes in input values
+watch(inputValues, (newVal) => {
+    emit('input-data-change', {
+        inputValues: newVal,
+        countryCode: countryCode.value,
+        saveForFuture: saveIdForFuture.value
+    });
+}, { deep: true });
+
+// Load saved account details if available
+const loadSavedGameAccount = () => {
+    const savedAccounts = getCookie('saved_game_accounts') || {};
+    const gameKey = props.produk.nama;
+    
+    if (savedAccounts && savedAccounts[gameKey]) {
+        const accountData = savedAccounts[gameKey];
+        
+        // Map saved values to form fields
+        Object.keys(accountData).forEach(key => {
+            if (inputValues.value.hasOwnProperty(key)) {
+                inputValues.value[key] = accountData[key];
+            }
+        });
+        
+        // Set the save checkbox to true since we have saved data
+        saveIdForFuture.value = true;
+    }
+};
+
+// Save account details to cookie
+const saveGameAccount = () => {
+    if (!saveIdForFuture.value) return;
+    
+    const gameKey = props.produk.nama;
+    const savedAccounts = getCookie('saved_game_accounts') || {};
+    
+    // Only save ID fields, not contact info
+    const fieldsToSave = {};
+    props.inputFields.forEach(field => {
+        // Avoid saving contact fields
+        if (!['email', 'phone', 'contact', 'whatsapp'].some(term => field.name.toLowerCase().includes(term))) {
+            fieldsToSave[field.name] = inputValues.value[field.name];
+        }
+    });
+    
+    // Update the cookie with new data for this game
+    savedAccounts[gameKey] = fieldsToSave;
+    setCookie('saved_game_accounts', savedAccounts, 90); // Save for 90 days
+};
+
+// Handle input change
+const handleInputChange = () => {
+    if (saveIdForFuture.value) {
+        saveGameAccount();
+    }
+};
 </script>
 
 <template>
@@ -34,16 +123,28 @@ const savedIdForFuture = ref(false);
                             >
                         </label>
 
-                        <!-- Text/Number Input -->
+                        <!-- Text Input -->
                         <input
-                            v-if="
-                                field.type === 'text' || field.type === 'number'
-                            "
-                            :type="field.type"
+                            v-if="field.type === 'text'"
+                            type="text"
                             :id="`field_${field.id}`"
                             :name="field.name"
                             :required="field.required"
-                            class="w-full rounded-lg outline-none bg-secondary/20 border-secondary placeholder-secondary focus:ring-secondary focus:border-primary/70 focus:bg-secondary/20/90 text-primary-text cosmic-input-effect"
+                            v-model="inputValues[field.name]"
+                            class="w-full rounded-lg outline-none bg-secondary/20 border-secondary/30 placeholder-secondary/50 focus:ring-secondary focus:border-primary/70 focus:bg-secondary/20/90 text-primary-text cosmic-input-effect"
+                            @change="handleInputChange"
+                        />
+
+                        <!-- Number Input -->
+                        <input
+                            v-else-if="field.type === 'number'"
+                            type="number"
+                            :id="`field_${field.id}`"
+                            :name="field.name"
+                            :required="field.required"
+                            v-model="inputValues[field.name]"
+                            class="w-full rounded-lg outline-none bg-secondary/20 border-secondary/30 placeholder-secondary/50 focus:ring-secondary focus:border-primary/70 focus:bg-secondary/20/90 text-primary-text cosmic-input-effect"
+                            @change="handleInputChange"
                         />
 
                         <!-- Select Input -->
@@ -52,7 +153,9 @@ const savedIdForFuture = ref(false);
                             :id="`field_${field.id}`"
                             :name="field.name"
                             :required="field.required"
+                            v-model="inputValues[field.name]"
                             class="w-full rounded-lg bg-secondary/20 border-secondary/30 focus:border-secondary focus:ring focus:ring-secondary/50 text-primary-text cosmic-input-effect"
+                            @change="handleInputChange"
                         >
                             <option value="" disabled selected>
                                 Select an option
@@ -67,6 +170,55 @@ const savedIdForFuture = ref(false);
                         </select>
                     </div>
                 </template>
+
+                <!-- WhatsApp Input with Country Code (Shown after dynamic fields) -->
+                <div class="space-y-2 col-span-full md:col-span-1">
+                    <label
+                        for="phone"
+                        class="block text-sm font-semibold text-primary-text"
+                    >
+                        WhatsApp Number
+                        <span class="ml-1 text-secondary">*</span>
+                    </label>
+                    <div class="flex space-x-2">
+                        <select
+                            v-model="countryCode"
+                            class="w-24 rounded-lg bg-secondary/20 border-secondary/30 focus:border-secondary focus:ring focus:ring-secondary/50 text-primary-text cosmic-input-effect"
+                        >
+                            <option value="ID">ID (+62)</option>
+                            <option value="MY">MY (+60)</option>
+                            <option value="SG">SG (+65)</option>
+                            <option value="US">US (+1)</option>
+                        </select>
+                        <input
+                            type="tel"
+                            id="phone"
+                            name="phone"
+                            placeholder="812xxxxxxx"
+                            v-model="inputValues.phone"
+                            required
+                            class="flex-1 rounded-lg outline-none bg-secondary/20 border-secondary/30 placeholder-secondary/50 focus:ring-secondary focus:border-primary/70 focus:bg-secondary/20/90 text-primary-text cosmic-input-effect"
+                        />
+                    </div>
+                </div>
+
+                <!-- Optional Email Field -->
+                <div class="space-y-2 col-span-full md:col-span-1">
+                    <label
+                        for="email"
+                        class="block text-sm font-semibold text-primary-text"
+                    >
+                        Email (Optional)
+                    </label>
+                    <input
+                        type="email"
+                        id="email"
+                        name="email"
+                        v-model="inputValues.email"
+                        placeholder="email@example.com"
+                        class="w-full rounded-lg outline-none bg-secondary/20 border-secondary/30 placeholder-secondary/50 focus:ring-secondary focus:border-primary/70 focus:bg-secondary/20/90 text-primary-text cosmic-input-effect"
+                    />
+                </div>
             </div>
 
             <!-- Footer Elements -->
@@ -75,7 +227,7 @@ const savedIdForFuture = ref(false);
             >
                 <!-- Save ID Checkbox -->
                 <div class="flex items-center">
-                    <Checkbox v-model:checked="savedIdForFuture" class="" />
+                    <Checkbox v-model:checked="saveIdForFuture" class="" />
                     <label for="saveId" class="ml-2 text-sm text-primary-text">
                         Simpan ID untuk pembelian berikutnya
                     </label>
@@ -148,5 +300,15 @@ const savedIdForFuture = ref(false);
 .cosmic-input-effect:focus {
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(155, 135, 245, 0.15);
+}
+
+/* Add hover effect for select dropdowns */
+select.cosmic-input-effect option {
+    background-color: #1F2937;
+    color: white;
+}
+
+select.cosmic-input-effect:hover {
+    background-color: rgba(51, 195, 240, 0.25);
 }
 </style>

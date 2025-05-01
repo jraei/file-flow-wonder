@@ -1,3 +1,152 @@
+
+<script setup>
+import { ref, computed, watch } from "vue";
+import { useToast } from "@/Composables/useToast";
+import { usePhoneFormatting } from "@/Composables/usePhoneFormatting";
+import { useCookieStorage } from "@/Composables/useCookieStorage";
+import axios from "axios";
+
+const props = defineProps({
+    showModal: Boolean,
+    orderData: Object,
+});
+
+const emit = defineEmits(["close", "confirmed"]);
+
+const { toast } = useToast();
+const { formatInternationalPhone } = usePhoneFormatting();
+const { setCookie, getCookie } = useCookieStorage();
+
+const loading = ref(true);
+const error = ref(null);
+const orderSummary = ref(null);
+const processingOrder = ref(false);
+
+watch(
+    () => props.showModal,
+    (show) => {
+        if (show) {
+            error.value = null;
+            loading.value = true;
+            orderSummary.value = null;
+            
+            // Format phone number with international code before validation
+            const formattedOrderData = { ...props.orderData };
+            if (formattedOrderData.phone && formattedOrderData.country) {
+                formattedOrderData.phone = formatInternationalPhone(
+                    formattedOrderData.phone,
+                    formattedOrderData.country
+                );
+            }
+            
+            validateOrder(formattedOrderData);
+        }
+    }
+);
+
+const validateOrder = async (orderData) => {
+    try {
+        const response = await axios.post(
+            route("order.confirm"),
+            orderData
+        );
+
+        if (response.data.status === "success") {
+            orderSummary.value = response.data.orderSummary;
+        } else {
+            error.value = response.data.message || "An unknown error occurred";
+        }
+    } catch (err) {
+        console.error("Order validation error:", err);
+        error.value = err.response?.data?.message || "Failed to validate order";
+    } finally {
+        loading.value = false;
+    }
+};
+
+const formatPrice = (price) => {
+    return price.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+};
+
+const cancelOrder = () => {
+    emit("close");
+};
+
+const confirmOrder = async () => {
+    if (processingOrder.value) return;
+
+    processingOrder.value = true;
+    try {
+        // Save game account before processing if the checkbox was checked
+        if (props.orderData.saveForFuture) {
+            saveGameAccount();
+        }
+        
+        // Format phone number with international code before processing
+        const processOrderData = { ...props.orderData };
+        if (processOrderData.phone && processOrderData.country) {
+            processOrderData.phone = formatInternationalPhone(
+                processOrderData.phone,
+                processOrderData.country
+            );
+        }
+        
+        const response = await axios.post(
+            route("order.process"),
+            processOrderData
+        );
+
+        if (response.data.status === "success") {
+            toast.success("Order processed successfully!");
+            emit("confirmed", response.data);
+
+            // Handle redirect if needed
+            if (response.data.redirect && response.data.payment_url) {
+                window.location.href = response.data.payment_url;
+            }
+        } else {
+            toast.error(response.data.message || "An unknown error occurred");
+        }
+    } catch (err) {
+        console.error("Order processing error:", err);
+        toast.error(err.response?.data?.message || "Failed to process order");
+    } finally {
+        processingOrder.value = false;
+        emit("close");
+    }
+};
+
+// Save account details to cookie
+const saveGameAccount = () => {
+    const gameKey = props.orderData.produk.nama;
+    const savedAccounts = getCookie('saved_game_accounts') || {};
+    
+    // Only save ID fields, not contact info
+    const fieldsToSave = {};
+    
+    // Extract ID fields from inputValues
+    Object.keys(props.orderData.inputValues).forEach(key => {
+        // Avoid saving contact fields
+        if (!['email', 'phone', 'contact', 'whatsapp'].some(term => key.toLowerCase().includes(term))) {
+            fieldsToSave[key] = props.orderData.inputValues[key];
+        }
+    });
+    
+    // Save explicit input_id and input_zone if present
+    if (props.orderData.input_id) {
+        fieldsToSave.input_id = props.orderData.input_id;
+    }
+    
+    if (props.orderData.input_zone) {
+        fieldsToSave.input_zone = props.orderData.input_zone;
+    }
+    
+    // Update the cookie with new data for this game
+    savedAccounts[gameKey] = fieldsToSave;
+    setCookie('saved_game_accounts', savedAccounts, 90); // Save for 90 days
+};
+</script>
+
 <template>
     <div>
         <div
@@ -107,27 +256,22 @@
                             </h4>
                             <div class="px-3 py-2 rounded-lg bg-dark-lighter">
                                 <div class="grid grid-cols-2 gap-2">
-                                    <div class="text-xs text-gray-400">
-                                        Account ID:
-                                    </div>
-                                    <div
-                                        class="text-xs font-semibold text-white"
-                                    >
-                                        {{ orderData.input_id }}
-                                    </div>
-
-                                    <div
-                                        v-if="orderData.input_zone"
-                                        class="text-xs text-gray-400"
-                                    >
-                                        Server ID:
-                                    </div>
-                                    <div
-                                        v-if="orderData.input_zone"
-                                        class="text-xs font-semibold text-white"
-                                    >
-                                        {{ orderData.input_zone }}
-                                    </div>
+                                    <!-- Display all dynamic input fields -->
+                                    <template v-if="orderData && orderData.inputValues">
+                                        <template v-for="(value, key) in orderData.inputValues" :key="key">
+                                            <!-- Skip contact fields in this section -->
+                                            <template v-if="!['email', 'phone'].includes(key)">
+                                                <div class="text-xs text-gray-400">
+                                                    {{ key }}:
+                                                </div>
+                                                <div
+                                                    class="text-xs font-semibold text-white"
+                                                >
+                                                    {{ value }}
+                                                </div>
+                                            </template>
+                                        </template>
+                                    </template>
 
                                     <div class="text-xs text-gray-400">
                                         Account Name:
@@ -325,7 +469,7 @@
                                     <div
                                         class="text-xs font-semibold text-white"
                                     >
-                                        {{ orderData.phone }}
+                                        {{ formatInternationalPhone(orderData.phone || '', orderData.country || 'ID') }}
                                     </div>
 
                                     <div
@@ -395,95 +539,6 @@
         </div>
     </div>
 </template>
-
-<script setup>
-import { ref, computed, watch } from "vue";
-import { useToast } from "@/Composables/useToast";
-import axios from "axios";
-
-const props = defineProps({
-    showModal: Boolean,
-    orderData: Object,
-});
-
-const emit = defineEmits(["close", "confirmed"]);
-
-const { toast } = useToast();
-const loading = ref(true);
-const error = ref(null);
-const orderSummary = ref(null);
-const processingOrder = ref(false);
-
-watch(
-    () => props.showModal,
-    (show) => {
-        if (show) {
-            error.value = null;
-            loading.value = true;
-            orderSummary.value = null;
-            validateOrder();
-        }
-    }
-);
-
-const validateOrder = async () => {
-    try {
-        const response = await axios.post(
-            route("order.confirm"),
-            props.orderData
-        );
-
-        if (response.data.status === "success") {
-            orderSummary.value = response.data.orderSummary;
-        } else {
-            error.value = response.data.message || "An unknown error occurred";
-        }
-    } catch (err) {
-        console.error("Order validation error:", err);
-        error.value = err.response?.data?.message || "Failed to validate order";
-    } finally {
-        loading.value = false;
-    }
-};
-
-const formatPrice = (price) => {
-    return price.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-};
-
-const cancelOrder = () => {
-    emit("close");
-};
-
-const confirmOrder = async () => {
-    if (processingOrder.value) return;
-
-    processingOrder.value = true;
-    try {
-        const response = await axios.post(
-            route("order.process"),
-            props.orderData
-        );
-
-        if (response.data.status === "success") {
-            toast.success("Order processed successfully!");
-            emit("confirmed", response.data);
-
-            // Handle redirect if needed
-            if (response.data.redirect && response.data.payment_url) {
-                window.location.href = response.data.payment_url;
-            }
-        } else {
-            toast.error(response.data.message || "An unknown error occurred");
-        }
-    } catch (err) {
-        console.error("Order processing error:", err);
-        toast.error(err.response?.data?.message || "Failed to process order");
-    } finally {
-        processingOrder.value = false;
-        emit("close");
-    }
-};
-</script>
 
 <style scoped>
 .shadow-cosmic {
