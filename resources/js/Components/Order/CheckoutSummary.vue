@@ -1,3 +1,4 @@
+
 <template>
     <CosmicCard :title="'Order Summary'">
         <div class="space-y-4">
@@ -133,18 +134,39 @@
             <!-- Call to Action -->
             <button
                 @click="handleOrderProcess"
-                :disabled="!isOrderReady"
+                :disabled="!isOrderReady || isValidating"
                 :class="[
                     'w-full py-3 font-bold transition-all rounded-lg focus:outline-none focus:ring-2 relative overflow-hidden',
-                    isOrderReady
+                    isOrderReady && !isValidating
                         ? 'bg-primary text-white hover:bg-primary-hover focus:ring-primary/50 shadow-glow-primary'
                         : 'bg-gray-600/50 text-gray-400 cursor-not-allowed',
                 ]"
             >
-                <div class="relative z-10">
-                    Process Order
+                <div class="relative z-10 flex items-center justify-center">
                     <svg
-                        v-if="!isOrderReady"
+                        v-if="isValidating"
+                        class="w-5 h-5 mr-2 -ml-1 text-white animate-spin"
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                    >
+                        <circle
+                            class="opacity-25"
+                            cx="12"
+                            cy="12"
+                            r="10"
+                            stroke="currentColor"
+                            stroke-width="4"
+                        ></circle>
+                        <path
+                            class="opacity-75"
+                            fill="currentColor"
+                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                        ></path>
+                    </svg>
+                    {{ isValidating ? 'Validating Account...' : 'Process Order' }}
+                    <svg
+                        v-if="!isOrderReady && !isValidating"
                         xmlns="http://www.w3.org/2000/svg"
                         class="inline-block w-4 h-4 ml-1"
                         viewBox="0 0 20 20"
@@ -161,14 +183,6 @@
                     class="absolute inset-0 transition-transform duration-700 bg-gradient-to-r from-primary/0 via-secondary/20 to-primary/0 cosmic-shine"
                 ></div>
             </button>
-
-            <!-- Order Confirmation Modal -->
-            <!-- <OrderConfirmationModal
-                :show-modal="showConfirmationModal"
-                :order-data="orderData"
-                @close="showConfirmationModal = false"
-                @confirmed="handleOrderConfirmed"
-            /> -->
         </div>
     </CosmicCard>
 </template>
@@ -176,7 +190,6 @@
 <script setup>
 import { ref, computed } from "vue";
 import CosmicCard from "@/Components/Order/CosmicCard.vue";
-import OrderConfirmationModal from "@/Components/Order/OrderConfirmationModal.vue";
 import { useToast } from "@/Composables/useToast";
 
 const props = defineProps({
@@ -191,13 +204,14 @@ const props = defineProps({
     paymentInfo: Object,
     contact: Object,
     voucher: Object,
+    isValidating: {
+        type: Boolean,
+        default: false
+    }
 });
 
 const emit = defineEmits(["checkout", "openModal"]);
 const { toast } = useToast();
-
-const showConfirmationModal = ref(false);
-const orderData = ref(null);
 
 // Computed values
 const basePrice = computed(() => {
@@ -298,11 +312,14 @@ const handleOrderProcess = () => {
         return;
     }
 
+    if (props.isValidating) {
+        toast.info("Please wait while we validate your account");
+        return;
+    }
+
     // Prepare order data for confirmation
-    orderData.value = {
+    const data = {
         layanan_id: props.selectedService.id,
-        input_id: document.getElementById("field_uid")?.value || "",
-        input_zone: document.getElementById("field_zone")?.value || "",
         quantity: props.quantity,
         payment_method: props.selectedPayment,
         email: props.contact.email,
@@ -311,17 +328,11 @@ const handleOrderProcess = () => {
     };
 
     if (props.selectedService.flashSaleItem) {
-        orderData.value.flashsale_item_id =
-            props.selectedService.flashSaleItem.id;
+        data.flashsale_item_id = props.selectedService.flashSaleItem.id;
     }
 
-    // Show confirmation modal
-    // showConfirmationModal.value = true;
-    emit("openModal", orderData.value);
-};
-
-const handleOrderConfirmed = (response) => {
-    emit("checkout", response);
+    // Emit event for account validation and modal opening
+    emit("openModal", data);
 };
 </script>
 

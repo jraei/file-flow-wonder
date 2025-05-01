@@ -1,3 +1,4 @@
+
 <?php
 
 namespace App\Http\Controllers\Admin;
@@ -9,6 +10,12 @@ use Illuminate\Http\Response;
 
 class CheckUsernameController extends Controller
 {
+    /**
+     * Get the account username from the validation provider
+     * 
+     * @param array $data
+     * @return \Illuminate\Http\Response
+     */
     public function getAccountUsername(array $data)
     {
         $provider = Provider::where('provider_name', 'checkUsername')->first();
@@ -40,14 +47,16 @@ class CheckUsernameController extends Controller
             }
 
             $response = $client->request('POST', '', [
-                'form_params' => $params
+                'form_params' => $params,
+                'timeout' => 10, // Add timeout to prevent long requests
+                'connect_timeout' => 5 // Connection timeout
             ]);
 
             $responseData = json_decode($response->getBody()->getContents(), true);
             // check if status success
             if ($responseData['status'] != 'success') {
                 return response()->json([
-                    'status' => $responseData['status'],
+                    'status' => 'error',
                     'message' => $responseData['message'] ?? 'Account validation failed'
                 ], Response::HTTP_BAD_REQUEST);
             }
@@ -55,6 +64,19 @@ class CheckUsernameController extends Controller
             $username = $responseData['result']['username'] ?? null;
 
             return response()->json(['status' => 'success', 'username' => $username]);
+        } catch (\GuzzleHttp\Exception\RequestException $e) {
+            // Network or connection errors
+            $errorMessage = 'Connection error while validating account. Please try again.';
+            if ($e->hasResponse()) {
+                $response = $e->getResponse();
+                $errorData = json_decode($response->getBody()->getContents(), true);
+                $errorMessage = $errorData['message'] ?? $errorMessage;
+            }
+            
+            return response()->json([
+                'status' => 'error',
+                'message' => $errorMessage
+            ], Response::HTTP_BAD_GATEWAY);
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',

@@ -13,7 +13,10 @@
                 v-model="inputValue"
                 :required="field.required"
                 :name="field.name"
-                class="w-full px-4 py-2 text-white transition-colors bg-dark-lighter rounded-lg border border-secondary/30 focus:border-secondary focus:outline-none"
+                class="dynamic-input w-full px-4 py-2 text-white transition-colors bg-dark-lighter rounded-lg border focus:outline-none"
+                :class="[
+                    errorMessage ? 'border-red-500 focus:border-red-400' : 'border-secondary/30 focus:border-secondary'
+                ]"
                 :placeholder="`Enter ${field.label.toLowerCase()}`"
             />
         </div>
@@ -24,7 +27,10 @@
                 v-model="inputValue"
                 :required="field.required"
                 :name="field.name"
-                class="w-full px-4 py-2 text-white transition-colors bg-dark-lighter rounded-lg border border-secondary/30 focus:border-secondary focus:outline-none"
+                class="dynamic-input w-full px-4 py-2 text-white transition-colors bg-dark-lighter rounded-lg border focus:outline-none"
+                :class="[
+                    errorMessage ? 'border-red-500 focus:border-red-400' : 'border-secondary/30 focus:border-secondary'
+                ]"
             >
                 <option value="" disabled>Select {{ field.label.toLowerCase() }}</option>
                 <option

@@ -1,3 +1,4 @@
+
 <script setup>
 import { ref, computed, onMounted, onUnmounted, nextTick, watch } from "vue";
 import GuestLayout from "@/Layouts/GuestLayout.vue";
@@ -16,6 +17,7 @@ import ProductDescription from "@/Components/Order/ProductDescription.vue";
 import FaqSection from "@/Components/Order/FaqSection.vue";
 import OrderConfirmationModal from "@/Components/Order/OrderConfirmationModal.vue";
 import { useToast } from "@/Composables/useToast";
+import { useAccountValidation } from "@/Composables/useAccountValidation";
 
 const props = defineProps({
     produk: Object,
@@ -49,6 +51,9 @@ const accountData = ref({});
 const showConfirmationModal = ref(false);
 const orderData = ref(null);
 const isProcessingOrder = ref(false);
+const userDataCardRef = ref(null);
+const { isValidating, validationError, validateGameAccount } = useAccountValidation();
+const validationErrorMessage = ref(null);
 
 const totalAmount = computed(() => {
     if (!selectedService.value) return 0;
@@ -138,9 +143,11 @@ const handleVoucherUpdate = (voucher) => {
 
 const handleAccountDataUpdate = (data) => {
     accountData.value = data;
+    // Clear validation error when account data changes
+    validationErrorMessage.value = null;
 };
 
-const openModal = (data) => {
+const openModal = async (data) => {
     if (!selectedService.value) {
         toast.error("Please select a service first");
         return;
@@ -154,57 +161,67 @@ const openModal = (data) => {
         return;
     }
 
-    // Prepare order data
-    orderData.value = {
-        ...data,
-        ...accountData.value, // Spread dynamic input fields
-    };
-    console.log("data", orderData.value);
-
-    // If it's a flashsale item, add the flashsale_item_id
-    if (selectedService.value.flashSaleItem) {
-        orderData.value.flashsale_item_id =
-            selectedService.value.flashSaleItem.id;
+    // First validate the input fields using the userDataCard component method
+    if (!userDataCardRef.value.validateFields()) {
+        toast.error("Please fill in all required fields correctly");
+        return;
     }
 
-    // Show confirmation modal
-    showConfirmationModal.value = true;
+    // If the product requires validation (validasi_id is not 'tidak')
+    if (props.produk.validasi_id !== 'tidak') {
+        isProcessingOrder.value = true;
+        
+        try {
+            // Prepare inputs for validation
+            const validationResult = await validateGameAccount(
+                props.produk.slug,
+                props.produk.validasi_id,
+                accountData.value
+            );
+
+            if (validationResult.status === 'error') {
+                validationErrorMessage.value = validationResult.message;
+                isProcessingOrder.value = false;
+                return;
+            }
+            
+            // If validation successful, prepare order data with the verified username
+            orderData.value = {
+                ...data,
+                ...accountData.value,
+                nickname: validationResult.username
+            };
+            
+            // If it's a flashsale item, add the flashsale_item_id
+            if (selectedService.value.flashSaleItem) {
+                orderData.value.flashsale_item_id = selectedService.value.flashSaleItem.id;
+            }
+            
+            // Show confirmation modal with verified username
+            showConfirmationModal.value = true;
+            
+        } catch (error) {
+            toast.error("Account validation failed. Please try again.");
+            console.error("Validation error:", error);
+        } finally {
+            isProcessingOrder.value = false;
+        }
+    } else {
+        // No validation needed, proceed directly
+        orderData.value = {
+            ...data,
+            ...accountData.value
+        };
+        
+        // If it's a flashsale item, add the flashsale_item_id
+        if (selectedService.value.flashSaleItem) {
+            orderData.value.flashsale_item_id = selectedService.value.flashSaleItem.id;
+        }
+        
+        // Show confirmation modal
+        showConfirmationModal.value = true;
+    }
 };
-
-// const handleCheckout = () => {
-//     if (!selectedService.value) {
-//         toast.error("Please select a service first");
-//         return;
-//     }
-//     if (!selectedPayment.value) {
-//         toast.error("Please select a payment method");
-//         return;
-//     }
-//     if (!contactData.value.phone || contactData.value.phone.length < 7) {
-//         toast.error("Please enter a valid WhatsApp number");
-//         return;
-//     }
-
-//     // Prepare order data
-//     orderData.value = {
-//         layanan_id: selectedService.value.id,
-//         quantity: quantity.value,
-//         payment_method: selectedPayment.value,
-//         email: contactData.value.email,
-//         phone: contactData.value.phone,
-//         voucher_code: selectedVoucher.value?.code || null,
-//         ...accountData.value, // Spread dynamic input fields
-//     };
-
-//     // If it's a flashsale item, add the flashsale_item_id
-//     if (selectedService.value.flashSaleItem) {
-//         orderData.value.flashsale_item_id =
-//             selectedService.value.flashSaleItem.id;
-//     }
-
-//     // Show confirmation modal
-//     showConfirmationModal.value = true;
-// };
 
 const handleOrderConfirmed = (response) => {
     // Reset form after successful order
@@ -317,8 +334,10 @@ const initPriceAnimations = () => {
             >
                 <div class="lg:col-span-4 lg:pr-8">
                     <UserDataCard
+                        ref="userDataCardRef"
                         :input-fields="inputFields"
                         :produk="produk"
+                        :validation-error="validationErrorMessage"
                         @update:account-data="handleAccountDataUpdate"
                     />
                     <ServiceList
@@ -340,7 +359,6 @@ const initPriceAnimations = () => {
                             @update:quantity="handleQuantityUpdate"
                         />
                     </div>
-                    <!-- Payment section with ref for scrolling and highlighting -->
 
                     <PaymentSelector
                         :static-methods="staticMethods"
@@ -387,7 +405,7 @@ const initPriceAnimations = () => {
                             :payment-info="paymentInfo"
                             :contact="contactData"
                             :voucher="selectedVoucher"
-                            @checkout="handleCheckout"
+                            :is-validating="isValidating || isProcessingOrder"
                             @openModal="openModal"
                         />
                     </div>

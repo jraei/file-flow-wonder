@@ -770,6 +770,46 @@ class OrderController extends Controller
         ]);
     }
 
+    /**
+     * Validate account before order processing
+     */
+    public function validateAccount(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'game' => 'required|string',
+            'user_id' => 'required|string',
+            'zone_id' => 'nullable|string',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Validation failed',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        $usernameController = new CheckUsernameController();
+        $data = [
+            'game' => $request->game,
+            'user_id' => $request->user_id
+        ];
+
+        if ($request->zone_id) {
+            $data['zone_id'] = $request->zone_id;
+        }
+
+        try {
+            $response = $usernameController->getAccountUsername($data);
+            return $response;
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
     protected function generateUniqueOrderId()
     {
         do {
