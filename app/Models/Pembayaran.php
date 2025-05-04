@@ -1,3 +1,4 @@
+
 <?php
 
 namespace App\Models;
@@ -12,6 +13,11 @@ class Pembayaran extends Model
 
     protected $guarded = [
         'id'
+    ];
+
+    protected $casts = [
+        'expired_time' => 'datetime',
+        'instruksi' => 'array',
     ];
 
     /**

@@ -1,118 +1,175 @@
+
 <template>
-    <GuestLayout>
-        <div class="relative px-4 py-16 mx-auto max-w-7xl sm:px-6 lg:px-8">
-            <div class="absolute inset-0 z-0">
-                <CosmicParticles />
-            </div>
+  <GuestLayout>
+    <div class="relative px-4 py-12 mx-auto max-w-7xl sm:px-6 lg:px-8">
+      <div class="absolute inset-0 z-0">
+        <CosmicParticles />
+      </div>
 
-            <div
-                class="relative z-10 max-w-lg mx-auto overflow-hidden border shadow-cosmic rounded-xl bg-secondary/20 border-secondary"
-            >
-                <div
-                    class="px-4 py-5 border-b sm:px-6 border-secondary/20 bg-primary/10"
-                >
-                    <h3
-                        class="text-xl font-medium leading-6 text-center text-white"
-                    >
-                        Menunggu Pembayaran
-                    </h3>
-                </div>
-
-                <div class="px-4 py-8 text-center sm:p-6">
-                    <div
-                        class="inline-block p-4 mb-6 rounded-full bg-primary/10"
-                    >
-                        <svg
-                            class="w-12 h-12 text-primary animate-spin"
-                            xmlns="http://www.w3.org/2000/svg"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                        >
-                            <circle
-                                class="opacity-25"
-                                cx="12"
-                                cy="12"
-                                r="10"
-                                stroke="currentColor"
-                                stroke-width="4"
-                            ></circle>
-                            <path
-                                class="opacity-75"
-                                fill="currentColor"
-                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                            ></path>
-                        </svg>
-                    </div>
-
-                    <h2 class="mb-2 text-2xl font-bold text-white">
-                        Processing Payment
-                    </h2>
-                    <p class="mb-6 text-gray-400">
-                        Order #{{ $page.props.order_id }}
-                    </p>
-
-                    <p class="mb-8 text-gray-300">
-                        We are connecting you to our payment provider. Please do
-                        not close this window.
-                    </p>
-
-                    <div class="p-4 mb-6 text-left rounded-lg bg-primary/20">
-                        <div class="flex items-center space-x-2">
-                            <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                class="w-5 h-5 text-secondary"
-                                viewBox="0 0 20 20"
-                                fill="currentColor"
-                            >
-                                <path
-                                    fill-rule="evenodd"
-                                    d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
-                                    clip-rule="evenodd"
-                                />
-                            </svg>
-                            <p class="text-sm text-secondary">
-                                This page will automatically redirect to the
-                                payment gateway.
-                            </p>
-                        </div>
-                    </div>
-
-                    <a
-                        href="/"
-                        class="inline-flex items-center px-4 py-2 mt-4 text-sm font-medium text-gray-300 transition-colors border border-gray-600 rounded-md hover:bg-gray-700"
-                    >
-                        <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            class="w-4 h-4 mr-2"
-                            viewBox="0 0 20 20"
-                            fill="currentColor"
-                        >
-                            <path
-                                fill-rule="evenodd"
-                                d="M9.707 14.707a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 1.414L7.414 9H15a1 1 0 110 2H7.414l2.293 2.293a1 1 0 010 1.414z"
-                                clip-rule="evenodd"
-                            />
-                        </svg>
-                        Return to Home
-                    </a>
-                </div>
-            </div>
+      <div class="relative z-10">
+        <!-- Progress Timeline -->
+        <div class="mb-6">
+          <h1 class="text-2xl font-bold text-white mb-6">Progress Transaksi</h1>
+          <CosmicTimeline :current-stage="getCurrentStage()" />
         </div>
-    </GuestLayout>
+        
+        <!-- Countdown Timer -->
+        <div 
+          v-if="order && pembayaran.status === 'pending'" 
+          class="mb-6 py-2 px-4 rounded-lg bg-primary/10 border border-primary/20 inline-flex"
+        >
+          <CosmicCountdown :expiry-time="pembayaran.expired_time" />
+        </div>
+
+        <!-- Main Content Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <!-- Left Column -->
+          <div class="space-y-6">
+            <!-- Game Account Card -->
+            <GameAccountCard
+              :icon="getProdukImage()"
+              :game="order.layanan.produk.nama"
+              :game-description="order.layanan.produk.deskripsi || ''"
+              :nickname="order.nickname"
+              :id="order.input_id"
+              :server="order.input_zone"
+            />
+
+            <!-- Price Breakdown Card -->
+            <PriceBreakdownCard
+              :price="pembayaran.price"
+              :quantity="1"
+              :subtotal="pembayaran.price"
+              :fee="pembayaran.fee"
+              :total-price="pembayaran.total_price"
+            />
+            
+            <!-- Payment Instructions -->
+            <PaymentInstructions
+              :instruksi="pembayaran.instruksi"
+            />
+          </div>
+
+          <!-- Right Column -->
+          <div class="space-y-6">
+            <!-- Payment Details Card -->
+            <PaymentDetailsCard
+              :payment-method="getPaymentMethodName()"
+              :reference="order.order_id"
+              :payment-status="pembayaran.status"
+              :order-status="order.status"
+              :message="getStatusMessage()"
+            />
+
+            <!-- QR Code or Payment Button -->
+            <div class="bg-dark-card/60 border border-secondary/20 rounded-xl shadow-cosmic p-6">
+              <QRCodeSection
+                :qr-url="pembayaran.qr_url"
+                :payment-link="pembayaran.payment_link"
+                :order-id="order.order_id"
+              />
+            </div>
+          </div>
+        </div>
+        
+        <!-- Return to Home Button -->
+        <div class="mt-8 text-center">
+          <a
+            href="/"
+            class="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-300 transition-colors border border-gray-600 rounded-md hover:bg-gray-700"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="w-4 h-4 mr-2"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+            >
+              <path
+                fill-rule="evenodd"
+                d="M9.707 14.707a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 1.414L7.414 9H15a1 1 0 110 2H7.414l2.293 2.293a1 1 0 010 1.414z"
+                clip-rule="evenodd"
+              />
+            </svg>
+            Return to Home
+          </a>
+        </div>
+      </div>
+    </div>
+  </GuestLayout>
 </template>
 
 <script setup>
-import { onMounted, ref } from "vue";
+import { computed } from "vue";
 import GuestLayout from "@/Layouts/GuestLayout.vue";
 import CosmicParticles from "@/Components/User/Flashsale/CosmicParticles.vue";
+import CosmicTimeline from "@/Components/User/Invoice/CosmicTimeline.vue";
+import CosmicCountdown from "@/Components/User/Invoice/CosmicCountdown.vue";
+import GameAccountCard from "@/Components/User/Invoice/GameAccountCard.vue";
+import PaymentDetailsCard from "@/Components/User/Invoice/PaymentDetailsCard.vue";
+import PriceBreakdownCard from "@/Components/User/Invoice/PriceBreakdownCard.vue";
+import QRCodeSection from "@/Components/User/Invoice/QRCodeSection.vue";
+import PaymentInstructions from "@/Components/User/Invoice/PaymentInstructions.vue";
 import { usePage } from "@inertiajs/vue3";
 
-const $page = usePage();
+const page = usePage();
+const order = computed(() => page.props.order);
+const pembayaran = computed(() => page.props.order.pembayaran);
+
+const getCurrentStage = () => {
+  const status = order.value.status;
+  const paymentStatus = pembayaran.value.status;
+  
+  if (status === 'completed') {
+    return 'completed';
+  }
+  
+  if (status === 'processing') {
+    return 'processing';
+  }
+  
+  if (paymentStatus === 'paid') {
+    return 'processing';
+  }
+  
+  return 'payment';
+};
+
+const getPaymentMethodName = () => {
+  return pembayaran.value.payment_method || 'Unknown Method';
+};
+
+const getStatusMessage = () => {
+  const status = order.value.status;
+  const paymentStatus = pembayaran.value.status;
+  
+  if (paymentStatus === 'pending') {
+    return 'Silakan untuk melakukan pembayaran dengan metode yang kamu pilih.';
+  }
+  
+  if (paymentStatus === 'paid' && status === 'pending') {
+    return 'Pembayaran telah diterima, pesanan akan segera diproses.';
+  }
+  
+  if (status === 'processing') {
+    return 'Pesanan sedang diproses oleh sistem kami.';
+  }
+  
+  if (status === 'completed') {
+    return 'Transaksi telah selesai. Terima kasih telah berbelanja!';
+  }
+  
+  return '';
+};
+
+const getProdukImage = () => {
+  const produk = order.value.layanan.produk;
+  return produk.gambar || 'https://via.placeholder.com/100';
+};
 </script>
 
 <style scoped>
 .shadow-cosmic {
-    box-shadow: 0 0 25px -5px rgba(155, 135, 245, 0.15),
-        0 0 10px -5px rgba(51, 195, 240, 0.2);
+  box-shadow: 0 0 25px -5px rgba(155, 135, 245, 0.15),
+    0 0 10px -5px rgba(51, 195, 240, 0.2);
 }
 </style>

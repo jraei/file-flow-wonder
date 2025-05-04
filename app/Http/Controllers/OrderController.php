@@ -1,3 +1,4 @@
+
 <?php
 
 namespace App\Http\Controllers;
@@ -213,6 +214,13 @@ class OrderController extends Controller
 
     public function invoice(Pembelian $order)
     {
+        // Load the order with layanan, produk, and pembayaran
+        $order->load([
+            'layanan.produk',
+            'pembayaran',
+        ]);
+
+        // Return the invoice view with complete order data
         return Inertia::render('Order/Invoice', [
             'order' => $order
         ]);
