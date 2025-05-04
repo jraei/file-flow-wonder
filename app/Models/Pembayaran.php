@@ -10,13 +10,8 @@ class Pembayaran extends Model
 {
     use HasFactory;
 
-    protected $fillable = [
-        'order_id',
-        'price',
-        'payment_link',
-        'payment_method',
-        'payment_reference',
-        'status'
+    protected $guarded = [
+        'id'
     ];
 
     /**

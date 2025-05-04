@@ -68,6 +68,8 @@ class TripayController extends Controller
                     "fee_fixed" => $fixed,
                     "fee_percent" => $percent,
                     "fee_type" => $feeType,
+                    "min_amount" => $method['minimum_amount'],
+                    "max_amount" => $method['maximum_amount'],
                     "status" => $method['active'] ? 'active' : 'inactive'
                 ]
             );
