@@ -211,13 +211,16 @@ class OrderController extends Controller
         ]);
     }
 
-    public function invoice(Pembelian $order)
+    public function invoice($orderId)
     {
+        $order = Pembelian::with(['layanan.produk', 'pembayaran', 'user'])
+            ->where('order_id', $orderId)
+            ->firstOrFail();
+
         return Inertia::render('Order/Invoice', [
             'order' => $order
         ]);
     }
-
 
     /**
      * Process the order confirmation (Phase 1)
