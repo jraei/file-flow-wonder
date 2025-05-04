@@ -3,6 +3,8 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use App\Models\Produk;
+use App\Http\Controllers\Admin\CheckUsernameController;
 
 /*
 |--------------------------------------------------------------------------
@@ -19,23 +21,21 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
 });
 
-// Payment QR Code endpoint
-Route::get('/payments/{reference}/qr-code', function ($reference) {
-    $payment = \App\Models\Pembayaran::where('payment_reference', $reference)->first();
-    
-    if (!$payment || !$payment->qr_code_path) {
-        return response()->json(['error' => 'QR code not found'], 404);
+// Product search endpoint
+Route::get('/search/products', function (Request $request) {
+    $query = $request->input('query');
+
+    if (empty($query) || strlen($query) < 2) {
+        return response()->json([]);
     }
-    
-    // Check if it's a URL
-    if (filter_var($payment->qr_code_path, FILTER_VALIDATE_URL)) {
-        return redirect($payment->qr_code_path);
-    }
-    
-    // Check if it's a local file
-    if (file_exists(storage_path('app/public/' . $payment->qr_code_path))) {
-        return response()->file(storage_path('app/public/' . $payment->qr_code_path));
-    }
-    
-    return response()->json(['error' => 'QR code not accessible'], 404);
-});
+
+    $products = Produk::where('nama', 'LIKE', "%{$query}%")
+        ->where('status', 'active')
+        ->take(5)
+        ->get(['id', 'nama', 'thumbnail']);
+
+    return response()->json($products);
+})->name('api.search.products');
+
+// We no longer need a separate validate-account endpoint as validation
+// is now integrated with the order/confirm endpoint

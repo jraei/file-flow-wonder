@@ -8,7 +8,6 @@ use App\Models\Voucher;
 use App\Models\PayMethod;
 use App\Models\Pembelian;
 use App\Models\WebConfig;
-use App\Models\Pembayaran;
 use Illuminate\Http\Request;
 use App\Models\FlashsaleItem;
 use App\Models\ItemThumbnail;
@@ -16,7 +15,6 @@ use App\Models\FlashsaleEvent;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
 use App\Http\Controllers\MoogoldController;
-use App\Http\Controllers\Admin\TripayController;
 use App\Http\Controllers\Admin\CheckUsernameController;
 
 class OrderController extends Controller
@@ -121,8 +119,6 @@ class OrderController extends Controller
                 'fee_fixed' => PayMethod::where('tipe', 'QRIS')->first()?->fee_fixed,
                 'fee_percent' => PayMethod::where('tipe', 'QRIS')->first()?->fee_percent,
                 'fee_type' => PayMethod::where('tipe', 'QRIS')->first()?->fee_type,
-                'min_amount' => PayMethod::where('tipe', 'QRIS')->first()?->min_amount,
-                'max_amount' => PayMethod::where('tipe', 'QRIS')->first()?->max_amount
             ]
         ];
         // Dynamic methods (grouped by tipe)
@@ -140,8 +136,6 @@ class OrderController extends Controller
                         'fee_fixed' => $method->fee_fixed,
                         'fee_percent' => $method->fee_percent,
                         'fee_type' => $method->fee_type,
-                        'min_amount' => $method->min_amount,
-                        'max_amount' => $method->max_amount,
                         'gambar' => $method->gambar,
                         'is_recommended' => $method->keterangan && str_contains(strtolower($method->keterangan), 'recommended'),
                         'payment_provider' => $method->paymentProvider?->toArray(),
@@ -211,17 +205,6 @@ class OrderController extends Controller
         ]);
     }
 
-    public function invoice($orderId)
-    {
-        $order = Pembelian::with(['layanan.produk', 'pembayaran', 'user'])
-            ->where('order_id', $orderId)
-            ->firstOrFail();
-
-        return Inertia::render('Order/Invoice', [
-            'order' => $order
-        ]);
-    }
-
     /**
      * Process the order confirmation (Phase 1)
      */
@@ -254,7 +237,7 @@ class OrderController extends Controller
 
         // Get the input fields configuration for this product
         $inputFields = $produk->inputFields()->with('options')->get();
-
+        
         // Dynamic fields container for all product-specific inputs
         $dynamicFields = [];
 
@@ -266,7 +249,7 @@ class OrderController extends Controller
             if ($request->has($fieldName)) {
                 // Add to dynamic fields collection
                 $dynamicFields[$fieldName] = $request->input($fieldName);
-
+                
                 // Set special fields for validation
                 if ($field->isUserIdField()) {
                     $inputId = $request->input($fieldName);
@@ -290,15 +273,48 @@ class OrderController extends Controller
                 ->first();
         }
 
-        // calculate base price
-        $basePrice = $flashsaleItem ? $flashsaleItem->harga_flashsale : $layanan->harga_jual;
-        $basePrice = ceil($basePrice * $request->quantity);
-
         // Process voucher if provided
+        $voucher = null;
         $voucherDiscount = 0;
         if ($request->voucher_code) {
-            $voucher = $this->validateVoucher($request->voucher_code, $basePrice);
-            $voucherDiscount = $voucher['discount_value'];
+            $voucher = Voucher::where('code', $request->voucher_code)
+                ->where('status', 'active')
+                ->where(function ($q) {
+                    $q->whereNull('end_date')
+                        ->orWhere('end_date', '>', now());
+                })
+                ->first();
+
+            if ($voucher) {
+                // Calculate base price
+                $basePrice = $flashsaleItem ? $flashsaleItem->harga_flashsale : $layanan->harga_jual;
+                $basePrice = $basePrice * $request->quantity;
+
+                // Check minimum purchase requirement
+                if ($voucher->min_purchase && $basePrice < $voucher->min_purchase) {
+                    return response()->json([
+                        'status' => 'error',
+                        'message' => 'Minimum purchase for voucher not met',
+                    ], 422);
+                }
+
+                // Calculate discount
+                if ($voucher->discount_type === 'fixed') {
+                    $voucherDiscount = $voucher->discount_value;
+                } else {
+                    $voucherDiscount = ($basePrice * $voucher->discount_value) / 100;
+
+                    // Apply max discount cap if exists
+                    if ($voucher->max_discount && $voucherDiscount > $voucher->max_discount) {
+                        $voucherDiscount = $voucher->max_discount;
+                    }
+                }
+
+                // Ensure discount doesn't exceed the base price
+                $voucherDiscount = min($voucherDiscount, $basePrice);
+                // Math ceil to avoid rounding errors
+                $voucherDiscount = ceil($voucherDiscount);
+            }
         }
 
         // Get username if validation is required
@@ -331,7 +347,9 @@ class OrderController extends Controller
         }
 
         // Calculate total price
-        $totalPrice = $basePrice - $voucherDiscount;
+        $basePrice = $flashsaleItem ? $flashsaleItem->harga_flashsale : $layanan->harga_jual;
+        $basePrice = ceil($basePrice);
+        $totalPrice = $basePrice * $request->quantity - $voucherDiscount;
 
         // Calculate fees based on payment method
         $paymentInfo = $this->calculatePaymentFees($request->payment_method, $totalPrice);
@@ -352,7 +370,6 @@ class OrderController extends Controller
             'status' => 'success',
             'orderSummary' => [
                 'nickname' => $username,
-                'validasi_id' => $produk->validasi_id,
                 'validation_error' => $validationError,
                 'account_id' => $inputId,
                 'server_id' => $inputZone,
@@ -402,7 +419,6 @@ class OrderController extends Controller
             ], 422);
         }
 
-        $user = Auth::user();
         $layanan = \App\Models\Layanan::with('produk')->findOrFail($request->layanan_id);
         $produk = $layanan->produk;
 
@@ -412,7 +428,7 @@ class OrderController extends Controller
 
         // Get the input fields configuration for this product
         $inputFields = $produk->inputFields()->with('options')->get();
-
+        
         // Dynamic fields container for all product-specific inputs
         $dynamicFields = [];
 
@@ -424,7 +440,7 @@ class OrderController extends Controller
             if ($request->has($fieldName)) {
                 // Add to dynamic fields collection
                 $dynamicFields[$fieldName] = $request->input($fieldName);
-
+                
                 // Set special fields for validation
                 if ($field->isUserIdField()) {
                     $inputId = $request->input($fieldName);
@@ -460,19 +476,51 @@ class OrderController extends Controller
             }
         }
 
-        // calculate basePrice
-        $basePrice = $flashsaleItem ? $flashsaleItem->harga_flashsale : $layanan->harga_jual;
-        $basePrice = ceil($basePrice * $request->quantity);
-
         // Process voucher if provided
+        $voucher = null;
         $voucherDiscount = 0;
         if ($request->voucher_code) {
-            $voucher = $this->validateVoucher($request->voucher_code, $basePrice);
-            $voucherDiscount = $voucher['discount_value'];
+            $voucher = Voucher::where('code', $request->voucher_code)
+                ->where('status', 'active')
+                ->where(function ($q) {
+                    $q->whereNull('end_date')
+                        ->orWhere('end_date', '>', now());
+                })
+                ->first();
+
+            if ($voucher) {
+                // Calculate base price (with flashsale discount already applied if applicable)
+                $basePrice = $flashsaleItem ? $flashsaleItem->harga_flashsale : $layanan->harga_jual;
+                $basePrice = $basePrice * $request->quantity;
+
+                // Check minimum purchase requirement
+                if ($voucher->min_purchase && $basePrice < $voucher->min_purchase) {
+                    return response()->json([
+                        'status' => 'error',
+                        'message' => 'Minimum purchase for voucher not met',
+                    ], 422);
+                }
+
+                // Calculate discount
+                if ($voucher->discount_type === 'fixed') {
+                    $voucherDiscount = $voucher->discount_value;
+                } else {
+                    $voucherDiscount = ($basePrice * $voucher->discount_value) / 100;
+
+                    // Apply max discount cap if exists
+                    if ($voucher->max_discount && $voucherDiscount > $voucher->max_discount) {
+                        $voucherDiscount = $voucher->max_discount;
+                    }
+                }
+
+                // Ensure discount doesn't exceed the base price
+                $voucherDiscount = min($voucherDiscount, $basePrice);
+            }
         }
 
         // Calculate total price
-        $totalPrice = $basePrice - $voucherDiscount;
+        $basePrice = $flashsaleItem ? $flashsaleItem->harga_flashsale : $layanan->harga_jual;
+        $totalPrice = $basePrice * $request->quantity - $voucherDiscount;
 
         // Calculate fees based on payment method
         $paymentInfo = $this->calculatePaymentFees($request->payment_method, $totalPrice);
@@ -505,11 +553,9 @@ class OrderController extends Controller
         $pembelian->nickname = $request->nickname;
         $pembelian->input_id = $inputId;
         $pembelian->input_zone = $inputZone;
-        $pembelian->price = $totalPrice;
+        $pembelian->price = $finalPrice;
         $pembelian->profit = $totalPrice - $hargaBeli;
         $pembelian->status = 'pending';
-        $pembelian->phone = $request->phone;
-        $pembelian->email = $request->email;
 
         // Store additional fields as JSON
         if (!empty($additionalData)) {
@@ -521,6 +567,7 @@ class OrderController extends Controller
         // Process payment based on method
         if ($request->payment_method['type'] === 'saldo') {
             // Check if user has enough balance
+            $user = Auth::user();
             if ($user->saldo < $finalPrice) {
                 return response()->json([
                     'status' => 'error',
@@ -532,39 +579,48 @@ class OrderController extends Controller
             $user->saldo -= $finalPrice;
             $user->save();
 
-            Pembayaran::create([
-                'order_id' => $orderId,
-                'price' => $finalPrice,
-                'total_price' => $finalPrice,
-                'payment_method' => 'Saldo Akun',
-                'status' => 'success',
-            ]);
-
             // Process order through API
             $moogold = new MoogoldController();
+            $retryCount = 0;
+            $apiResult = null;
 
-            try {
-                $apiResult = $moogold->createTransaction([
-                    'category_id' => $produk->kategori_id,
-                    'order_id' => $orderId,
-                    'service_id' => $layanan->api_service_id,
-                    'quantity' => $request->quantity,
-                    'user_id' => $request->input_id,
-                    'server' => $request->input_zone
-                ]);
-            } catch (\Exception $e) {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'Failed to process order',
-                ], 500);
-            }
+            do {
+                try {
+                    $apiResult = $moogold->createTransaction([
+                        'category_id' => $produk->kategori_id,
+                        'order_id' => $orderId,
+                        'service_id' => $layanan->api_service_id,
+                        'quantity' => $request->quantity,
+                        'user_id' => $request->input_id,
+                        'server' => $request->input_zone
+                    ]);
 
+                    if ($apiResult && isset($apiResult['status']) && $apiResult['status'] === 'success') {
+                        break;
+                    }
+                } catch (\Exception $e) {
+                    if ($retryCount >= 2) {
+                        // Refund user's balance on final failure
+                        $user->saldo += $finalPrice;
+                        $user->save();
+
+                        // Update order status
+                        $pembelian->status = 'failed';
+                        $pembelian->save();
+
+                        return response()->json([
+                            'status' => 'error',
+                            'message' => 'Failed to process order after multiple attempts',
+                        ], 500);
+                    }
+                }
+
+                $retryCount++;
+            } while ($retryCount < 3);
 
             // Update order status
-            $pembelian->reference_id = $apiResult['data']['order_id'];
             $pembelian->status = 'processing';
             $pembelian->save();
-
 
             return response()->json([
                 'status' => 'success',
@@ -572,47 +628,19 @@ class OrderController extends Controller
                 'order_id' => $orderId,
             ]);
         } else {
-
             // Payment gateway integration
-            $item = $produk->nama . ' - ' . $layanan->nama_layanan;
-            $tripay = new TripayController();
-            $response = $tripay->createTransaction([
-                'item' => $item,
-                'price' => $totalPrice,
-                'quantity' => $request->quantity,
-                'method' => $paymentInfo['methodCode'],
-                'merchant_ref' => $orderId,
-                'customer_name' => $user->username ?? 'Guest',
-                'customer_email' => $request->email ?? 'guest@gmail.com',
-                'customer_phone' => $request->phone
-            ]);
-
-            if (!$response) {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => $response['message'],
-                ]);
-            }
-
             // Create invoice for payment
-            $tripayData = $response['data'];
-            Pembayaran::create([
-                'order_id' => $orderId,
-                'payment_provider' => 'Tripay',
-                'price' => $tripayData['amount_received'],
-                'fee' => $tripayData['total_fee'],
-                'total_price' => $tripayData['amount'],
-                'payment_link' => $tripayData['checkout_url'],
-                'payment_method' => $paymentInfo['methodCode'],
-                'payment_reference' => $tripayData['reference'],
-                'expired_time' => $tripayData['expired_time'],
-                'status' => 'pending',
-            ]);
+            $pembayaran = new \App\Models\Pembayaran();
+            $pembayaran->order_id = $orderId;
+            $pembayaran->price = $finalPrice;
+            $pembayaran->payment_method = $paymentInfo['methodType'];
+            $pembayaran->status = 'pending';
+            $pembayaran->save();
 
             // Redirect to payment gateway or return payment link
             return response()->json([
                 'status' => 'success',
-                'message' => $tripayData,
+                'message' => 'Payment invoice created',
                 'order_id' => $orderId,
                 'payment_url' => route('payment.show', ['order_id' => $orderId]),
                 'redirect' => true
@@ -631,15 +659,13 @@ class OrderController extends Controller
         $methodType = '';
 
         if ($paymentMethod['type'] === 'saldo') {
-            $saldo = PayMethod::where('tipe', 'Saldo Akun')->first();
-            $methodName = $saldo->nama;
-            $methodType = $saldo->tipe;
+            $methodName = 'NaelCoin';
+            $methodType = 'saldo';
         } elseif ($paymentMethod['type'] === 'qris') {
-            $qris = PayMethod::where('tipe', 'QRIS')->first();
-            $methodName = $qris->nama;
-            $methodType = $qris->tipe;
-            $methodCode = $qris->kode;
+            $methodName = 'QRIS';
+            $methodType = 'qris';
 
+            $qris = PayMethod::where('tipe', 'QRIS')->first();
             if ($qris) {
                 if ($qris->fee_type === 'fixed') {
                     $fee = $qris->fee_fixed;
@@ -658,7 +684,6 @@ class OrderController extends Controller
             if ($payMethod) {
                 $methodName = $payMethod->nama;
                 $methodType = $payMethod->tipe;
-                $methodCode = $payMethod->kode;
 
                 if ($payMethod->fee_type === 'fixed') {
                     $fee = $payMethod->fee_fixed;
@@ -677,8 +702,7 @@ class OrderController extends Controller
             'finalPrice' => ceil($finalPrice), // Round up to nearest integer
             'fee' => ceil($fee),
             'methodName' => $methodName,
-            'methodType' => $methodType,
-            'methodCode' => $methodCode ?? '',
+            'methodType' => $methodType
         ];
     }
 
@@ -747,19 +771,18 @@ class OrderController extends Controller
         // Ensure discount doesn't exceed the purchase amount
         $discount = min($discount, $request->amount);
 
-        return  [
-            'code' => $voucher->code,
-            'discount_type' => $voucher->discount_type,
-            'discount_value' => $voucher->discount_value,
-            'calculated_discount' => $discount,
-            'min_purchase' => $voucher->min_purchase,
-            'max_discount' => $voucher->max_discount,
-        ];
+        return response()->json([
+            'status' => 'success',
+            'voucher' => [
+                'code' => $voucher->code,
+                'discount_type' => $voucher->discount_type,
+                'discount_value' => $voucher->discount_value,
+                'calculated_discount' => $discount,
+                'min_purchase' => $voucher->min_purchase,
+                'max_discount' => $voucher->max_discount,
+            ],
+        ]);
     }
-
-    // validate flashsale
-    public function validateFlashsale(Request $request) {}
-
 
     /**
      * Validate account before order processing

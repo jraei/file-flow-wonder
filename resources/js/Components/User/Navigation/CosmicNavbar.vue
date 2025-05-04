@@ -84,7 +84,7 @@ const navLinks = [
             <!-- Cosmic background with starfield -->
             <div class="absolute inset-0 overflow-hidden">
                 <div
-                    class="absolute inset-0 bg-gradient-to-b from-header_background to-content_background/50"
+                    class="absolute inset-0 bg-gradient-to-b from-primary/60 to-content_background/50"
                 ></div>
                 <CosmicStarfield class="opacity-50" />
             </div>

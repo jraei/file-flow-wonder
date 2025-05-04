@@ -142,7 +142,6 @@ const handleVoucherUpdate = (voucher) => {
 
 const handleAccountDataUpdate = (data) => {
     accountData.value = data;
-
     // Clear validation error when account data changes
     validationErrorMessage.value = null;
 };
@@ -167,13 +166,65 @@ const openModal = async (data) => {
         return;
     }
 
-    orderData.value = {
-        ...data,
-        ...accountData.value,
-    };
+    isProcessingOrder.value = true;
 
-    // Show confirmation modal with verified information
-    showConfirmationModal.value = true;
+    try {
+        // Prepare the payload for the single-call order confirmation and validation
+        const payload = {
+            layanan_id: selectedService.value.id,
+            quantity: quantity.value,
+            payment_method: selectedPayment.value,
+            email: contactData.value.email,
+            phone: contactData.value.phone,
+            voucher_code: selectedVoucher.value?.code || null,
+            // Add any flashsale item ID if applicable
+            ...(selectedService.value.flashSaleItem ? {
+                flashsale_item_id: selectedService.value.flashSaleItem.id
+            } : {}),
+            // Include all dynamic account data fields
+            ...accountData.value
+        };
+
+        // Make a single API call to order.confirm endpoint
+        const response = await axios.post(route('order.confirm'), payload);
+
+        if (response.data.status === 'success') {
+            // Extract order summary from the response
+            const summary = response.data.orderSummary;
+            
+            // Check for validation errors
+            if (summary.validation_error) {
+                validationErrorMessage.value = summary.validation_error;
+                isProcessingOrder.value = false;
+                return;
+            }
+
+            // If validation successful, prepare order data with the verified username
+            orderData.value = {
+                ...data,
+                ...accountData.value,
+                nickname: summary.nickname,
+                // Include all order summary data for confirmation modal
+                layanan_id: selectedService.value.id,
+                quantity: quantity.value,
+                payment_method: selectedPayment.value,
+                voucher_code: selectedVoucher.value?.code || null,
+            };
+
+            // Show confirmation modal with verified information
+            showConfirmationModal.value = true;
+        } else {
+            // Handle unexpected response format
+            toast.error("Failed to validate order. Please try again.");
+        }
+    } catch (error) {
+        // Handle API errors
+        const errorMessage = error.response?.data?.message || "Failed to process order. Please try again.";
+        validationErrorMessage.value = errorMessage;
+        toast.error(errorMessage);
+    } finally {
+        isProcessingOrder.value = false;
+    }
 };
 
 const handleOrderConfirmed = (response) => {
@@ -181,7 +232,6 @@ const handleOrderConfirmed = (response) => {
     contactData.value = { email: "", phone: "", country: "ID" };
     selectedPayment.value = null;
     paymentInfo.value = null;
-    console.log("Order confirmed:", response);
 
     // Save the data to local storage if needed
     // This will be handled by the components now

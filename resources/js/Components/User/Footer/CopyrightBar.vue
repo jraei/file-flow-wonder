@@ -16,7 +16,7 @@ const currentYear = new Date().getFullYear();
 
 <template>
     <div
-        class="relative py-6 overflow-hidden text-sm bg-gradient-to-b bg-footer_background text-primary-text/80"
+        class="relative py-6 overflow-hidden text-sm bg-gradient-to-b to-primary/70 from-primary/60 text-primary-text/60"
     >
         <div class="absolute inset-0 overflow-hidden">
             <CosmicStarfield class="opacity-30" />

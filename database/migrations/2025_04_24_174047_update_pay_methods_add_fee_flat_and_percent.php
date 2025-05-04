@@ -12,15 +12,17 @@ return new class extends Migration
     public function up()
     {
         Schema::table('pay_methods', function (Blueprint $table) {
-            $table->bigInteger('min_amount')->nullable()->after('fee_percent');
-            $table->bigInteger('max_amount')->nullable()->after('min_amount');
+            $table->bigInteger('fee_fixed')->default(0)->after('keterangan');
+            $table->float('fee_percent')->default(0)->after('fee_fixed');
+            $table->dropColumn('fee'); // hapus kolom lama
         });
     }
 
     public function down()
     {
         Schema::table('pay_methods', function (Blueprint $table) {
-            $table->dropColumn(['min_amount', 'max_amount']);
+            $table->dropColumn('fee_fixed');
+            $table->dropColumn('fee_percent');
         });
     }
 };
