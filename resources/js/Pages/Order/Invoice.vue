@@ -6,7 +6,7 @@
             </div>
 
             <div
-                class="relative z-10 max-w-lg mx-auto overflow-hidden border shadow-cosmic rounded-xl bg-dark-card border-secondary/20"
+                class="relative z-10 max-w-lg mx-auto overflow-hidden border shadow-cosmic rounded-xl bg-secondary/20 border-secondary"
             >
                 <div
                     class="px-4 py-5 border-b sm:px-6 border-secondary/20 bg-primary/10"
@@ -56,7 +56,7 @@
                         not close this window.
                     </p>
 
-                    <div class="p-4 mb-6 text-left rounded-lg bg-dark-lighter">
+                    <div class="p-4 mb-6 text-left rounded-lg bg-primary/20">
                         <div class="flex items-center space-x-2">
                             <svg
                                 xmlns="http://www.w3.org/2000/svg"

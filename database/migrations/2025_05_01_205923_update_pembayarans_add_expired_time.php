@@ -16,6 +16,7 @@ return new class extends Migration
             $table->string('expired_time')->nullable()->after('payment_reference');
             $table->string('payment_provider')->nullable()->after('order_id');
             $table->string('instruksi')->nullable()->after('payment_reference');
+            $table->string('qr_url')->nullable()->after('payment_reference');
         });
     }
 
