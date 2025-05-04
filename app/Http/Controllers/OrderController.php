@@ -213,19 +213,44 @@ class OrderController extends Controller
 
     public function invoice(Pembelian $order)
     {
-        // Load the order with layanan, produk, and pembayaran
+        // Load the order with relationships
         $order->load([
-            'pembelian',
             'layanan.produk',
             'pembayaran',
+            'user'
         ]);
+
+        // Ensure the order exists and has payment information
+        if (!$order || !$order->pembayaran) {
+            return redirect()->route('home')->with('error', 'Order not found or payment information is missing.');
+        }
+
+        // Format any additional data needed for the view
+        $pembayaran = $order->pembayaran;
+        
+        // Process payment instructions if they exist
+        $instruksi = [];
+        if ($pembayaran->instruksi) {
+            $instruksi = $pembayaran->instruksi;
+        }
+        
+        // Add payment instructions if they don't exist but should
+        if (empty($instruksi) && $pembayaran->status === 'pending') {
+            $instruksi = [
+                "Silakan lakukan pembayaran sesuai dengan nominal yang tertera.",
+                "Pastikan transfer tepat sampai 3 digit terakhir.",
+                "Pembayaran akan diverifikasi secara otomatis dalam 5-10 menit.",
+                "Jangan tutup halaman ini sampai pembayaran selesai."
+            ];
+            $pembayaran->instruksi = $instruksi;
+            $pembayaran->save();
+        }
 
         // Return the invoice view with complete order data
         return Inertia::render('Order/Invoice', [
             'order' => $order
         ]);
     }
-
 
     /**
      * Process the order confirmation (Phase 1)

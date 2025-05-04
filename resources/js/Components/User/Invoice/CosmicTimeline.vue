@@ -1,3 +1,4 @@
+
 <template>
     <div class="w-full mb-8">
         <div class="relative hidden sm:block">
@@ -117,6 +118,7 @@
 <script setup>
 import { computed } from "vue";
 import { CircleCheck, Circle, Download } from "lucide-vue-next";
+import Supernova from "./Supernova.vue";
 
 const props = defineProps({
     currentStage: {
