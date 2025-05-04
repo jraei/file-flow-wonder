@@ -113,20 +113,20 @@
                                     <div
                                         class="text-xs font-semibold text-white"
                                     >
-                                        {{ orderData.input_id }}
+                                        {{ orderData?.user_id }}
                                     </div>
 
                                     <div
-                                        v-if="orderData.input_zone"
+                                        v-if="orderData.server_id"
                                         class="text-xs text-gray-400"
                                     >
                                         Server ID:
                                     </div>
                                     <div
-                                        v-if="orderData.input_zone"
+                                        v-if="orderData.server_id"
                                         class="text-xs font-semibold text-white"
                                     >
-                                        {{ orderData.input_zone }}
+                                        {{ orderData.server_id }}
                                     </div>
 
                                     <div class="text-xs text-gray-400">
@@ -400,6 +400,7 @@
 import { ref, computed, watch } from "vue";
 import { useToast } from "@/Composables/useToast";
 import axios from "axios";
+import { router } from "@inertiajs/vue3";
 
 const props = defineProps({
     showModal: Boolean,
@@ -428,13 +429,28 @@ watch(
 
 const validateOrder = async () => {
     try {
+        console.log("Validating order:", props.orderData);
+
         const response = await axios.post(
             route("order.confirm"),
             props.orderData
         );
 
         if (response.data.status === "success") {
+            // masukkan data username ke orderData jika username ada
+            if (response.data.orderSummary.nickname) {
+                props.orderData.nickname = response.data.orderSummary.nickname;
+            }
             orderSummary.value = response.data.orderSummary;
+
+            // cek apakah nickname ada, jika tidak tampilkan error
+            if (
+                !orderSummary.value.nickname &&
+                orderSummary.value.validasi_id !== "tidak" &&
+                orderSummary.value.validasi_id !== null
+            ) {
+                error.value = "Account not found";
+            }
         } else {
             error.value = response.data.message || "An unknown error occurred";
         }
@@ -470,7 +486,8 @@ const confirmOrder = async () => {
 
             // Handle redirect if needed
             if (response.data.redirect && response.data.payment_url) {
-                window.location.href = response.data.payment_url;
+                router.visit(response.data.payment_url);
+                // window.location.href = response.data.payment_url;
             }
         } else {
             toast.error(response.data.message || "An unknown error occurred");

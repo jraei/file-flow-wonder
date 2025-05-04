@@ -22,6 +22,8 @@ return new class extends Migration
             $table->string('gambar')->nullable();
             $table->bigInteger('norek')->nullable();
             $table->text('keterangan')->nullable();
+            $table->bigInteger('fee_fixed')->default(0);
+            $table->float('fee_percent')->default(0);
             $table->string('status')->default('active');
             $table->timestamps();
         });

@@ -88,6 +88,28 @@ const expandedGroups = ref([]);
 
 function selectStatic(type) {
     const user = page.props.auth?.user;
+    const methodId = props.staticMethods[type]?.id;
+
+    // check min and max amount for qris
+    if (
+        type == "qris" &&
+        props.staticMethods[type]?.min_amount >
+            basePrice.value - voucherDiscount.value
+    ) {
+        toast.error(
+            `Minimal pembelian ${props.staticMethods[type]?.min_amount} untuk metode pembayaran ini`
+        );
+        return;
+    } else if (
+        type == "qris" &&
+        props.staticMethods[type]?.max_amount <
+            basePrice.value - voucherDiscount.value
+    ) {
+        toast.error(
+            `Maksimal pembelian ${props.staticMethods[type]?.max_amount} untuk metode pembayaran ini`
+        );
+        return;
+    }
 
     if (type == "saldo" && !user) {
         if (!isToastActive) {
@@ -112,6 +134,25 @@ function selectStatic(type) {
 }
 
 function selectDynamic(group, method) {
+    // check min and max amount
+    if (
+        method.min_amount &&
+        method.min_amount > basePrice.value - voucherDiscount.value
+    ) {
+        toast.error(
+            `Minimal pembelian ${method.min_amount} untuk metode pembayaran ini`
+        );
+        return;
+    } else if (
+        method.max_amount &&
+        method.max_amount < basePrice.value - voucherDiscount.value
+    ) {
+        toast.error(
+            `Maksimal pembelian ${method.max_amount} untuk metode pembayaran ini`
+        );
+        return;
+    }
+
     emit("update:selectedPayment", { type: group, channel: method.id });
     emit("update:fee", {
         fee_fixed: method.fee_fixed,

@@ -72,7 +72,7 @@ const preludeClasses = computed(() => {
 
         <!-- Main Footer Content -->
         <div
-            class="relative pt-12 pb-8 overflow-hidden bg-gradient-to-b to-primary/60 via-primary/10 from-content_background/50"
+            class="relative pt-12 pb-8 overflow-hidden bg-gradient-to-b to-footer_background via-footer_background/50 from-content_background/50"
         >
             <div class="absolute inset-0 overflow-hidden">
                 <CosmicStarfield class="opacity-50" />

@@ -16,6 +16,8 @@ return new class extends Migration
             $table->string('order_id')->unique();
             $table->bigInteger('price');
             $table->string('payment_link')->nullable();
+            $table->integer('fee')->default(0);
+            $table->integer('total_price')->default(0);
             $table->string('payment_method')->nullable();
             $table->string('payment_reference')->nullable()->comment('Payment gateway reference');
             $table->enum('status', ['pending', 'paid', 'failed', 'cancelled'])->default('pending');

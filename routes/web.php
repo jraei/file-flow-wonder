@@ -13,6 +13,7 @@ use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\AdminController;
 use App\Http\Controllers\Admin\BannerController;
 use App\Http\Controllers\Admin\ProdukController;
+use App\Http\Controllers\Admin\TripayController;
 use App\Http\Controllers\Admin\DepositController;
 use App\Http\Controllers\Admin\LayananController;
 use App\Http\Controllers\Admin\VoucherController;
@@ -40,6 +41,8 @@ use App\Http\Controllers\Admin\ProdukInputOptionController;
 |
 */
 
+
+
 Route::get('/', [IndexController::class, 'index'])->name('index');
 
 Route::get('/order/{produk:slug}', [OrderController::class, 'index'])->name('order.index');
@@ -47,7 +50,10 @@ Route::get('/order/{produk:slug}', [OrderController::class, 'index'])->name('ord
 // Order Processing Routes
 Route::post('/order/confirm', [OrderController::class, 'confirmOrder'])->name('order.confirm');
 Route::post('/order/process', [OrderController::class, 'processOrder'])->name('order.process');
-Route::post('/vouchers/validate', [OrderController::class, 'validateVoucher'])->name('vouchers.validate');
+
+// Order Invoice
+Route::get('/order/invoice/{pembelian:order_id}', [OrderController::class, 'invoice'])->name('order.invoice');
+
 
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
@@ -57,7 +63,6 @@ Route::middleware('auth')->group(function () {
 
 // Route::get('moogold/product', [MoogoldController::class, 'getMoogoldProducts'])->name('moogold.balance');
 // Route::get('moogold/services', [MoogoldController::class, 'getMoogoldServices'])->name('moogold.balance');
-Route::get('moogold/order', [OrderController::class, 'processOrder'])->name('order.request');
 
 // Admin Routes
 Route::prefix('admin')->middleware(['auth', 'admin'])->group(function () {
@@ -153,11 +158,3 @@ Route::middleware(['auth', 'verified'])->prefix('dashboard')->group(function () 
     Route::get('/affiliate', [DashboardController::class, 'affiliate'])->name('dashboard.affiliate');
     Route::get('/topup', [DashboardController::class, 'topup'])->name('dashboard.topup');
 });
-
-// Payment routes
-Route::get('/payment/{order_id}', function ($order_id) {
-    // Placeholder for payment page redirect
-    return Inertia::render('Payment/Show', [
-        'order_id' => $order_id
-    ]);
-})->name('payment.show');
