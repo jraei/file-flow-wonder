@@ -1,4 +1,3 @@
-
 <?php
 
 namespace App\Http\Controllers;
@@ -216,6 +215,7 @@ class OrderController extends Controller
     {
         // Load the order with layanan, produk, and pembayaran
         $order->load([
+            'pembelian',
             'layanan.produk',
             'pembayaran',
         ]);
