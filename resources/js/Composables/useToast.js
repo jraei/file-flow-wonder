@@ -18,6 +18,7 @@ export const useToast = () => {
                 iconColor: '#9b87f5'
             });
         },
+        
         error(message) {
             Swal.fire({
                 title: 'Error!',
@@ -30,9 +31,10 @@ export const useToast = () => {
                 timerProgressBar: true,
                 background: '#1F2937',
                 color: '#E5E7EB',
-                iconColor: '#33C3F0'
+                iconColor: '#ff4757'
             });
         },
+        
         warning(message) {
             Swal.fire({
                 title: 'Warning!',
@@ -45,9 +47,10 @@ export const useToast = () => {
                 timerProgressBar: true,
                 background: '#1F2937',
                 color: '#E5E7EB',
-                iconColor: '#33C3F0'
+                iconColor: '#ffa502'
             });
         },
+        
         info(message) {
             Swal.fire({
                 title: 'Info',
@@ -60,7 +63,7 @@ export const useToast = () => {
                 timerProgressBar: true,
                 background: '#1F2937',
                 color: '#E5E7EB',
-                iconColor: '#9b87f5'
+                iconColor: '#33C3F0'
             });
         },
     };
