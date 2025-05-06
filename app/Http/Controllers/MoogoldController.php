@@ -98,7 +98,7 @@ class MoogoldController extends Controller
                         }
 
                         Produk::updateOrCreate(
-                            ['provider_id' => $provider->id, 'brand' => $product->getId()],
+                            ['provider_id' => $provider->id, 'reference' => $product->getId()],
                             [
                                 "nama" => $product->getName(),
                                 "developer" => 'Unknown Developer',
@@ -139,7 +139,7 @@ class MoogoldController extends Controller
 
         foreach ($activeProducts as $produk) {
             try {
-                $response = $moogoldProducts->details($produk['brand']);
+                $response = $moogoldProducts->details($produk['reference']);
 
                 $productName = $response->getName();
 

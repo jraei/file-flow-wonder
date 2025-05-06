@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
             $table->string('nama');
             $table->string('developer')->nullable();
-            $table->string('brand');
+            $table->string('reference')->comment('3rd party code')->nullable();
             $table->foreignId('kategori_id')->constrained('kategoris');
             $table->string('slug')->unique()->nullable();
             $table->foreignId('provider_id')->constrained('providers');

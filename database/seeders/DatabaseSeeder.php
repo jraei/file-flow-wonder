@@ -5,14 +5,15 @@ namespace Database\Seeders;
 // use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 
 use App\Models\User;
+use App\Models\Banner;
 use App\Models\Produk;
+use App\Models\Voucher;
 use App\Models\Kategori;
 use App\Models\Provider;
-use App\Models\SubKategori;
-use Illuminate\Support\Str;
+use App\Models\PayMethod;
 use App\Models\PaymentProvider;
-use App\Models\WebConfig;
 use Illuminate\Database\Seeder;
+use App\Models\ProdukInputField;
 
 class DatabaseSeeder extends Seeder
 {
@@ -32,6 +33,12 @@ class DatabaseSeeder extends Seeder
             'status' => 'active'
         ]);
 
+        Banner::create([
+            "image_path" => "banner/SaZNWDudT1tOIYvuyFHCITKwnCYi7My55qPqVgjF.webp",
+            "order" => 1,
+            "status" => "active"
+        ]);
+
         User::factory()->count(50)->create();
 
         PaymentProvider::create([
@@ -45,9 +52,7 @@ class DatabaseSeeder extends Seeder
             'provider_name' => 'Manual'
         ]);
 
-        Kategori::create([
-            "kategori_name" => "Top Up"
-        ]);
+
 
         Provider::create([
             "provider_name" => "digiflazz",
@@ -67,42 +72,58 @@ class DatabaseSeeder extends Seeder
             "api_private_key" => '3bfDmtIhPp'
         ]);
 
-        Produk::create([
-            "nama" => 'FREE FIRE',
-            "developer" => 'Garena',
-            "brand" => "FREE FIRE",
-            "kategori_id" => 1,
-            "slug" => Str::slug('FREE FIRE', '-'),
-            "provider_id" => 1,
-            "validasi_id" => "tidak",
-            "deskripsi_game" => "s",
-            "petunjuk_field" => "s",
-            "status" => "active",
-            "thumbnail" => "DtGDJVLmxITN2qlYkN6RbqiuxMqRjDZ0PjLqDVld.png"
-
+        Kategori::create([
+            "kategori_name" => "Top Up",
+            "kode_kategori" => 50,
+            "provider_id" => 2,
         ]);
 
-        // WebConfig::create([
-        //     "judul_web" => "Game Store",
-        //     "meta_judul" => "Game Store",
-        //     "meta_deskripsi" => "Game Store",
-        //     "meta_keywords" => "Game Store",
-        //     "support_email" => "lH5wT@example.com",
-        //     "support_whatsapp" => "081932888380",
-        //     "support_instagram" => "https://www.instagram.com/",
-        //     "support_youtube" => "https://www.youtube.com/",
-        //     "support_facebook" => "https://www.facebook.com/",
-        //     "primary_color" => "#6366F1",
-        //     "secondary_color" => "#6366F1",
-        //     "logo_header" => "DtGDJVLmxITN2qlYkN6RbqiuxMqRjDZ0PjLqDVld.png",
-        //     "logo_footer" => "DtGDJVLmxITN2qlYkN6RbqiuxMqRjDZ0PjLqDVld.png",
-        //     "logo_favicon" => "DtGDJVLmxITN2qlYkN6RbqiuxMqRjDZ0PjLqDVld.png"
-        // ]);
+        Produk::create([
+            "nama" => "Mobile Legends (Indonesia)",
+            "developer" => "Moonton",
+            "reference" => 2362359,
+            "kategori_id" => 1,
+            "slug" => "mobile-legends-indonesia",
+            "provider_id" => 2,
+            "status" => "active",
+        ]);
+        PayMethod::create([
+            "nama" => "Saldo Akun",
+            "tipe" => "Saldo Akun",
+            "kode" => "saldo",
+            "payment_provider" => "Manual",
+        ]);
 
 
-        // \App\Models\User::factory()->create([
-        //     'name' => 'Test User',
-        //     'email' => 'test@example.com',
-        // ]);
+        Voucher::create([
+            "code" => "123456",
+            "description" => "test",
+            "discount_type" => "percentage",
+            "discount_value" => 10,
+            "start_date" => now(),
+            "end_date" => now()->addDays(7),
+            "status" => "active",
+            "is_public" => true,
+            "min_purchase" => 100,
+            "max_discount" => 100,
+            "usage_limit" => 3
+        ]);
+
+        ProdukInputField::create([
+            "produk_id" => 1,
+            "name" => "user_id",
+            "label" => "User ID",
+            "type" => "number",
+            "required" => true,
+            "order" => 1
+        ]);
+        ProdukInputField::create([
+            "produk_id" => 1,
+            "name" => "server_id",
+            "label" => "Zone ID",
+            "type" => "number",
+            "required" => true,
+            "order" => 2
+        ]);
     }
 }

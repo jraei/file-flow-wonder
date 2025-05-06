@@ -10,6 +10,10 @@ class Pembayaran extends Model
 {
     use HasFactory;
 
+    protected $casts = [
+        'instruksi' => 'array',
+    ];
+
     protected $guarded = [
         'id'
     ];

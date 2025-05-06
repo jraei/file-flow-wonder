@@ -72,7 +72,7 @@ class DigiflazzController extends Controller
             foreach ($res as $data) {
                 $data = collect($data);
                 $produk = collect($produk);
-                if (Str::upper($data['brand']) == Str::upper($produk['brand'])) {
+                if (Str::upper($data['reference']) == Str::upper($produk['reference'])) {
 
                     $layananExist = Layanan::where('kode_layanan', $data['buyer_sku_code'])->first();
                     $params = [
@@ -120,9 +120,9 @@ class DigiflazzController extends Controller
 
         foreach ($res as $item) {
             if ($item->category === 'Games') {
-                $arrGame[] = $item->brand;
+                $arrGame[] = $item->reference;
             } elseif ($item->category === 'Pulsa') {
-                $arrPulsa[] = $item->brand;
+                $arrPulsa[] = $item->reference;
             }
         }
 
@@ -158,12 +158,12 @@ class DigiflazzController extends Controller
             $developer = $developerList[$gameBrand] ?? 'Unknown';
 
             Produk::updateOrCreate(
-                ['brand' => $gameBrand],
+                ['reference' => $gameBrand],
                 [
                     "nama" => $gameBrand,
                     "developer" => $developer,
                     "kategori_id" => $gameKategori->id,
-                    "brand" => $gameBrand,
+                    "reference" => $gameBrand,
                     "provider_id" => $provider->id,
                     "slug" => Str::slug($gameBrand, '-'),
                     "status" => 'active',
@@ -175,12 +175,12 @@ class DigiflazzController extends Controller
         // Tambahkan produk pulsa
         foreach (array_unique($arrPulsa) as $pulsaBrand) {
             Produk::updateOrCreate(
-                ['brand' => $pulsaBrand],
+                ['reference' => $pulsaBrand],
                 [
                     "nama" => $pulsaBrand,
                     "developer" => $pulsaBrand,
                     "kategori_id" => $pulsaKategori->id,
-                    "brand" => $pulsaBrand,
+                    "reference" => $pulsaBrand,
                     "provider_id" => $provider->id,
                     "slug" => Str::slug($pulsaBrand, '-'),
                     "status" => 'active',

@@ -1,4 +1,3 @@
-
 <?php
 
 use Illuminate\Database\Migrations\Migration;
@@ -23,10 +22,13 @@ return new class extends Migration
             $table->string('input_id')->comment('Player ID, Server ID, etc.');
             $table->string('input_zone')->nullable()->comment('Zone ID, Server name, etc.');
             $table->bigInteger('price');
+            $table->bigInteger('quantity')->default(1);
+            $table->bigInteger('discount')->default(0);
+            $table->bigInteger('total_price');
             $table->bigInteger('profit');
             $table->enum('status', ['pending', 'processing', 'completed', 'failed', 'cancelled'])->default('pending');
-            $table->string('order_phase')->nullable()->comment('For tracking progress');
-            $table->json('status_log')->nullable()->comment('Log of status changes');
+            $table->string('phone')->nullable();
+            $table->string('email')->nullable();
             $table->json('callback_data')->nullable();
             $table->timestamps();
         });

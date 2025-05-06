@@ -14,13 +14,17 @@ return new class extends Migration
         Schema::create('pembayarans', function (Blueprint $table) {
             $table->id();
             $table->string('order_id')->unique();
-            $table->bigInteger('price');
-            $table->string('payment_link')->nullable();
+            $table->bigInteger('price')->default(0);
             $table->integer('fee')->default(0);
             $table->integer('total_price')->default(0);
+            $table->string('payment_provider')->nullable();
             $table->string('payment_method')->nullable();
-            $table->string('payment_reference')->nullable()->comment('Payment gateway reference');
+            $table->string('payment_reference')->nullable()->comment('3rd party reference');
             $table->enum('status', ['pending', 'paid', 'failed', 'cancelled'])->default('pending');
+            $table->json('instruksi')->nullable();
+            $table->string('qr_url')->nullable()->comment('Qris Only');
+            $table->string('payment_link')->nullable()->comment('Payment gateway link');
+            $table->string('expired_time')->nullable();
             $table->timestamps();
         });
     }

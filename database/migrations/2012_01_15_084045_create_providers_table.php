@@ -17,6 +17,8 @@ return new class extends Migration
             $table->string('api_username')->nullable();
             $table->string('api_key')->nullable();
             $table->string('api_private_key')->nullable();
+            $table->float('balance')->default(0);
+            $table->string('base_url')->nullable();
             $table->string('rate_kurs')->default(1);
             $table->string('status')->default('active');
             $table->timestamps();

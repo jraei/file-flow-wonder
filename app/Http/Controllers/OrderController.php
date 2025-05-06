@@ -294,8 +294,9 @@ class OrderController extends Controller
         // Process voucher if provided
         $voucherDiscount = 0;
         if ($request->voucher_code) {
+
             $voucher = $this->validateVoucher($request->voucher_code, $basePrice);
-            $voucherDiscount = $voucher['discount_value'];
+            $voucherDiscount = $voucher['calculated_discount'];
         }
 
         // Get username if validation is required
@@ -458,18 +459,21 @@ class OrderController extends Controller
         }
 
         // calculate basePrice
+
         $basePrice = $flashsaleItem ? $flashsaleItem->harga_flashsale : $layanan->harga_jual;
-        $basePrice = ceil($basePrice * $request->quantity);
+        $basePrice = ceil($basePrice);
+        $quantity = $request->quantity;
+        $price = $basePrice * $quantity;
 
         // Process voucher if provided
         $voucherDiscount = 0;
         if ($request->voucher_code) {
-            $voucher = $this->validateVoucher($request->voucher_code, $basePrice);
-            $voucherDiscount = $voucher['discount_value'];
+            $voucher = $this->validateVoucher($request->voucher_code, $price);
+            $voucherDiscount = $voucher['calculated_discount'];
         }
 
         // Calculate total price
-        $totalPrice = $basePrice - $voucherDiscount;
+        $totalPrice = $price - $voucherDiscount;
 
         // Calculate fees based on payment method
         $paymentInfo = $this->calculatePaymentFees($request->payment_method, $totalPrice);
@@ -502,7 +506,10 @@ class OrderController extends Controller
         $pembelian->nickname = $request->nickname;
         $pembelian->input_id = $inputId;
         $pembelian->input_zone = $inputZone;
-        $pembelian->price = $totalPrice;
+        $pembelian->price = $price;
+        $pembelian->quantity = $quantity;
+        $pembelian->discount = $voucherDiscount;
+        $pembelian->total_price = $totalPrice;
         $pembelian->profit = $totalPrice - $hargaBeli;
         $pembelian->status = 'pending';
         $pembelian->phone = $request->phone;
@@ -595,25 +602,22 @@ class OrderController extends Controller
             $tripayData = $response['data'];
             Pembayaran::create([
                 'order_id' => $orderId,
-                'payment_provider' => 'Tripay',
                 'price' => $tripayData['amount_received'],
                 'fee' => $tripayData['total_fee'],
                 'total_price' => $tripayData['amount'],
-                'payment_link' => $tripayData['checkout_url'],
+                'payment_provider' => 'Tripay',
                 'payment_method' => $paymentInfo['methodCode'],
                 'payment_reference' => $tripayData['reference'],
-                'expired_time' => $tripayData['expired_time'],
                 'status' => 'pending',
+                'instruksi' => $tripayData['instructions'],
+                'qr_url' => $tripayData['qr_url'],
+                'payment_link' => $tripayData['checkout_url'],
+                'expired_time' => $tripayData['expired_time'],
             ]);
 
+
             // Redirect to payment gateway or return payment link
-            return response()->json([
-                'status' => 'success',
-                'message' => $tripayData,
-                'order_id' => $orderId,
-                'payment_url' => route('payment.show', ['order_id' => $orderId]),
-                'redirect' => true
-            ]);
+            return inertia('Order/Invoice', []);
         }
     }
 
@@ -682,11 +686,14 @@ class OrderController extends Controller
     /**
      * Validate voucher code
      */
-    public function validateVoucher(Request $request)
+    public function validateVoucher($code, $amount)
     {
-        $validator = Validator::make($request->all(), [
+        $validator = Validator::make([
+            'code' => $code,
+            'amount' => $amount,
+        ], [
             'code' => 'required|string',
-            'amount' => 'required|numeric|min:1',
+            'amount' => 'required|numeric',
         ]);
 
         if ($validator->fails()) {
@@ -697,7 +704,7 @@ class OrderController extends Controller
             ], 422);
         }
 
-        $voucher = Voucher::where('code', $request->code)
+        $voucher = Voucher::where('code', $code)
             ->where('status', 'active')
             ->where(function ($q) {
                 $q->whereNull('end_date')
@@ -721,7 +728,7 @@ class OrderController extends Controller
         }
 
         // Check minimum purchase
-        if ($voucher->min_purchase && $request->amount < $voucher->min_purchase) {
+        if ($voucher->min_purchase && $amount < $voucher->min_purchase) {
             return response()->json([
                 'status' => 'error',
                 'message' => "Minimum purchase amount is " . number_format($voucher->min_purchase),
@@ -733,7 +740,7 @@ class OrderController extends Controller
         if ($voucher->discount_type === 'fixed') {
             $discount = $voucher->discount_value;
         } else {
-            $discount = ($request->amount * $voucher->discount_value) / 100;
+            $discount = ($amount * $voucher->discount_value) / 100;
 
             // Apply max discount cap if exists
             if ($voucher->max_discount && $discount > $voucher->max_discount) {
@@ -742,7 +749,7 @@ class OrderController extends Controller
         }
 
         // Ensure discount doesn't exceed the purchase amount
-        $discount = min($discount, $request->amount);
+        $discount = min($discount, $amount);
 
         return  [
             'code' => $voucher->code,
