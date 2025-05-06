@@ -1,11 +1,11 @@
+
 <script setup>
-import Checkbox from "@/Components/Checkbox.vue";
-import GuestLayout from "@/Layouts/GuestLayout.vue";
-import InputError from "@/Components/InputError.vue";
-import InputLabel from "@/Components/InputLabel.vue";
-import PrimaryButton from "@/Components/PrimaryButton.vue";
-import TextInput from "@/Components/TextInput.vue";
+import { ref, reactive } from 'vue';
 import { Head, Link, useForm } from "@inertiajs/vue3";
+import CosmicAuthCard from "@/Components/Auth/CosmicAuthCard.vue";
+import CosmicFormField from "@/Components/Auth/CosmicFormField.vue";
+import Checkbox from "@/Components/Checkbox.vue";
+import PrimaryButton from "@/Components/PrimaryButton.vue";
 
 defineProps({
     canResetPassword: {
@@ -16,6 +16,7 @@ defineProps({
     },
 });
 
+const authCardRef = ref(null);
 const form = useForm({
     email: "",
     password: "",
@@ -23,107 +24,140 @@ const form = useForm({
 });
 
 const submit = () => {
+    // Show quantum authentication processing effect
+    authCardRef.value?.startProcessing();
+    
     form.post(route("login"), {
         onFinish: () => form.reset("password"),
+        onSuccess: () => {
+            // Show success animation
+            authCardRef.value?.showSuccess();
+        },
+        onError: () => {
+            // Show failure animation
+            authCardRef.value?.showFailure();
+        }
     });
 };
 </script>
 
 <template>
-    <div class="relative min-h-screen bg-content_background">
-        <!-- close button (redirect to home) -->
-        <Link :href="route('index')">
-            <!-- make circle with close button, hover effect, white icon, primary background, left top, redirect to route index -->
-            <div class="absolute top-4 left-4">
-                <div class="p-2 rounded-xl bg-primary">
-                    <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke-width="1.5"
-                        stroke="currentColor"
-                        class="w-6 h-6 text-white transition-all duration-300 ease-in-out transform hover:rotate-180"
-                    >
-                        <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            d="M6 18L18 6M6 6l12 12"
-                        />
-                    </svg>
-                </div>
-            </div>
-        </Link>
-        <section
-            class="relative justify-center max-w-xl p-4 mx-auto overflow-hidden"
-        >
-            <Head title="Log in" />
-            <div v-if="status" class="mb-4 text-sm font-medium text-green-600">
-                {{ status }}
-            </div>
+    <Head title="Log in" />
 
-            <form @submit.prevent="submit">
-                <div>
-                    <InputLabel for="email" value="Email" />
+    <CosmicAuthCard 
+        ref="authCardRef"
+        title="Log in to" 
+        subtitle="Access your cosmic journey"
+    >
+        <div v-if="status" class="mb-4 text-sm font-medium text-green-600">
+            {{ status }}
+        </div>
 
-                    <TextInput
-                        id="email"
-                        type="email"
-                        class="block w-full mt-1"
-                        v-model="form.email"
-                        required
-                        autofocus
-                        autocomplete="username"
+        <form @submit.prevent="submit">
+            <CosmicFormField
+                id="email"
+                type="text"
+                label="Email / Username / Phone"
+                v-model="form.email"
+                :error="form.errors.email"
+                required
+                autofocus
+                autocomplete="username"
+            />
+
+            <CosmicFormField
+                id="password"
+                type="password"
+                label="Password"
+                v-model="form.password"
+                :error="form.errors.password"
+                required
+                autocomplete="current-password"
+                :showPasswordToggle="true"
+            />
+
+            <div class="block mt-4">
+                <label class="flex items-center">
+                    <Checkbox
+                        name="remember"
+                        v-model:checked="form.remember"
+                        class="cosmic-checkbox"
                     />
+                    <span class="ml-2 text-sm text-gray-300">Remember me</span>
+                </label>
+            </div>
 
-                    <InputError class="mt-2" :message="form.errors.email" />
-                </div>
+            <div class="flex items-center justify-end mt-6">
+                <Link
+                    v-if="canResetPassword"
+                    :href="route('password.request')"
+                    class="text-sm text-gray-400 underline rounded-md hover:text-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+                >
+                    Forgot your password?
+                </Link>
 
-                <div class="mt-4">
-                    <InputLabel for="password" value="Password" />
-
-                    <TextInput
-                        id="password"
-                        type="password"
-                        class="block w-full mt-1"
-                        v-model="form.password"
-                        required
-                        autocomplete="current-password"
-                    />
-
-                    <InputError class="mt-2" :message="form.errors.password" />
-                </div>
-
-                <div class="block mt-4">
-                    <label class="flex items-center">
-                        <Checkbox
-                            name="remember"
-                            v-model:checked="form.remember"
-                        />
-                        <span
-                            class="text-sm text-gray-600 ms-2 dark:text-gray-400"
-                            >Remember me</span
-                        >
-                    </label>
-                </div>
-
-                <div class="flex items-center justify-end mt-4">
-                    <Link
-                        v-if="canResetPassword"
-                        :href="route('password.request')"
-                        class="text-sm text-gray-600 underline rounded-md dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-800"
-                    >
-                        Forgot your password?
-                    </Link>
-
-                    <PrimaryButton
-                        class="ms-4"
-                        :class="{ 'opacity-25': form.processing }"
-                        :disabled="form.processing"
-                    >
-                        Log in
-                    </PrimaryButton>
-                </div>
-            </form>
-        </section>
-    </div>
+                <PrimaryButton
+                    class="ml-4 cosmic-button"
+                    :class="{ 'opacity-25': form.processing }"
+                    :disabled="form.processing"
+                >
+                    <span>Log in</span>
+                    <div class="cosmic-button-stars"></div>
+                </PrimaryButton>
+            </div>
+            
+            <div class="mt-6 text-center">
+                <span class="text-gray-400">Don't have an account?</span>
+                <Link
+                    :href="route('register')"
+                    class="ml-1 text-primary hover:text-primary-hover underline transition-colors"
+                >
+                    Register
+                </Link>
+            </div>
+        </form>
+    </CosmicAuthCard>
 </template>
+
+<style scoped>
+.cosmic-checkbox:checked {
+    background-color: theme('colors.primary');
+    border-color: theme('colors.primary');
+}
+
+.cosmic-button {
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(135deg, #9b87f5 0%, #33C3F0 100%);
+    transition: all 0.3s ease;
+}
+
+.cosmic-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0 20px rgba(155, 135, 245, 0.6);
+}
+
+.cosmic-button-stars {
+    position: absolute;
+    inset: 0;
+    background-image: radial-gradient(white 1px, transparent 1px);
+    background-size: 15px 15px;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.cosmic-button:hover .cosmic-button-stars {
+    opacity: 0.2;
+    animation: warpSpeed 1s forwards;
+}
+
+@keyframes warpSpeed {
+    0% {
+        transform: translateX(0) scale(1);
+    }
+    100% {
+        transform: translateX(100px) scale(2);
+        opacity: 0;
+    }
+}
+</style>
