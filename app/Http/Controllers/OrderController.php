@@ -211,11 +211,11 @@ class OrderController extends Controller
         ]);
     }
 
-    public function invoice($order)
+    public function invoice($order_id)
     {
         // Find order by order_id
         $pembelian = Pembelian::with(['layanan.produk', 'pembayaran', 'user'])
-            ->where('order_id', $order)
+            ->where('order_id', $order_id)
             ->firstOrFail();
 
         // Get product information
@@ -328,13 +328,14 @@ class OrderController extends Controller
 
                 if ($response->getStatusCode() === 200) {
                     $responseData = json_decode($response->getContent(), true);
-                    $username = $responseData['username'] ?? null;
+                    $username = $responseData['username'];
                 } else {
                     $responseData = json_decode($response->getContent(), true);
                     $validationError = $responseData['message'] ?? 'Failed to validate account';
                 }
             } catch (\Exception $e) {
                 $validationError = $e->getMessage();
+                // $validationError = $data;
             }
         }
 
@@ -625,9 +626,12 @@ class OrderController extends Controller
                 'expired_time' => $tripayData['expired_time'],
             ]);
 
-
-            // Redirect to payment gateway or return payment link
-            return inertia('Order/Invoice', []);
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Order processed successfully',
+                'order_id' => $orderId,
+                'redirect' => true,
+            ]);
         }
     }
 
@@ -806,6 +810,7 @@ class OrderController extends Controller
 
         try {
             $response = $usernameController->getAccountUsername($data);
+
             return $response;
         } catch (\Exception $e) {
             return response()->json([

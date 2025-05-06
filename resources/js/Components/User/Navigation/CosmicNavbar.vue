@@ -58,7 +58,7 @@ const navLinks = [
     {
         name: "Leaderboard",
         icon: "🏆",
-        route: "dashboard",
+        route: "leaderboard",
         active: false,
     },
     {

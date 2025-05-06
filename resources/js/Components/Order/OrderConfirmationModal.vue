@@ -449,7 +449,8 @@ const validateOrder = async () => {
                 orderSummary.value.validasi_id !== "tidak" &&
                 orderSummary.value.validasi_id !== null
             ) {
-                error.value = "Account not found";
+                error.value = "Account not found: ";
+                console.error("Account not found:", response.data);
             }
         } else {
             error.value = response.data.message || "An unknown error occurred";
@@ -485,8 +486,10 @@ const confirmOrder = async () => {
             emit("confirmed", response.data);
 
             // Handle redirect if needed
-            if (response.data.redirect && response.data.payment_url) {
-                router.visit(response.data.payment_url);
+            if (response.data.redirect && response.data.order_id) {
+                router.visit(
+                    route("order.invoice", { order_id: response.data.order_id })
+                );
                 // window.location.href = response.data.payment_url;
             }
         } else {

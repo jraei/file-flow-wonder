@@ -69,7 +69,8 @@ class DatabaseSeeder extends Seeder
             "provider_name" => "checkUsername",
             "api_username" => "rubennatanael36@gmail.com",
             "api_key" => "e5c552e32e2b0df880d3f2e60d91001c",
-            "api_private_key" => '3bfDmtIhPp'
+            "api_private_key" => '3bfDmtIhPp',
+            "base_url" => "https://apinickname.tinped.com/api/v1/check-game"
         ]);
 
         Kategori::create([

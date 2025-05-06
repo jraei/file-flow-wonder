@@ -53,7 +53,7 @@ Route::post('/order/confirm', [OrderController::class, 'confirmOrder'])->name('o
 Route::post('/order/process', [OrderController::class, 'processOrder'])->name('order.process');
 
 // Order Invoice
-Route::get('/order/invoice/{pembelian:order_id}', [OrderController::class, 'invoice'])->name('order.invoice');
+Route::get('/order/invoice/{order_id}', [OrderController::class, 'invoice'])->name('order.invoice');
 
 
 Route::middleware('auth')->group(function () {
