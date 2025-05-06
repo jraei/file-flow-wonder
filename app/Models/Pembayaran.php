@@ -1,4 +1,3 @@
-
 <?php
 
 namespace App\Models;
@@ -15,43 +14,11 @@ class Pembayaran extends Model
         'id'
     ];
 
-    protected $casts = [
-        'expired_time' => 'datetime',
-        'instruksi' => 'array',
-    ];
-
     /**
      * Get the pembelian that owns the payment.
      */
     public function pembelian(): BelongsTo
     {
         return $this->belongsTo(Pembelian::class, 'order_id', 'order_id');
-    }
-    
-    /**
-     * Get formatted payment status
-     */
-    public function getFormattedStatusAttribute()
-    {
-        $statusMap = [
-            'paid' => 'Dibayar',
-            'pending' => 'Menunggu Pembayaran',
-            'failed' => 'Gagal',
-            'cancelled' => 'Dibatalkan',
-        ];
-        
-        return $statusMap[$this->status] ?? 'Unknown';
-    }
-    
-    /**
-     * Check if payment has expired
-     */
-    public function getHasExpiredAttribute()
-    {
-        if (!$this->expired_time) {
-            return false;
-        }
-        
-        return now()->greaterThan($this->expired_time);
     }
 }
