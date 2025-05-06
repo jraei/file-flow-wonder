@@ -1,4 +1,3 @@
-
 <?php
 
 namespace App\Models;
@@ -36,7 +35,7 @@ class Pembayaran extends Model
         if (!$this->expired_time) {
             return false;
         }
-        
+
         return now() > $this->expired_time;
     }
 
@@ -48,7 +47,7 @@ class Pembayaran extends Model
         if (!$this->expired_time) {
             return false;
         }
-        
+
         $fifteenMinutesFromNow = now()->addMinutes(15);
         return now() < $this->expired_time && $this->expired_time < $fifteenMinutesFromNow;
     }
@@ -61,10 +60,10 @@ class Pembayaran extends Model
         if (!$this->expired_time) {
             return 'No expiry time set';
         }
-        
+
         return $this->expired_time->format('Y-m-d H:i:s');
     }
-    
+
     /**
      * Get time remaining until expiry in seconds
      */
@@ -73,7 +72,7 @@ class Pembayaran extends Model
         if (!$this->expired_time || $this->isExpired()) {
             return 0;
         }
-        
+
         return now()->diffInSeconds($this->expired_time);
     }
 }

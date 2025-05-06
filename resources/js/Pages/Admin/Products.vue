@@ -33,7 +33,7 @@ const columns = [
             return kategori ? kategori.kategori_name : "Tidak Diketahui";
         },
     },
-    { key: "brand", label: "Brand" },
+    { key: "reference", label: "reference" },
     {
         key: "provider_id",
         label: "Provider",
@@ -173,7 +173,7 @@ const formMode = ref("add");
 const currentData = ref({
     nama: "",
     developer: "",
-    brand: "",
+    reference: "",
     kategori_id: "",
     slug: "",
     provider_id: "",
@@ -565,17 +565,17 @@ const handleFileUpload = (event, field) => {
                             </div>
                             <div>
                                 <label
-                                    for="brand"
+                                    for="reference"
                                     class="block mb-1 text-sm font-medium text-gray-300"
-                                    >Brand</label
+                                    >Reference</label
                                 >
                                 <input
-                                    id="brand"
-                                    v-model="currentData.brand"
+                                    id="reference"
+                                    v-model="currentData.reference"
                                     type="text"
                                     class="w-full px-3 py-2 text-white border border-gray-700 rounded-lg bg-dark-sidebar focus:ring-2 focus:ring-primary focus:border-transparent"
-                                    placeholder="Brand Name"
-                                    name="brand"
+                                    placeholder="Reference code"
+                                    name="reference"
                                     required
                                 />
                             </div>
@@ -929,12 +929,12 @@ const handleFileUpload = (event, field) => {
                         </div>
                         <div class="p-2 rounded-lg sm:p-3 bg-dark-lighter">
                             <p class="text-xs text-gray-400 sm:text-sm">
-                                Brand
+                                reference
                             </p>
                             <p
                                 class="text-sm font-medium text-white truncate sm:text-base"
                             >
-                                {{ selectedData.brand }}
+                                {{ selectedData.reference }}
                             </p>
                         </div>
                         <div class="p-2 rounded-lg sm:p-3 bg-dark-lighter">

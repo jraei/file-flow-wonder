@@ -25,7 +25,7 @@ class ProdukController extends Controller
         $provider_filter = $request->input('provider_id');
 
         // Validate the sort field to prevent SQL injection
-        $allowedSortFields = ['nama', 'brand', 'kategori_id', 'provider_id', 'validasi_id', 'status'];
+        $allowedSortFields = ['nama', 'reference', 'kategori_id', 'provider_id', 'validasi_id', 'status'];
         if (!in_array($sort, $allowedSortFields)) {
             $sort = 'id';
         }
@@ -43,7 +43,7 @@ class ProdukController extends Controller
             $query->where(function ($q) use ($search) {
                 $q->where('nama', 'like', "%{$search}%")
                     ->orWhere('developer', 'like', "%{$search}%")
-                    ->orWhere('brand', 'like', "%{$search}%")
+                    ->orWhere('reference', 'like', "%{$search}%")
                     ->orWhere('slug', 'like', "%{$search}%")
                     ->orWhere('validasi_id', 'like', "%{$search}%")
                     ->orWhere('status', 'like', "%{$search}%")
@@ -84,7 +84,7 @@ class ProdukController extends Controller
         $product = $request->validate([
             'nama' => 'required|min:1',
             'developer' => 'required',
-            'brand' => 'required',
+            'reference' => 'required',
             'kategori_id' => 'required|numeric',
             'slug' => 'required|unique:produks,slug',
             'provider_id' => 'required|numeric',
@@ -135,7 +135,7 @@ class ProdukController extends Controller
         $rules = [
             'nama' => 'required|min:1',
             'developer' => 'required',
-            'brand' => 'required',
+            'reference' => 'required',
             'kategori_id' => 'required|numeric',
             'provider_id' => 'required|numeric',
             'validasi_id' => 'required',
