@@ -1,4 +1,3 @@
-
 <template>
     <GuestLayout>
         <div class="py-8 md:py-12">
@@ -21,12 +20,12 @@
                 />
 
                 <!-- Transaction Detail -->
-                <div v-if="searchResult">
+                <!-- <div v-if="searchResult">
                     <TransactionDetail
                         :transaction="searchResult"
                         :server-time="serverTime"
                     />
-                </div>
+                </div> -->
 
                 <!-- Live Transactions -->
                 <LiveTransactionsTable

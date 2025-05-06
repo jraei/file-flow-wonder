@@ -21,7 +21,7 @@ const isSearchFocused = ref(false);
             <div class="flex items-center justify-between h-16">
                 <!-- Left: Logo -->
                 <div class="flex items-center flex-shrink-0">
-                    <Link :href="route('dashboard')" class="relative group">
+                    <Link :href="route('index')" class="relative group">
                         <div
                             class="absolute inset-0 transition-all duration-300 rounded-full opacity-0 bg-primary/10 group-hover:opacity-100 filter blur-md group-hover:scale-110"
                         ></div>

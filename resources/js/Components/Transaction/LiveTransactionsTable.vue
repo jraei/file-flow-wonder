@@ -4,58 +4,93 @@
     >
         <!-- Animated asteroid belt border -->
         <div
-            class="absolute -inset-[1px] bg-gradient-to-r from-primary via-secondary to-primary opacity-70 rounded-xl animate-border-flow"
+            class="absolute -inset-[1px] bg-gradient-to-r from-secondary/10 via-primary/30 to-bg-content_background/10 opacity-70 rounded-xl animate-border-flow"
         ></div>
 
         <div class="relative transactions-table rounded-xl">
             <!-- Horizontal scroll container with scroll shadows -->
-            <div class="overflow-x-auto sm:overflow-x-visible -webkit-overflow-scrolling-touch relative">
-                <!-- Left scroll shadow gradient -->
-                <div class="absolute left-0 top-0 bottom-0 w-4 bg-gradient-to-r from-content_background to-transparent pointer-events-none z-10 opacity-0 transition-opacity duration-300" id="left-shadow"></div>
-                
-                <!-- Right scroll shadow gradient -->
-                <div class="absolute right-0 top-0 bottom-0 w-4 bg-gradient-to-l from-content_background to-transparent pointer-events-none z-10 opacity-0 transition-opacity duration-300" id="right-shadow"></div>
-                
-                <table class="w-full min-w-[800px] text-sm text-left text-gray-300">
-                    <thead class="text-xs text-gray-200 uppercase bg-primary/50">
+            <div
+                class="relative overflow-x-auto lg:overflow-x-visible -webkit-overflow-scrolling-touch"
+            >
+                <table
+                    class="w-full min-w-[800px] text-sm text-left text-gray-300"
+                >
+                    <thead
+                        class="text-xs text-gray-200 uppercase bg-primary/50"
+                    >
                         <tr>
-                            <th scope="col" class="px-3 py-3 sm:px-4 whitespace-nowrap">Date</th>
-                            <th scope="col" class="px-3 py-3 sm:px-4 whitespace-nowrap">
+                            <th
+                                scope="col"
+                                class="px-3 py-3 sm:px-4 whitespace-nowrap"
+                            >
+                                Date
+                            </th>
+                            <th
+                                scope="col"
+                                class="px-3 py-3 sm:px-4 whitespace-nowrap"
+                            >
                                 Invoice
                             </th>
-                            <th scope="col" class="px-3 py-3 sm:px-4 whitespace-nowrap">
+                            <th
+                                scope="col"
+                                class="px-3 py-3 sm:px-4 whitespace-nowrap"
+                            >
                                 Phone
                             </th>
-                            <th scope="col" class="px-3 py-3 sm:px-4 whitespace-nowrap">
+                            <th
+                                scope="col"
+                                class="px-3 py-3 sm:px-4 whitespace-nowrap"
+                            >
                                 Produk
                             </th>
-                            <th scope="col" class="px-3 py-3 sm:px-4 whitespace-nowrap">
+                            <th
+                                scope="col"
+                                class="px-3 py-3 sm:px-4 whitespace-nowrap"
+                            >
                                 Price
                             </th>
-                            <th scope="col" class="px-3 py-3 sm:px-4 whitespace-nowrap">Status</th>
+                            <th
+                                scope="col"
+                                class="px-3 py-3 sm:px-4 whitespace-nowrap"
+                            >
+                                Status
+                            </th>
                         </tr>
                     </thead>
                     <tbody>
                         <template
-                            v-if="transactions.data && transactions.data.length > 0"
+                            v-if="
+                                transactions.data &&
+                                transactions.data.length > 0
+                            "
                         >
                             <tr
-                                v-for="(transaction, index) in transactions.data"
+                                v-for="(
+                                    transaction, index
+                                ) in transactions.data"
                                 :key="transaction.id"
                                 class="transition-colors border-b border-secondary/10 hover:bg-primary/20"
                                 :class="getRowAnimationClass(index)"
                                 :data-transaction-id="transaction.id"
                             >
-                                <td class="px-3 py-2 sm:px-4 sm:py-3 text-sm sm:text-base whitespace-nowrap">
+                                <td
+                                    class="px-3 py-2 text-sm sm:px-4 sm:py-3 sm:text-base whitespace-nowrap"
+                                >
                                     {{ formatDate(transaction.created_at) }}
                                 </td>
-                                <td class="px-3 py-2 sm:px-4 sm:py-3 text-sm sm:text-base whitespace-nowrap">
+                                <td
+                                    class="px-3 py-2 text-sm sm:px-4 sm:py-3 sm:text-base whitespace-nowrap"
+                                >
                                     {{ transaction.masked_order_id }}
                                 </td>
-                                <td class="px-3 py-2 sm:px-4 sm:py-3 text-sm sm:text-base whitespace-nowrap">
+                                <td
+                                    class="px-3 py-2 text-sm sm:px-4 sm:py-3 sm:text-base whitespace-nowrap"
+                                >
                                     {{ transaction.masked_phone }}
                                 </td>
-                                <td class="px-3 py-2 sm:px-4 sm:py-3 text-sm sm:text-base whitespace-nowrap">
+                                <td
+                                    class="px-3 py-2 text-sm sm:px-4 sm:py-3 sm:text-base whitespace-nowrap"
+                                >
                                     <div class="flex items-center gap-2">
                                         <div
                                             v-if="
@@ -72,23 +107,33 @@
                                                 "
                                                 class="object-cover w-full h-full"
                                                 :alt="
-                                                    transaction.layanan.produk.nama
+                                                    transaction.layanan.produk
+                                                        .nama
                                                 "
                                             />
                                         </div>
                                         <span
-                                            v-if="transaction.layanan?.produk?.nama"
+                                            v-if="
+                                                transaction.layanan?.produk
+                                                    ?.nama
+                                            "
                                             class="truncate max-w-[150px]"
                                         >
-                                            {{ transaction.layanan.produk.nama }}
+                                            {{
+                                                transaction.layanan.produk.nama
+                                            }}
                                         </span>
                                         <span v-else>-</span>
                                     </div>
                                 </td>
-                                <td class="px-3 py-2 sm:px-4 sm:py-3 text-sm sm:text-base whitespace-nowrap">
+                                <td
+                                    class="px-3 py-2 text-sm sm:px-4 sm:py-3 sm:text-base whitespace-nowrap"
+                                >
                                     {{ transaction.masked_price }}
                                 </td>
-                                <td class="px-3 py-2 sm:px-4 sm:py-3 text-sm sm:text-base">
+                                <td
+                                    class="px-3 py-2 text-sm sm:px-4 sm:py-3 sm:text-base"
+                                >
                                     <span
                                         class="px-2.5 py-1 text-xs rounded-full border font-medium inline-flex items-center justify-center whitespace-nowrap"
                                         :class="
@@ -99,8 +144,10 @@
                                         <!-- Status pulse indicator -->
                                         <span
                                             v-if="
-                                                transaction.status === 'pending' ||
-                                                transaction.status === 'processing'
+                                                transaction.status ===
+                                                    'pending' ||
+                                                transaction.status ===
+                                                    'processing'
                                             "
                                             class="h-1.5 w-1.5 rounded-full mr-1.5"
                                             :class="
@@ -385,45 +432,45 @@ const addWarpTunnelEffect = () => {
 };
 
 // Find related transactions (quantum entanglement)
-const findEntangledTransactions = () => {
-    if (!props.transactions.data || props.transactions.data.length < 2) return;
+// const findEntangledTransactions = () => {
+//     if (!props.transactions.data || props.transactions.data.length < 2) return;
 
-    // Clear previous entanglements
-    Object.keys(entanglementPairs).forEach((key) => {
-        const elements = document.querySelectorAll(`.entanglement-${key}`);
-        elements.forEach((el) => el.remove());
-    });
+//     // Clear previous entanglements
+//     Object.keys(entanglementPairs).forEach((key) => {
+//         const elements = document.querySelectorAll(`.entanglement-${key}`);
+//         elements.forEach((el) => el.remove());
+//     });
 
-    // Reset entanglements
-    Object.keys(entanglementPairs).forEach((key) => {
-        delete entanglementPairs[key];
-    });
+//     // Reset entanglements
+//     Object.keys(entanglementPairs).forEach((key) => {
+//         delete entanglementPairs[key];
+//     });
 
-    // Find transactions with the same input_id (same player)
-    const inputIdGroups = {};
-    props.transactions.data.forEach((transaction) => {
-        if (!transaction.input_id) return;
+//     // Find transactions with the same input_id (same player)
+//     const inputIdGroups = {};
+//     props.transactions.data.forEach((transaction) => {
+//         if (!transaction.input_id) return;
 
-        if (!inputIdGroups[transaction.input_id]) {
-            inputIdGroups[transaction.input_id] = [];
-        }
-        inputIdGroups[transaction.input_id].push(transaction.id);
-    });
+//         if (!inputIdGroups[transaction.input_id]) {
+//             inputIdGroups[transaction.input_id] = [];
+//         }
+//         inputIdGroups[transaction.input_id].push(transaction.id);
+//     });
 
-    // Create entanglement lines for transactions with the same input_id
-    Object.keys(inputIdGroups).forEach((inputId) => {
-        const transactions = inputIdGroups[inputId];
-        if (transactions.length < 2) return;
+//     // Create entanglement lines for transactions with the same input_id
+//     Object.keys(inputIdGroups).forEach((inputId) => {
+//         const transactions = inputIdGroups[inputId];
+//         if (transactions.length < 2) return;
 
-        // Store entanglement pairs
-        entanglementPairs[inputId] = transactions;
+//         // Store entanglement pairs
+//         entanglementPairs[inputId] = transactions;
 
-        // Draw entanglement lines after DOM update
-        setTimeout(() => {
-            drawEntanglementLines(inputId, transactions);
-        }, 500);
-    });
-};
+//         // Draw entanglement lines after DOM update
+//         setTimeout(() => {
+//             drawEntanglementLines(inputId, transactions);
+//         }, 500);
+//     });
+// };
 
 // Draw quantum entanglement lines between related transactions
 const drawEntanglementLines = (inputId, transactionIds) => {
@@ -513,21 +560,6 @@ const drawEntanglementLines = (inputId, transactionIds) => {
     document.querySelector(".transactions-table").appendChild(svgContainer);
 };
 
-// Handle horizontal scroll shadow effects
-const updateScrollShadows = () => {
-    const scrollContainer = document.querySelector('.overflow-x-auto');
-    const leftShadow = document.getElementById('left-shadow');
-    const rightShadow = document.getElementById('right-shadow');
-    
-    if (!scrollContainer || !leftShadow || !rightShadow) return;
-    
-    const hasScrollLeft = scrollContainer.scrollLeft > 0;
-    const hasScrollRight = scrollContainer.scrollLeft < (scrollContainer.scrollWidth - scrollContainer.clientWidth);
-    
-    leftShadow.style.opacity = hasScrollLeft ? '1' : '0';
-    rightShadow.style.opacity = hasScrollRight ? '1' : '0';
-};
-
 onMounted(() => {
     // Calculate time difference between server and client
     timeDiff.value =
@@ -546,17 +578,9 @@ onMounted(() => {
             });
 
             // Find entangled transactions
-            findEntangledTransactions();
+            // findEntangledTransactions();
         }
     }, 500);
-
-    // Set up scroll shadow effects
-    const scrollContainer = document.querySelector('.overflow-x-auto');
-    if (scrollContainer) {
-        scrollContainer.addEventListener('scroll', updateScrollShadows);
-        // Initial check
-        setTimeout(updateScrollShadows, 100);
-    }
 
     startPolling();
 });
@@ -564,12 +588,6 @@ onMounted(() => {
 onBeforeUnmount(() => {
     if (pollingInterval.value) {
         clearInterval(pollingInterval.value);
-    }
-    
-    // Clean up scroll event listener
-    const scrollContainer = document.querySelector('.overflow-x-auto');
-    if (scrollContainer) {
-        scrollContainer.removeEventListener('scroll', updateScrollShadows);
     }
 });
 </script>

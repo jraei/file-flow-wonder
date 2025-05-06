@@ -629,10 +629,10 @@ class OrderController extends Controller
                 'payment_method' => $paymentInfo['methodCode'],
                 'payment_reference' => $tripayData['reference'],
                 'status' => 'pending',
-                'instruksi' => $tripayData['instructions'],
-                'qr_url' => $tripayData['qr_url'],
-                'payment_link' => $tripayData['checkout_url'],
-                'expired_time' => $tripayData['expired_time'],
+                'instruksi' => $tripayData['instructions'] ?? null,
+                'qr_url' => $tripayData['qr_url'] ?? null,
+                'payment_link' => $tripayData['checkout_url'] ?? null,
+                'expired_time' => $tripayData['expired_time'] ?? null,
             ]);
 
             return response()->json([

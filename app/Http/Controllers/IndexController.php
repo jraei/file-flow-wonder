@@ -118,7 +118,7 @@ class IndexController extends Controller
                         $q->select('id', 'nama', 'thumbnail');
                     }]);
             }])
-            ->paginate(20);
+            ->paginate(10);
 
         // Apply data masking for security
         $liveTransactions->getCollection()->transform(function ($transaction) {

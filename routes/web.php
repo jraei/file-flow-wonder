@@ -48,6 +48,7 @@ Route::get('/leaderboard', [IndexController::class, 'leaderboard'])->name('leade
 Route::get('/cek-transaksi', [IndexController::class, 'cekTransaksi'])->name('cek-transaksi');
 
 // Order Processing Routes
+Route::get('/order/{produk:slug}', [OrderController::class, 'index'])->name('order.index');
 Route::post('/order/confirm', [OrderController::class, 'confirmOrder'])->name('order.confirm');
 Route::post('/order/process', [OrderController::class, 'processOrder'])->name('order.process');
 
