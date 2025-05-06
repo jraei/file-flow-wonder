@@ -7,214 +7,204 @@
             class="absolute -inset-[1px] bg-gradient-to-r from-primary via-secondary to-primary opacity-70 rounded-xl animate-border-flow"
         ></div>
 
-        <div class="relative overflow-x-auto transactions-table rounded-xl">
-            <table class="w-full text-sm text-left text-gray-300">
-                <thead class="text-xs text-gray-200 uppercase bg-primary/50">
-                    <tr>
-                        <th scope="col" class="px-2 py-3 sm:px-4">Date</th>
-                        <th
-                            scope="col"
-                            class="hidden px-2 py-3 sm:px-4 sm:table-cell"
+        <div class="relative transactions-table rounded-xl">
+            <!-- Horizontal scroll container with scroll shadows -->
+            <div class="overflow-x-auto sm:overflow-x-visible -webkit-overflow-scrolling-touch relative">
+                <!-- Left scroll shadow gradient -->
+                <div class="absolute left-0 top-0 bottom-0 w-4 bg-gradient-to-r from-content_background to-transparent pointer-events-none z-10 opacity-0 transition-opacity duration-300" id="left-shadow"></div>
+                
+                <!-- Right scroll shadow gradient -->
+                <div class="absolute right-0 top-0 bottom-0 w-4 bg-gradient-to-l from-content_background to-transparent pointer-events-none z-10 opacity-0 transition-opacity duration-300" id="right-shadow"></div>
+                
+                <table class="w-full min-w-[800px] text-sm text-left text-gray-300">
+                    <thead class="text-xs text-gray-200 uppercase bg-primary/50">
+                        <tr>
+                            <th scope="col" class="px-3 py-3 sm:px-4 whitespace-nowrap">Date</th>
+                            <th scope="col" class="px-3 py-3 sm:px-4 whitespace-nowrap">
+                                Invoice
+                            </th>
+                            <th scope="col" class="px-3 py-3 sm:px-4 whitespace-nowrap">
+                                Phone
+                            </th>
+                            <th scope="col" class="px-3 py-3 sm:px-4 whitespace-nowrap">
+                                Produk
+                            </th>
+                            <th scope="col" class="px-3 py-3 sm:px-4 whitespace-nowrap">
+                                Price
+                            </th>
+                            <th scope="col" class="px-3 py-3 sm:px-4 whitespace-nowrap">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <template
+                            v-if="transactions.data && transactions.data.length > 0"
                         >
-                            Invoice
-                        </th>
-                        <th
-                            scope="col"
-                            class="hidden px-2 py-3 sm:px-4 md:table-cell"
-                        >
-                            Phone
-                        </th>
-                        <th
-                            scope="col"
-                            class="hidden px-2 py-3 sm:px-4 md:table-cell"
-                        >
-                            Produk
-                        </th>
-                        <th
-                            scope="col"
-                            class="hidden px-2 py-3 sm:px-4 sm:table-cell"
-                        >
-                            Price
-                        </th>
-                        <th scope="col" class="px-2 py-3 sm:px-4">Status</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <template
-                        v-if="transactions.data && transactions.data.length > 0"
-                    >
-                        <tr
-                            v-for="(transaction, index) in transactions.data"
-                            :key="transaction.id"
-                            class="transition-colors border-b border-secondary/10 hover:bg-primary/20"
-                            :class="getRowAnimationClass(index)"
-                        >
-                            <td class="px-2 py-2 sm:px-4 sm:py-3">
-                                {{ formatDate(transaction.created_at) }}
-                            </td>
-                            <td
-                                class="hidden px-2 py-2 sm:px-4 sm:py-3 sm:table-cell"
+                            <tr
+                                v-for="(transaction, index) in transactions.data"
+                                :key="transaction.id"
+                                class="transition-colors border-b border-secondary/10 hover:bg-primary/20"
+                                :class="getRowAnimationClass(index)"
+                                :data-transaction-id="transaction.id"
                             >
-                                {{ transaction.masked_order_id }}
-                            </td>
-                            <td
-                                class="hidden px-2 py-2 sm:px-4 sm:py-3 sm:table-cell"
-                            >
-                                {{ transaction.masked_phone }}
-                            </td>
-                            <td
-                                class="hidden px-2 py-2 sm:px-4 sm:py-3 md:table-cell"
-                            >
-                                <div class="flex items-center gap-2">
-                                    <div
-                                        v-if="
-                                            transaction.layanan?.produk
-                                                ?.thumbnail
-                                        "
-                                        class="w-6 h-6 overflow-hidden rounded-full bg-primary"
-                                    >
-                                        <img
-                                            :src="
-                                                '/storage/' +
-                                                transaction.layanan.produk
-                                                    .thumbnail
+                                <td class="px-3 py-2 sm:px-4 sm:py-3 text-sm sm:text-base whitespace-nowrap">
+                                    {{ formatDate(transaction.created_at) }}
+                                </td>
+                                <td class="px-3 py-2 sm:px-4 sm:py-3 text-sm sm:text-base whitespace-nowrap">
+                                    {{ transaction.masked_order_id }}
+                                </td>
+                                <td class="px-3 py-2 sm:px-4 sm:py-3 text-sm sm:text-base whitespace-nowrap">
+                                    {{ transaction.masked_phone }}
+                                </td>
+                                <td class="px-3 py-2 sm:px-4 sm:py-3 text-sm sm:text-base whitespace-nowrap">
+                                    <div class="flex items-center gap-2">
+                                        <div
+                                            v-if="
+                                                transaction.layanan?.produk
+                                                    ?.thumbnail
                                             "
-                                            class="object-cover w-full h-full"
-                                            :alt="
-                                                transaction.layanan.produk.nama
-                                            "
-                                        />
+                                            class="w-6 h-6 overflow-hidden rounded-full bg-primary"
+                                        >
+                                            <img
+                                                :src="
+                                                    '/storage/' +
+                                                    transaction.layanan.produk
+                                                        .thumbnail
+                                                "
+                                                class="object-cover w-full h-full"
+                                                :alt="
+                                                    transaction.layanan.produk.nama
+                                                "
+                                            />
+                                        </div>
+                                        <span
+                                            v-if="transaction.layanan?.produk?.nama"
+                                            class="truncate max-w-[150px]"
+                                        >
+                                            {{ transaction.layanan.produk.nama }}
+                                        </span>
+                                        <span v-else>-</span>
                                     </div>
+                                </td>
+                                <td class="px-3 py-2 sm:px-4 sm:py-3 text-sm sm:text-base whitespace-nowrap">
+                                    {{ transaction.masked_price }}
+                                </td>
+                                <td class="px-3 py-2 sm:px-4 sm:py-3 text-sm sm:text-base">
                                     <span
-                                        v-if="transaction.layanan?.produk?.nama"
-                                        class="truncate max-w-[150px]"
-                                    >
-                                        {{ transaction.layanan.produk.nama }}
-                                    </span>
-                                    <span v-else>-</span>
-                                </div>
-                            </td>
-                            <td
-                                class="hidden px-2 py-2 sm:px-4 sm:py-3 sm:table-cell"
-                            >
-                                {{ transaction.masked_price }}
-                            </td>
-                            <td class="px-2 py-2 sm:px-4 sm:py-3">
-                                <span
-                                    class="px-2.5 py-1 text-xs rounded-full border font-medium inline-flex items-center justify-center"
-                                    :class="
-                                        statusClasses[transaction.status] ||
-                                        statusClasses.pending
-                                    "
-                                >
-                                    <!-- Status pulse indicator -->
-                                    <span
-                                        v-if="
-                                            transaction.status === 'pending' ||
-                                            transaction.status === 'processing'
-                                        "
-                                        class="h-1.5 w-1.5 rounded-full mr-1.5"
+                                        class="px-2.5 py-1 text-xs rounded-full border font-medium inline-flex items-center justify-center whitespace-nowrap"
                                         :class="
-                                            transaction.status === 'pending'
-                                                ? 'bg-secondary animate-pulse'
-                                                : 'bg-primary animate-pulse'
+                                            statusClasses[transaction.status] ||
+                                            statusClasses.pending
                                         "
-                                    ></span>
-                                    {{
-                                        transaction.status
-                                            .charAt(0)
-                                            .toUpperCase() +
-                                        transaction.status.slice(1)
-                                    }}
-                                </span>
+                                    >
+                                        <!-- Status pulse indicator -->
+                                        <span
+                                            v-if="
+                                                transaction.status === 'pending' ||
+                                                transaction.status === 'processing'
+                                            "
+                                            class="h-1.5 w-1.5 rounded-full mr-1.5"
+                                            :class="
+                                                transaction.status === 'pending'
+                                                    ? 'bg-secondary animate-pulse'
+                                                    : 'bg-primary animate-pulse'
+                                            "
+                                        ></span>
+                                        {{
+                                            transaction.status
+                                                .charAt(0)
+                                                .toUpperCase() +
+                                            transaction.status.slice(1)
+                                        }}
+                                    </span>
+                                </td>
+                            </tr>
+                        </template>
+                        <tr v-else class="border-b border-primary/20">
+                            <td
+                                colspan="6"
+                                class="px-4 py-8 text-center text-gray-400"
+                            >
+                                <div class="flex flex-col items-center">
+                                    <!-- Empty state with constellation pattern -->
+                                    <div class="relative w-32 h-32 mb-4">
+                                        <div
+                                            class="absolute inset-0 flex items-center justify-center"
+                                        >
+                                            <div
+                                                class="flex items-center justify-center w-20 h-20 rounded-full bg-primary"
+                                            >
+                                                <svg
+                                                    xmlns="http://www.w3.org/2000/svg"
+                                                    class="w-10 h-10 text-gray-500"
+                                                    fill="none"
+                                                    viewBox="0 0 24 24"
+                                                    stroke="currentColor"
+                                                >
+                                                    <path
+                                                        stroke-linecap="round"
+                                                        stroke-linejoin="round"
+                                                        stroke-width="1"
+                                                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                                                    />
+                                                </svg>
+                                            </div>
+                                        </div>
+                                        <!-- Constellation dots -->
+                                        <div
+                                            class="absolute w-1 h-1 rounded-full top-1/4 left-1/4 bg-primary"
+                                        ></div>
+                                        <div
+                                            class="absolute w-1 h-1 rounded-full top-3/4 left-1/2 bg-secondary"
+                                        ></div>
+                                        <div
+                                            class="absolute w-1 h-1 rounded-full top-1/2 left-3/4 bg-primary"
+                                        ></div>
+                                        <div
+                                            class="absolute top-1/3 left-2/3 h-0.5 w-0.5 bg-white rounded-full animate-pulse"
+                                        ></div>
+                                        <div
+                                            class="absolute top-2/3 left-1/3 h-0.5 w-0.5 bg-white rounded-full animate-pulse"
+                                        ></div>
+                                        <!-- Constellation lines -->
+                                        <svg
+                                            class="absolute inset-0 w-full h-full"
+                                            xmlns="http://www.w3.org/2000/svg"
+                                        >
+                                            <line
+                                                x1="25%"
+                                                y1="25%"
+                                                x2="50%"
+                                                y2="75%"
+                                                class="stroke-primary/30 stroke-[0.5]"
+                                            />
+                                            <line
+                                                x1="50%"
+                                                y1="75%"
+                                                x2="75%"
+                                                y2="50%"
+                                                class="stroke-primary/30 stroke-[0.5]"
+                                            />
+                                            <line
+                                                x1="75%"
+                                                y1="50%"
+                                                x2="25%"
+                                                y2="25%"
+                                                class="stroke-secondary/30 stroke-[0.5]"
+                                            />
+                                        </svg>
+                                    </div>
+                                    <p class="mb-1 text-gray-400">
+                                        No transactions found
+                                    </p>
+                                    <p class="text-xs text-gray-500">
+                                        The cosmic void is peaceful today
+                                    </p>
+                                </div>
                             </td>
                         </tr>
-                    </template>
-                    <tr v-else class="border-b border-primary/20">
-                        <td
-                            colspan="5"
-                            class="px-4 py-8 text-center text-gray-400"
-                        >
-                            <div class="flex flex-col items-center">
-                                <!-- Empty state with constellation pattern -->
-                                <div class="relative w-32 h-32 mb-4">
-                                    <div
-                                        class="absolute inset-0 flex items-center justify-center"
-                                    >
-                                        <div
-                                            class="flex items-center justify-center w-20 h-20 rounded-full bg-primary"
-                                        >
-                                            <svg
-                                                xmlns="http://www.w3.org/2000/svg"
-                                                class="w-10 h-10 text-gray-500"
-                                                fill="none"
-                                                viewBox="0 0 24 24"
-                                                stroke="currentColor"
-                                            >
-                                                <path
-                                                    stroke-linecap="round"
-                                                    stroke-linejoin="round"
-                                                    stroke-width="1"
-                                                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                                                />
-                                            </svg>
-                                        </div>
-                                    </div>
-                                    <!-- Constellation dots -->
-                                    <div
-                                        class="absolute w-1 h-1 rounded-full top-1/4 left-1/4 bg-primary"
-                                    ></div>
-                                    <div
-                                        class="absolute w-1 h-1 rounded-full top-3/4 left-1/2 bg-secondary"
-                                    ></div>
-                                    <div
-                                        class="absolute w-1 h-1 rounded-full top-1/2 left-3/4 bg-primary"
-                                    ></div>
-                                    <div
-                                        class="absolute top-1/3 left-2/3 h-0.5 w-0.5 bg-white rounded-full animate-pulse"
-                                    ></div>
-                                    <div
-                                        class="absolute top-2/3 left-1/3 h-0.5 w-0.5 bg-white rounded-full animate-pulse"
-                                    ></div>
-                                    <!-- Constellation lines -->
-                                    <svg
-                                        class="absolute inset-0 w-full h-full"
-                                        xmlns="http://www.w3.org/2000/svg"
-                                    >
-                                        <line
-                                            x1="25%"
-                                            y1="25%"
-                                            x2="50%"
-                                            y2="75%"
-                                            class="stroke-primary/30 stroke-[0.5]"
-                                        />
-                                        <line
-                                            x1="50%"
-                                            y1="75%"
-                                            x2="75%"
-                                            y2="50%"
-                                            class="stroke-primary/30 stroke-[0.5]"
-                                        />
-                                        <line
-                                            x1="75%"
-                                            y1="50%"
-                                            x2="25%"
-                                            y2="25%"
-                                            class="stroke-secondary/30 stroke-[0.5]"
-                                        />
-                                    </svg>
-                                </div>
-                                <p class="mb-1 text-gray-400">
-                                    No transactions found
-                                </p>
-                                <p class="text-xs text-gray-500">
-                                    The cosmic void is peaceful today
-                                </p>
-                            </div>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
+                    </tbody>
+                </table>
+            </div>
 
             <!-- Pagination -->
             <div
@@ -523,6 +513,21 @@ const drawEntanglementLines = (inputId, transactionIds) => {
     document.querySelector(".transactions-table").appendChild(svgContainer);
 };
 
+// Handle horizontal scroll shadow effects
+const updateScrollShadows = () => {
+    const scrollContainer = document.querySelector('.overflow-x-auto');
+    const leftShadow = document.getElementById('left-shadow');
+    const rightShadow = document.getElementById('right-shadow');
+    
+    if (!scrollContainer || !leftShadow || !rightShadow) return;
+    
+    const hasScrollLeft = scrollContainer.scrollLeft > 0;
+    const hasScrollRight = scrollContainer.scrollLeft < (scrollContainer.scrollWidth - scrollContainer.clientWidth);
+    
+    leftShadow.style.opacity = hasScrollLeft ? '1' : '0';
+    rightShadow.style.opacity = hasScrollRight ? '1' : '0';
+};
+
 onMounted(() => {
     // Calculate time difference between server and client
     timeDiff.value =
@@ -545,12 +550,26 @@ onMounted(() => {
         }
     }, 500);
 
+    // Set up scroll shadow effects
+    const scrollContainer = document.querySelector('.overflow-x-auto');
+    if (scrollContainer) {
+        scrollContainer.addEventListener('scroll', updateScrollShadows);
+        // Initial check
+        setTimeout(updateScrollShadows, 100);
+    }
+
     startPolling();
 });
 
 onBeforeUnmount(() => {
     if (pollingInterval.value) {
         clearInterval(pollingInterval.value);
+    }
+    
+    // Clean up scroll event listener
+    const scrollContainer = document.querySelector('.overflow-x-auto');
+    if (scrollContainer) {
+        scrollContainer.removeEventListener('scroll', updateScrollShadows);
     }
 });
 </script>
@@ -616,5 +635,9 @@ onBeforeUnmount(() => {
     to {
         opacity: 1;
     }
+}
+
+.overflow-x-auto {
+    -webkit-overflow-scrolling: touch;
 }
 </style>
