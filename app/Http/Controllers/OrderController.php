@@ -216,7 +216,16 @@ class OrderController extends Controller
         // Find order by order_id
         $pembelian = Pembelian::with(['layanan.produk', 'pembayaran', 'user'])
             ->where('order_id', $order_id)
-            ->firstOrFail();
+            ->first();
+
+        if (!$pembelian) {
+            // kirim error ke view
+            return back()->with('status', [
+                'type' => 'error',
+                'action' => 'Not Found',
+                'text' => 'Transaction not found. Please check your invoice ID.'
+            ]);
+        }
 
         // Get product information
         $produk = $pembelian->layanan->produk;

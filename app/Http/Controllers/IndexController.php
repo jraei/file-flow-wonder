@@ -89,13 +89,13 @@ class IndexController extends Controller
             'serverTime' => Carbon::now()->toISOString(),
         ]);
     }
-    
+
     public function cekTransaksi(Request $request)
     {
         // Rate limiting for search - 5 requests per minute per IP
         if ($request->invoice) {
             $key = 'search_invoice:' . $request->ip();
-            
+
             if (RateLimiter::tooManyAttempts($key, 5)) {
                 return Inertia::render('CekTransaksi', [
                     'transactions' => [],
@@ -105,26 +105,26 @@ class IndexController extends Controller
                     'error' => 'Too many search attempts. Please try again later.',
                 ]);
             }
-            
+
             RateLimiter::hit($key, 60); // Limit expires after 60 seconds
         }
-        
+
         // Get today's transactions with masking
         $liveTransactions = Pembelian::whereDate('created_at', Carbon::today())
             ->orderByDesc('created_at')
-            ->with(['layanan' => function($q) {
+            ->with(['layanan' => function ($q) {
                 $q->select('id', 'nama_layanan', 'produk_id')
-                ->with(['produk' => function($q) {
-                    $q->select('id', 'nama', 'thumbnail');
-                }]);
+                    ->with(['produk' => function ($q) {
+                        $q->select('id', 'nama', 'thumbnail');
+                    }]);
             }])
             ->paginate(20);
-            
+
         // Apply data masking for security
         $liveTransactions->getCollection()->transform(function ($transaction) {
             // Mask order_id (invoice)
             $transaction->masked_order_id = substr($transaction->order_id, 0, 2) . '...' . substr($transaction->order_id, -3);
-            
+
             // Mask phone if exists
             if ($transaction->phone) {
                 $phone = $transaction->phone;
@@ -136,35 +136,35 @@ class IndexController extends Controller
             } else {
                 $transaction->masked_phone = '-';
             }
-            
+
             // Format and mask price
             $priceStr = number_format($transaction->total_price, 0, ',', '.');
-            if (strlen($priceStr) > 6) {
+            if (strlen($priceStr) > 4) {
                 $transaction->masked_price = 'Rp ' . substr($priceStr, 0, strlen($priceStr) - 3) . 'xxx';
             } else {
                 $transaction->masked_price = 'Rp ' . $priceStr;
             }
-            
+
             return $transaction;
         });
-        
+
         // Search for specific invoice if provided
         $searchResult = null;
         if ($request->invoice) {
             $searchResult = Pembelian::where('order_id', $request->invoice)
                 ->orWhere('reference_id', $request->invoice)
                 ->with([
-                    'layanan' => function($q) {
+                    'layanan' => function ($q) {
                         $q->select('id', 'nama_layanan', 'produk_id')
-                        ->with(['produk' => function($q) {
-                            $q->select('id', 'nama', 'thumbnail');
-                        }]);
+                            ->with(['produk' => function ($q) {
+                                $q->select('id', 'nama', 'thumbnail');
+                            }]);
                     },
                     'pembayaran'
                 ])
                 ->first();
         }
-        
+
         return Inertia::render('CekTransaksi', [
             'transactions' => $liveTransactions,
             'searchResult' => $searchResult,

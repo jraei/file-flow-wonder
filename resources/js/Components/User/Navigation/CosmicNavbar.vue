@@ -52,7 +52,7 @@ const navLinks = [
     {
         name: "Cek Transaksi",
         icon: "📊",
-        route: "dashboard",
+        route: "cek-transaksi",
         active: false,
     },
     {
