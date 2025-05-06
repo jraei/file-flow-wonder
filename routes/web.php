@@ -44,6 +44,7 @@ use App\Http\Controllers\Admin\ProdukInputOptionController;
 
 
 Route::get('/', [IndexController::class, 'index'])->name('index');
+Route::get('/leaderboard', [IndexController::class, 'leaderboard'])->name('leaderboard');
 
 Route::get('/order/{produk:slug}', [OrderController::class, 'index'])->name('order.index');
 

@@ -1,3 +1,4 @@
+
 <?php
 
 namespace App\Http\Controllers;
@@ -6,6 +7,7 @@ use App\Models\Banner;
 use App\Models\FlashsaleEvent;
 use App\Models\Produk;
 use App\Models\Kategori;
+use App\Models\Pembelian;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -75,6 +77,16 @@ class IndexController extends Controller
             'popularProducts' => $popularProducts,
             'categories' => $categories,
             'catalogProducts' => $catalogProducts,
+        ]);
+    }
+
+    public function leaderboard()
+    {
+        return Inertia::render('Leaderboard', [
+            'daily' => Pembelian::dailyTop10(),
+            'weekly' => Pembelian::weeklyTop10(),
+            'monthly' => Pembelian::monthlyTop10(),
+            'serverTime' => Carbon::now()->toISOString(),
         ]);
     }
 }
