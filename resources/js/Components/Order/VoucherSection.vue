@@ -1,5 +1,5 @@
 <template>
-    <CosmicCard title="Promo Code" :step-number="6">
+    <CosmicCard title="Promo Code" :step-number="5">
         <div class="space-y-4">
             <!-- Input group -->
             <div class="flex w-full">
