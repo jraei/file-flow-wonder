@@ -69,33 +69,28 @@ if (!isLowPowerDevice && window.performance) {
             <section
                 class="relative overflow-hidden w-full min-h-[200px] md:min-h-[400px] lg:min-h-[500px] py-8"
             >
-                <!-- Enhanced Background Layers with Optimized Components -->
                 <div class="absolute inset-0 z-0">
                     <StarfieldLayer class="z-5" />
                     <PlanetsLayer class="z-15" />
                     <MeteorBackground class="z-20" />
                 </div>
 
-                <!-- Carousel Content -->
                 <div class="relative z-30 mx-auto max-w-7xl">
                     <BannerCarousel :banners="banners" />
                 </div>
             </section>
 
-            <!-- Flash Sale Section -->
             <FlashsaleSection
                 v-if="flashsaleEvent"
                 :event="flashsaleEvent"
                 :server-time="serverTime"
             />
 
-            <!-- Trending Products Section -->
             <TrendingProducts
                 v-if="popularProducts && popularProducts.length > 0"
                 :products="popularProducts"
             />
 
-            <!-- Product Catalog Section -->
             <ProductCatalogSection
                 v-if="categories && categories.length > 0"
                 :categories="categories"

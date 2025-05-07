@@ -2,6 +2,7 @@
 import { router } from "@inertiajs/vue3";
 import ProductCard from "./ProductCard.vue";
 import CosmicParticles from "../Flashsale/CosmicParticles.vue";
+import { Flame } from "lucide-vue-next";
 
 const props = defineProps({
     products: {
@@ -22,7 +23,7 @@ const props = defineProps({
             <div class="mb-8">
                 <div class="flex items-center mb-2 space-x-2">
                     <div class="fire-icon-container">
-                        <span class="fire-icon">🔥</span>
+                        <Flame class="fire-icon text-primary"></Flame>
                     </div>
                     <h2
                         class="text-2xl font-bold md:text-2xl text-primary-text drop-shadow-glow"
@@ -87,7 +88,6 @@ const props = defineProps({
 .fire-icon {
     width: 24px;
     height: 24px;
-    color: #33c3f0; /* secondary color */
     filter: drop-shadow(0 0 5px rgba(51, 195, 240, 0.7));
 }
 

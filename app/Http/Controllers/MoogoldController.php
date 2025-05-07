@@ -147,6 +147,10 @@ class MoogoldController extends Controller
                     $services = $response->getOffers();
 
                     foreach ($services as $data) {
+                        // Update thumbnail
+                        if ($produk['thumbnail'] == null && !empty($response->getImageUrl())) {
+                            $produk->where('reference', $produk['reference'])->update(['thumbnail' => $response->getImageUrl()]);
+                        }
 
                         $dataId = $data->getId();
                         $price = $data->getPrice();

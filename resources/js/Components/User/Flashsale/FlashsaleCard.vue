@@ -90,39 +90,6 @@ const particleDensity = computed(() => {
     if (isLowPowerDevice.value) return 0.5;
     return 1;
 });
-
-onMounted(() => {
-    // Apply parallax effect on desktop (simplified and optimized)
-    if (window.innerWidth >= 768 && !isLowPowerDevice.value) {
-        const handleMouseMove = (e) => {
-            if (!cardRef.value) return;
-
-            const rect = cardRef.value.getBoundingClientRect();
-            const x = e.clientX - rect.left;
-            const y = e.clientY - rect.top;
-
-            const centerX = rect.width / 2;
-            const centerY = rect.height / 2;
-
-            const moveX = (x - centerX) / 20;
-            const moveY = (y - centerY) / 20;
-
-            const cosmicLayer = cardRef.value.querySelector(".cosmic-layer");
-            if (cosmicLayer) {
-                // Use transform with will-change for better performance
-                cosmicLayer.style.transform = `translate(${moveX}px, ${moveY}px)`;
-            }
-        };
-
-        cardRef.value.addEventListener("mousemove", handleMouseMove);
-        cardRef.value.addEventListener("mouseleave", () => {
-            const cosmicLayer = cardRef.value.querySelector(".cosmic-layer");
-            if (cosmicLayer) {
-                cosmicLayer.style.transform = "translate(0, 0)";
-            }
-        });
-    }
-});
 </script>
 
 <template>
@@ -204,17 +171,15 @@ onMounted(() => {
 
             <!-- Right Section - Cosmic Elements (Optimized) -->
             <div class="right-section">
-                <div class="cosmic-layer" style="will-change: transform">
-                    <!-- Replace static elements with canvas-based particles -->
-                    <CosmicParticles
+                <!-- <div class="cosmic-layer" style="will-change: transform"> -->
+                <!-- <CosmicParticles
                         :item-id="cardId"
                         :density="particleDensity"
                         theme="primary"
                     />
                 </div>
 
-                <!-- Thermal Edge Effect (static gradient) -->
-                <div class="thermal-edge"></div>
+                <div class="thermal-edge"></div> -->
             </div>
         </div>
 

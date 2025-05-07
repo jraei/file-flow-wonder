@@ -5,6 +5,7 @@ import ProductCatalogItem from "./ProductCatalogItem.vue";
 import CosmicParticles from "../Flashsale/CosmicParticles.vue";
 import { debounce } from "lodash";
 import { router } from "@inertiajs/vue3";
+import { Rocket } from "lucide-vue-next";
 
 const props = defineProps({
     categories: {
@@ -76,7 +77,7 @@ watch(
                     <div
                         class="flex items-center justify-center w-10 h-10 border rounded-full rocket-container border-primary/30 bg-primary/10"
                     >
-                        <span class="text-lg">🚀</span>
+                        <Rocket class="w-5 h-5 text-primary" />
                     </div>
                     <h2
                         class="text-2xl font-bold md:text-2xl text-primary-text drop-shadow-glow"
