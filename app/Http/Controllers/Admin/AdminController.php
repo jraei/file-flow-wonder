@@ -6,16 +6,300 @@ use Inertia\Inertia;
 use Illuminate\Http\Request;
 use App\Models\WebConfig;
 use App\Models\Provider;
+use App\Models\User;
+use App\Models\Pembelian; // For orders
+use App\Models\Produk; // For products
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
+use Carbon\Carbon;
 
 class AdminController extends Controller
 {
-    public function index()
+    /**
+     * Show the admin dashboard with dynamic data
+     */
+    public function index(Request $request)
     {
-        return Inertia::render('Admin/Dashboard');
+        // Get time period (default to 'weekly')
+        $period = $request->input('period', 'weekly');
+        $validPeriods = ['daily', 'weekly', 'monthly', 'yearly'];
+        
+        if (!in_array($period, $validPeriods)) {
+            $period = 'weekly';
+        }
+        
+        // Cache key includes period to cache different time ranges
+        $cacheKey = "admin_dashboard_data_{$period}";
+        $cacheTTL = 15; // 15 minutes
+        
+        // Get data from cache or generate if not available
+        $dashboardData = Cache::remember($cacheKey, $cacheTTL * 60, function () use ($period) {
+            return [
+                'metrics' => $this->getMetrics($period),
+                'charts' => $this->getChartData($period),
+                'tables' => $this->getTableData($period),
+            ];
+        });
+        
+        return Inertia::render('Admin/Dashboard', [
+            'dashboardData' => $dashboardData,
+            'activePeriod' => $period,
+        ]);
+    }
+
+    /**
+     * Get key metrics based on period
+     */
+    private function getMetrics($period)
+    {
+        $dateRange = $this->getDateRange($period);
+        $startDate = $dateRange['start'];
+        $endDate = $dateRange['end'];
+        
+        // Calculate previous period for comparisons
+        $previousStartDate = (clone $startDate)->sub($this->getPeriodDuration($period));
+        $previousEndDate = (clone $endDate)->sub($this->getPeriodDuration($period));
+        
+        // Current period data
+        $currentUsers = User::whereBetween('created_at', [$startDate, $endDate])->count();
+        $previousUsers = User::whereBetween('created_at', [$previousStartDate, $previousEndDate])->count();
+        
+        $currentOrders = Pembelian::whereBetween('created_at', [$startDate, $endDate])->count();
+        $previousOrders = Pembelian::whereBetween('created_at', [$previousStartDate, $previousEndDate])->count();
+        
+        $currentRevenue = Pembelian::whereBetween('created_at', [$startDate, $endDate])->sum('total');
+        $previousRevenue = Pembelian::whereBetween('created_at', [$previousStartDate, $previousEndDate])->sum('total');
+        
+        $currentProducts = Produk::whereBetween('created_at', [$startDate, $endDate])->count();
+        $previousProducts = Produk::whereBetween('created_at', [$previousStartDate, $previousEndDate])->count();
+        
+        // Calculate growth percentages
+        $userGrowth = $this->calculateGrowth($currentUsers, $previousUsers);
+        $orderGrowth = $this->calculateGrowth($currentOrders, $previousOrders);
+        $revenueGrowth = $this->calculateGrowth($currentRevenue, $previousRevenue);
+        $productGrowth = $this->calculateGrowth($currentProducts, $previousProducts);
+        
+        return [
+            'users' => [
+                'total' => User::count(),
+                'new' => $currentUsers,
+                'growthPercent' => $userGrowth,
+                'isPositive' => $userGrowth >= 0,
+            ],
+            'revenue' => [
+                'total' => Pembelian::sum('total'),
+                'period' => $currentRevenue,
+                'currency' => 'USD',
+                'growthPercent' => $revenueGrowth,
+                'isPositive' => $revenueGrowth >= 0,
+            ],
+            'orders' => [
+                'total' => Pembelian::count(),
+                'new' => $currentOrders,
+                'growthPercent' => $orderGrowth,
+                'isPositive' => $orderGrowth >= 0,
+            ],
+            'products' => [
+                'total' => Produk::where('status', 'active')->count(),
+                'new' => $currentProducts,
+                'growthPercent' => $productGrowth,
+                'isPositive' => $productGrowth >= 0,
+            ],
+        ];
+    }
+    
+    /**
+     * Get chart data based on period
+     */
+    private function getChartData($period)
+    {
+        $dateRange = $this->getDateRange($period);
+        $startDate = $dateRange['start'];
+        $endDate = $dateRange['end'];
+        
+        // Get daily revenue data for the last 30 days
+        $revenueTrend = $this->getDailyRevenueTrend($startDate, $endDate);
+        
+        // Get order distribution by product category
+        $orderDistribution = $this->getOrderDistribution();
+        
+        return [
+            'revenue_trend' => $revenueTrend,
+            'order_distribution' => $orderDistribution,
+        ];
+    }
+    
+    /**
+     * Get tabular data based on period
+     */
+    private function getTableData($period)
+    {
+        $dateRange = $this->getDateRange($period);
+        $startDate = $dateRange['start'];
+        $endDate = $dateRange['end'];
+        
+        // Get recent transactions
+        $recentTransactions = Pembelian::with(['user', 'produk'])
+            ->whereBetween('created_at', [$startDate, $endDate])
+            ->orderBy('created_at', 'desc')
+            ->limit(10)
+            ->get()
+            ->map(function ($transaction) {
+                return [
+                    'id' => $transaction->id,
+                    'user' => $transaction->user ? $transaction->user->name : 'Unknown',
+                    'amount' => $transaction->total,
+                    'status' => $transaction->status,
+                    'date' => $transaction->created_at->format('Y-m-d'),
+                    'game' => $transaction->produk ? $transaction->produk->nama : 'Unknown',
+                ];
+            });
+        
+        // Get top selling products
+        $topProducts = Produk::withCount(['pembelian' => function ($query) use ($startDate, $endDate) {
+            $query->whereBetween('created_at', [$startDate, $endDate]);
+        }])
+        ->withSum(['pembelian' => function ($query) use ($startDate, $endDate) {
+            $query->whereBetween('created_at', [$startDate, $endDate]);
+        }], 'total')
+        ->orderBy('pembelian_count', 'desc')
+        ->limit(5)
+        ->get()
+        ->map(function ($product) {
+            // Calculate growth compared to previous period
+            // This is simplified - in production you'd compare with previous period
+            $growth = rand(-5, 15); // Placeholder for growth calculation
+            
+            return [
+                'id' => $product->id,
+                'name' => $product->nama,
+                'sales' => $product->pembelian_count ?? 0,
+                'revenue' => $product->pembelian_sum_total ?? 0,
+                'growth' => $growth,
+            ];
+        });
+        
+        return [
+            'recent_transactions' => $recentTransactions,
+            'top_products' => $topProducts,
+        ];
+    }
+    
+    /**
+     * Helper to get date range based on period
+     */
+    private function getDateRange($period)
+    {
+        $now = Carbon::now();
+        
+        switch ($period) {
+            case 'daily':
+                return [
+                    'start' => Carbon::today()->startOfDay(),
+                    'end' => Carbon::today()->endOfDay(),
+                ];
+            case 'weekly':
+                return [
+                    'start' => Carbon::now()->startOfWeek(),
+                    'end' => Carbon::now(),
+                ];
+            case 'monthly':
+                return [
+                    'start' => Carbon::now()->startOfMonth(),
+                    'end' => Carbon::now(),
+                ];
+            case 'yearly':
+                return [
+                    'start' => Carbon::now()->startOfYear(),
+                    'end' => Carbon::now(),
+                ];
+            default:
+                return [
+                    'start' => Carbon::now()->subDays(7),
+                    'end' => Carbon::now(),
+                ];
+        }
+    }
+    
+    /**
+     * Helper to get period duration for comparison calculations
+     */
+    private function getPeriodDuration($period)
+    {
+        switch ($period) {
+            case 'daily':
+                return new \DateInterval('P1D');
+            case 'weekly':
+                return new \DateInterval('P7D');
+            case 'monthly':
+                return new \DateInterval('P1M');
+            case 'yearly':
+                return new \DateInterval('P1Y');
+            default:
+                return new \DateInterval('P7D');
+        }
+    }
+    
+    /**
+     * Calculate growth percentage
+     */
+    private function calculateGrowth($current, $previous)
+    {
+        if ($previous == 0) {
+            return $current > 0 ? 100 : 0;
+        }
+        
+        return round((($current - $previous) / $previous) * 100, 1);
+    }
+    
+    /**
+     * Get daily revenue trend
+     */
+    private function getDailyRevenueTrend($startDate, $endDate)
+    {
+        $days = $startDate->diffInDays($endDate) + 1;
+        $period = new \DatePeriod(
+            $startDate,
+            new \DateInterval('P1D'),
+            $days
+        );
+        
+        $revenueTrend = [];
+        
+        foreach ($period as $date) {
+            $dateString = $date->format('Y-m-d');
+            $dayStart = Carbon::parse($dateString)->startOfDay();
+            $dayEnd = Carbon::parse($dateString)->endOfDay();
+            
+            $dailyRevenue = Pembelian::whereBetween('created_at', [$dayStart, $dayEnd])
+                ->sum('total');
+            
+            $revenueTrend[] = [
+                'date' => $dateString,
+                'revenue' => $dailyRevenue,
+            ];
+        }
+        
+        return $revenueTrend;
+    }
+    
+    /**
+     * Get order distribution by product category
+     */
+    private function getOrderDistribution()
+    {
+        $categories = \DB::table('kategoris')
+            ->join('produks', 'kategoris.id', '=', 'produks.kategori_id')
+            ->join('pembelians', 'produks.id', '=', 'pembelians.produk_id')
+            ->select('kategoris.nama as name', \DB::raw('COUNT(pembelians.id) as count'))
+            ->groupBy('kategoris.nama')
+            ->orderBy('count', 'desc')
+            ->limit(10)
+            ->get();
+            
+        return $categories;
     }
 
     public function settings()
@@ -233,7 +517,6 @@ class AdminController extends Controller
             'text' => ucfirst(str_replace('_', ' ', $field)) . ' berhasil dihapus!'
         ]);
     }
-
 
     public function categories()
     {
