@@ -1,3 +1,4 @@
+
 <script setup>
 import { onMounted, ref } from "vue";
 
@@ -19,7 +20,7 @@ defineExpose({ focus: () => input.value.focus() });
 
 <template>
     <input
-        class="border-gray-300 rounded-md shadow-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-600"
+        class="border-gray-300 rounded-md shadow-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-primary focus:ring-primary dark:focus:border-primary dark:focus:ring-primary"
         v-model="model"
         ref="input"
     />
