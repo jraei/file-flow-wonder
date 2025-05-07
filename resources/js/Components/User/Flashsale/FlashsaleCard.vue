@@ -1,6 +1,7 @@
+
 <script setup>
 import { computed, ref, onMounted } from "vue";
-import CosmicParticles from "./CosmicParticles.vue";
+import CssCosmicParticles from "./CssCosmicParticles.vue";
 
 const props = defineProps({
     flashItem: {
@@ -80,15 +81,10 @@ const isStockLow = computed(() => {
     return stockPercentage.value < 20;
 });
 
-// Instead of generating cosmic elements as DOM nodes, use a unique ID for canvas
-const cardId = ref(
-    `flashcard-${Date.now()}-${Math.floor(Math.random() * 1000)}`
-);
-
 // Set particle density based on device
 const particleDensity = computed(() => {
-    if (isLowPowerDevice.value) return 0.5;
-    return 1;
+    if (isLowPowerDevice.value) return 0.3; // Even lower for better performance
+    return 0.5;  // Reduced from 1.0 to 0.5 for better performance
 });
 
 onMounted(() => {
@@ -104,8 +100,8 @@ onMounted(() => {
             const centerX = rect.width / 2;
             const centerY = rect.height / 2;
 
-            const moveX = (x - centerX) / 20;
-            const moveY = (y - centerY) / 20;
+            const moveX = (x - centerX) / 30; // Reduced movement for better performance
+            const moveY = (y - centerY) / 30;
 
             const cosmicLayer = cardRef.value.querySelector(".cosmic-layer");
             if (cosmicLayer) {
@@ -114,7 +110,8 @@ onMounted(() => {
             }
         };
 
-        cardRef.value.addEventListener("mousemove", handleMouseMove);
+        // Use passive event listener for better performance
+        cardRef.value.addEventListener("mousemove", handleMouseMove, { passive: true });
         cardRef.value.addEventListener("mouseleave", () => {
             const cosmicLayer = cardRef.value.querySelector(".cosmic-layer");
             if (cosmicLayer) {
@@ -126,7 +123,7 @@ onMounted(() => {
 </script>
 
 <template>
-    <div ref="cardRef" class="flashsale-card group" :id="cardId">
+    <div ref="cardRef" class="flashsale-card group">
         <!-- User Limit Badge -->
         <div v-if="flashItem.batas_user" class="absolute z-20 top-2 right-2">
             <div
@@ -202,12 +199,16 @@ onMounted(() => {
                 </div>
             </div>
 
-            <!-- Right Section - Cosmic Elements (Optimized) -->
+            <!-- Right Section - CSS-based Cosmic Elements -->
             <div class="right-section">
                 <div class="cosmic-layer" style="will-change: transform">
-                    <!-- Replace static elements with canvas-based particles -->
-                    <CosmicParticles
-                        :item-id="cardId"
+                    <!-- CSS Planet Decoration -->
+                    <div class="cosmic-planet"></div>
+                    <div class="planet-ring"></div>
+                    
+                    <!-- Use minimal CSS particles -->
+                    <CssCosmicParticles
+                        v-if="!isLowPowerDevice"
                         :density="particleDensity"
                         theme="primary"
                     />
@@ -221,7 +222,9 @@ onMounted(() => {
         <!-- Enhanced Card Footer - Progress Bar -->
         <div class="card-footer">
             <!-- Progress Container with Integrated Text -->
-            <div class="relative progress-container-wrapper">
+            <div
+                class="relative progress-container-wrapper"
+            >
                 <!-- Stock text moved above progress bar -->
                 <div
                     class="text-xs absolute inset-x-0 top-[-18px] text-white opacity-90"
@@ -239,9 +242,10 @@ onMounted(() => {
                         :class="[isStockLow ? 'low-stock' : '']"
                         :style="{ width: `${stockPercentage}%` }"
                     >
-                        <!-- Simplified particle sparks (low count for performance) -->
-                        <div class="particle-sparks" v-if="!isLowPowerDevice">
-                            <div class="spark" v-for="i in 3" :key="i"></div>
+                        <!-- CSS-based sparks -->
+                        <div class="spark-container" v-if="!isLowPowerDevice">
+                            <div class="spark"></div>
+                            <div class="spark"></div>
                         </div>
                     </div>
                 </div>
@@ -265,8 +269,7 @@ onMounted(() => {
 }
 
 .flashsale-card:hover {
-    transform: translateY(-5px) scale(1.02);
-    /* box-shadow: 0 0 25px rgba(155, 135, 245, 0.3); */
+    transform: translateY(-5px);
     border: 2px solid rgba(155, 135, 245, 1);
 }
 
@@ -312,7 +315,6 @@ onMounted(() => {
 .image-glow {
     position: absolute;
     inset: 0;
-    /* border-radius: 50%; */
     box-shadow: 0 0 10px rgba(155, 135, 245, 0.7);
     opacity: 0;
     transition: opacity 0.3s ease;
@@ -328,11 +330,6 @@ onMounted(() => {
     color: #33c3f0; /* secondary color */
     margin-bottom: 0.25rem;
     transition: all 0.3s ease;
-}
-
-.flashsale-card:hover .product-name {
-    text-shadow: 0 0 8px rgba(155, 135, 245, 0.7);
-    transform: scale(1.02);
 }
 
 .product-category {
@@ -352,7 +349,6 @@ onMounted(() => {
     font-size: 1.1rem;
     font-weight: bold;
     color: #33c3f0;
-    animation: price-pulse 3s infinite alternate;
 }
 
 .flash-icon {
@@ -384,7 +380,7 @@ onMounted(() => {
     border-radius: 0.25rem;
 }
 
-/* Right section - Cosmic elements */
+/* Right section - CSS-based Cosmic elements */
 .right-section {
     width: 50%;
     position: relative;
@@ -397,9 +393,13 @@ onMounted(() => {
     transition: transform 0.3s ease;
 }
 
-/* Cosmic elements */
+/* CSS-based planet */
 .cosmic-planet {
     position: absolute;
+    width: 60px;
+    height: 60px;
+    right: 20px;
+    top: 20px;
     border-radius: 50%;
     background: radial-gradient(
         circle at 30% 30%,
@@ -408,15 +408,24 @@ onMounted(() => {
         transparent
     );
     box-shadow: inset -2px -2px 4px rgba(0, 0, 0, 0.5);
-    animation: orbit-rotation linear infinite;
+    animation: planet-rotate 20s linear infinite;
+}
+
+@keyframes planet-rotate {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
 }
 
 .planet-ring {
     position: absolute;
-    width: 150%;
-    height: 30%;
-    top: 35%;
-    left: -25%;
+    width: 90px;
+    height: 25px;
+    right: 5px;
+    top: 37px;
     border-radius: 50%;
     border: 1px solid rgba(155, 135, 245, 0.3);
     transform: rotate(-30deg);
@@ -436,29 +445,6 @@ onMounted(() => {
         transparent
     );
     transform: rotate(10deg);
-}
-
-.cosmic-pulsar {
-    position: absolute;
-    border-radius: 50%;
-    background-color: #33c3f0;
-    box-shadow: 0 0 10px #33c3f0, 0 0 20px rgba(51, 195, 240, 0.5);
-    animation: pulsar-glow ease-in-out infinite;
-}
-
-.quantum-wave {
-    position: absolute;
-    width: 40px;
-    background: linear-gradient(
-        90deg,
-        transparent,
-        rgba(155, 135, 245, 0.1),
-        rgba(155, 135, 245, 0.3),
-        rgba(155, 135, 245, 0.1),
-        transparent
-    );
-    animation: quantum-wave ease-in-out infinite;
-    transform-origin: center center;
 }
 
 /* Thermal edge effect */
@@ -482,15 +468,10 @@ onMounted(() => {
     height: 20%;
     padding: 0.75rem;
     border-top: 1px solid rgba(155, 135, 245, 0.1);
-    background-color: rgba(
-        33,
-        92,
-        187,
-        0.9
-    ); /* Darker version of card background */
+    background-color: rgba(33, 92, 187, 0.9);
     display: flex;
     flex-direction: column;
-    justify-content: flex-end; /* Align to bottom for text above */
+    justify-content: flex-end;
 }
 
 /* Progress container wrapper with positioning context */
@@ -534,13 +515,13 @@ onMounted(() => {
     box-shadow: 0 0 10px rgba(239, 68, 68, 0.5);
 }
 
-/* Enhanced particle sparks for thermal effect */
-.particle-sparks {
+/* CSS-based spark effect */
+.spark-container {
     position: absolute;
     right: 0;
     top: 0;
     height: 100%;
-    width: 25px;
+    width: 20px;
     overflow: hidden;
 }
 
@@ -552,10 +533,34 @@ onMounted(() => {
     border-radius: 50%;
     box-shadow: 0 0 4px rgba(255, 200, 50, 0.6);
     animation: spark-float 2s infinite ease-out;
-    transform: translateZ(0); /* Hardware acceleration */
 }
 
-/* Hexagonal grid pattern overlay */
+.spark:nth-child(1) {
+    top: 30%;
+    right: 5px;
+}
+
+.spark:nth-child(2) {
+    top: 60%;
+    right: 10px;
+    animation-delay: 1s;
+}
+
+@keyframes spark-float {
+    0% {
+        transform: translateY(0) scale(0.8);
+        opacity: 0;
+    }
+    50% {
+        opacity: 1;
+    }
+    100% {
+        transform: translateY(-10px) scale(1.2);
+        opacity: 0;
+    }
+}
+
+/* Hexagonal grid pattern overlay - lightweight version */
 .flashsale-card::before {
     content: "";
     position: absolute;
@@ -574,86 +579,6 @@ onMounted(() => {
     pointer-events: none;
 }
 
-/* CRT scanline effect */
-.flashsale-card::after {
-    content: "";
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(
-        to bottom,
-        rgba(255, 255, 255, 0) 50%,
-        rgba(0, 0, 0, 0.05) 50%
-    );
-    background-size: 100% 4px;
-    pointer-events: none;
-    z-index: 5;
-    opacity: 0.05;
-}
-
-/* Animations */
-@keyframes price-pulse {
-    0% {
-        text-shadow: 0 0 5px rgba(155, 135, 245, 0.3);
-    }
-    100% {
-        text-shadow: 0 0 12px rgba(155, 135, 245, 0.7);
-    }
-}
-
-@keyframes orbit-rotation {
-    0% {
-        transform: rotate(0deg) translateX(5px) rotate(0deg);
-    }
-    100% {
-        transform: rotate(360deg) translateX(5px) rotate(-360deg);
-    }
-}
-
-@keyframes pulsar-glow {
-    0%,
-    100% {
-        transform: scale(0.8);
-        opacity: 0.5;
-    }
-    50% {
-        transform: scale(1.2);
-        opacity: 1;
-        box-shadow: 0 0 15px #33c3f0, 0 0 30px rgba(51, 195, 240, 0.5);
-    }
-}
-
-@keyframes quantum-wave {
-    0% {
-        opacity: 0.3;
-        transform: scaleY(0.7) rotate(10deg);
-    }
-    50% {
-        opacity: 0.6;
-        transform: scaleY(1) rotate(-5deg);
-    }
-    100% {
-        opacity: 0.3;
-        transform: scaleY(0.7) rotate(10deg);
-    }
-}
-
-@keyframes spark-float {
-    0% {
-        transform: translateY(0) scale(0.8);
-        opacity: 0;
-    }
-    50% {
-        opacity: 1;
-    }
-    100% {
-        transform: translateY(-10px) scale(1.2);
-        opacity: 0;
-    }
-}
-
 /* Media queries for responsive design */
 @media (max-width: 768px) {
     .left-section {
@@ -669,106 +594,28 @@ onMounted(() => {
         height: 60px;
     }
 
-    /* Hide some cosmic elements on mobile */
-    .cosmic-planet:nth-child(3),
-    .cosmic-planet:nth-child(4),
-    .cosmic-pulsar:nth-child(3) {
-        display: none;
+    .cosmic-planet {
+        width: 40px;
+        height: 40px;
+        right: 10px;
+        top: 10px;
     }
-
-    /* Increase scroll speed by 30% (handled in parent component) */
+    
+    .planet-ring {
+        width: 60px;
+        height: 16px;
+        right: 0;
+        top: 22px;
+    }
 }
 
-/* Additional hardware acceleration for smooth animations */
-.flashsale-card {
-    transform: translateZ(0);
-    backface-visibility: hidden;
-}
-
-.cosmic-planet,
-.cosmic-pulsar,
-.quantum-wave {
-    transform: translateZ(0);
-    will-change: transform, opacity;
-}
-
+/* Prevent animations for users who prefer reduced motion */
 @media (prefers-reduced-motion: reduce) {
-    /* Reduce motion for accessibility */
-    .progress-bar {
-        transition: width 2s linear;
+    .cosmic-planet {
+        animation: none;
     }
-
+    
     .spark {
-        animation: none;
-    }
-
-    .price-section {
-        animation: none;
-    }
-}
-
-/* Optimized animations with low impact */
-@keyframes price-pulse {
-    0% {
-        text-shadow: 0 0 5px rgba(155, 135, 245, 0.3);
-    }
-    100% {
-        text-shadow: 0 0 12px rgba(155, 135, 245, 0.7);
-    }
-}
-
-@keyframes spark-float {
-    0% {
-        transform: translateY(0) scale(0.8);
-        opacity: 0;
-    }
-    50% {
-        opacity: 1;
-    }
-    100% {
-        transform: translateY(-10px) scale(1.2);
-        opacity: 0;
-    }
-}
-
-/* Hardware acceleration hints */
-.flashsale-card {
-    will-change: transform;
-    transform: translateZ(0);
-    backface-visibility: hidden;
-}
-
-.cosmic-layer {
-    will-change: transform;
-}
-
-.progress-bar {
-    will-change: width;
-}
-
-/* Additional hardware acceleration for smooth animations */
-.progress-container {
-    transform: translateZ(0);
-}
-
-/* Media optimizations */
-@media (max-width: 768px) {
-    .spark:nth-child(even) {
-        display: none;
-    }
-}
-
-@media (prefers-reduced-motion: reduce) {
-    /* Reduce motion for accessibility */
-    .progress-bar {
-        transition: width 2s linear;
-    }
-
-    .spark {
-        animation: none;
-    }
-
-    .price-section {
         animation: none;
     }
 }
