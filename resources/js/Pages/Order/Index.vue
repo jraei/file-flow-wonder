@@ -147,6 +147,15 @@ const handleAccountDataUpdate = (data) => {
     validationErrorMessage.value = null;
 };
 
+const handleContactFromAccountUpdate = (contactInfo) => {
+    if (contactInfo && (contactInfo.email || contactInfo.phone)) {
+        contactData.value = {
+            ...contactData.value,
+            ...contactInfo
+        };
+    }
+};
+
 const openModal = async (data) => {
     if (!selectedService.value) {
         toast.error("Please select a service first");
@@ -293,6 +302,7 @@ const initPriceAnimations = () => {
                         :produk="produk"
                         :validation-error="validationErrorMessage"
                         @update:account-data="handleAccountDataUpdate"
+                        @update:contact-data="handleContactFromAccountUpdate"
                     />
                     <ServiceList
                         :services="layanans"
@@ -503,3 +513,5 @@ const initPriceAnimations = () => {
     transition-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 </style>
+
+</script>

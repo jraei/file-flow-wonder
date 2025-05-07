@@ -1,3 +1,4 @@
+
 <?php
 
 namespace App\Http\Middleware;
@@ -12,6 +13,7 @@ class EncryptCookies extends Middleware
      * @var array<int, string>
      */
     protected $except = [
-        //
+        // Don't except our saved account cookies - they should be encrypted
+        // by Laravel's built-in encryption middleware
     ];
 }
