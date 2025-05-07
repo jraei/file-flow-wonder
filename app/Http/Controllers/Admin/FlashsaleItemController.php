@@ -205,14 +205,14 @@ class FlashsaleItemController extends Controller
             'flashsale_event_id' => 'required|exists:flashsale_events,id',
             'layanan_ids' => 'required|array',
             'layanan_ids.*' => 'exists:layanans,id',
-            'discount_percentage' => 'required|numeric|between:1,100',
+            'markup_percentage' => 'required|numeric|between:1,100',
             'stok_tersedia' => 'nullable|numeric|min:1',
             'batas_user' => 'nullable|numeric|min:1',
             'status' => 'required|in:active,inactive',
         ]);
 
         $eventId = $validatedData['flashsale_event_id'];
-        $discountPercentage = $validatedData['discount_percentage'] / 100;
+        $markupPercentage = $validatedData['markup_percentage'] / 100;
 
         // Find existing items to avoid duplicates
         $existingItems = FlashsaleItem::where('flashsale_event_id', $eventId)
@@ -234,7 +234,7 @@ class FlashsaleItemController extends Controller
             if (!$layanan) continue;
 
             $hargaBeli = $layanan->harga_beli_idr ?: $layanan->harga_beli;
-            $hargaFlashsale = ceil($hargaBeli * (1 - $discountPercentage));
+            $hargaFlashsale = ceil($hargaBeli * (1 + $markupPercentage));
 
             // Ensure price is at least 1
             if ($hargaFlashsale < 1) $hargaFlashsale = 1;

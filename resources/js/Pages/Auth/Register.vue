@@ -1,6 +1,5 @@
-
 <script setup>
-import { ref, reactive } from 'vue';
+import { ref, reactive, watch } from "vue";
 import { Head, Link, useForm } from "@inertiajs/vue3";
 import CosmicAuthCard from "@/Components/Auth/CosmicAuthCard.vue";
 import CosmicFormField from "@/Components/Auth/CosmicFormField.vue";
@@ -11,70 +10,80 @@ const authCardRef = ref(null);
 const form = useForm({
     name: "",
     email: "",
+    username: "",
     phone_code: "+62", // Default country code for Indonesia
     phone: "",
     password: "",
     password_confirmation: "",
 });
 
+// make phone value reactive based on selected country code
+watch(
+    () => form.phone_code,
+    (value) => {
+        form.phone = value;
+    },
+    { immediate: true }
+);
+
 // Password strength indicator
 const passwordStrength = ref(0);
-const passwordFeedback = ref('');
+const passwordFeedback = ref("");
 const passwordStrengthClasses = reactive({
-    0: 'bg-gray-300 w-0',
-    1: 'bg-red-500 w-1/4',
-    2: 'bg-orange-500 w-2/4',
-    3: 'bg-yellow-500 w-3/4',
-    4: 'bg-green-500 w-full'
+    0: "bg-gray-300 w-0",
+    1: "bg-red-500 w-1/4",
+    2: "bg-orange-500 w-2/4",
+    3: "bg-yellow-500 w-3/4",
+    4: "bg-green-500 w-full",
 });
 
 const passwordStrengthText = reactive({
-    0: '',
-    1: 'Weak',
-    2: 'Fair',
-    3: 'Good',
-    4: 'Strong'
+    0: "",
+    1: "Weak",
+    2: "Fair",
+    3: "Good",
+    4: "Strong",
 });
 
 // Simple password strength checker
 function checkPasswordStrength(password) {
     if (!password) {
         passwordStrength.value = 0;
-        passwordFeedback.value = '';
+        passwordFeedback.value = "";
         return;
     }
-    
+
     let score = 0;
-    
+
     // Length check
     if (password.length >= 8) score++;
     else {
-        passwordFeedback.value = 'Password should be at least 8 characters';
+        passwordFeedback.value = "Password should be at least 8 characters";
         passwordStrength.value = Math.max(1, score);
         return;
     }
-    
+
     // Complexity checks
     if (/[A-Z]/.test(password)) score++;
     if (/[0-9]/.test(password)) score++;
     if (/[^A-Za-z0-9]/.test(password)) score++;
-    
+
     passwordStrength.value = score;
-    
+
     if (score < 3) {
-        passwordFeedback.value = 'Add uppercase, numbers or special characters';
+        passwordFeedback.value = "Add uppercase, numbers or special characters";
     } else {
-        passwordFeedback.value = '';
+        passwordFeedback.value = "";
     }
 }
 
 const submit = () => {
     // Add country code to phone
-    const formattedPhone = form.phone ? `${form.phone_code}${form.phone}` : '';
-    
+    const formattedPhone = form.phone ? `${form.phone_code}${form.phone}` : "";
+
     // Show quantum authentication processing effect
     authCardRef.value?.startProcessing();
-    
+
     form.post(route("register"), {
         onFinish: () => form.reset("password", "password_confirmation"),
         onSuccess: () => {
@@ -88,10 +97,11 @@ const submit = () => {
         data: {
             name: form.name,
             email: form.email,
+            username: form.username,
             phone: formattedPhone,
             password: form.password,
-            password_confirmation: form.password_confirmation
-        }
+            password_confirmation: form.password_confirmation,
+        },
     });
 };
 </script>
@@ -101,7 +111,7 @@ const submit = () => {
 
     <CosmicAuthCard
         ref="authCardRef"
-        title="Create Your" 
+        title="Create Your"
         subtitle="Join the cosmic community"
     >
         <form @submit.prevent="submit">
@@ -116,23 +126,34 @@ const submit = () => {
                     autofocus
                     autocomplete="name"
                 />
-                
+
                 <CosmicFormField
-                    id="email"
-                    type="email"
-                    label="Email"
-                    v-model="form.email"
-                    :error="form.errors.email"
+                    id="username"
+                    type="text"
+                    label="Username"
+                    v-model="form.username"
+                    :error="form.errors.username"
                     required
-                    autocomplete="email"
+                    autocomplete="username"
                 />
-                
+                <div class="col-span-1 sm:col-span-2">
+                    <CosmicFormField
+                        id="email"
+                        type="email"
+                        label="Email"
+                        v-model="form.email"
+                        :error="form.errors.email"
+                        required
+                        autocomplete="email"
+                    />
+                </div>
+
                 <CountrySelector
                     id="phone_code"
                     v-model="form.phone_code"
                     label="Country Code"
                 />
-                
+
                 <CosmicFormField
                     id="phone"
                     type="text"
@@ -141,7 +162,7 @@ const submit = () => {
                     :error="form.errors.phone"
                     autocomplete="tel"
                 />
-                
+
                 <div class="col-span-1 sm:col-span-2">
                     <CosmicFormField
                         id="password"
@@ -154,24 +175,33 @@ const submit = () => {
                         :showPasswordToggle="true"
                         @update:modelValue="checkPasswordStrength"
                     />
-                    
+
                     <!-- Password strength meter -->
                     <div v-if="form.password" class="mt-1">
-                        <div class="w-full h-1.5 bg-gray-700 rounded-full overflow-hidden">
-                            <div 
-                                class="h-full transition-all duration-300" 
-                                :class="passwordStrengthClasses[passwordStrength]"
+                        <div
+                            class="w-full h-1.5 bg-gray-700 rounded-full overflow-hidden"
+                        >
+                            <div
+                                class="h-full transition-all duration-300"
+                                :class="
+                                    passwordStrengthClasses[passwordStrength]
+                                "
                             ></div>
                         </div>
                         <div class="flex justify-between mt-1">
-                            <p class="text-xs text-gray-400" v-if="passwordFeedback">{{ passwordFeedback }}</p>
-                            <p 
-                                class="text-xs" 
+                            <p
+                                class="text-xs text-gray-400"
+                                v-if="passwordFeedback"
+                            >
+                                {{ passwordFeedback }}
+                            </p>
+                            <p
+                                class="text-xs"
                                 :class="{
                                     'text-red-500': passwordStrength === 1,
                                     'text-orange-500': passwordStrength === 2,
                                     'text-yellow-500': passwordStrength === 3,
-                                    'text-green-500': passwordStrength === 4
+                                    'text-green-500': passwordStrength === 4,
                                 }"
                                 v-if="passwordStrength > 0"
                             >
@@ -180,7 +210,7 @@ const submit = () => {
                         </div>
                     </div>
                 </div>
-                
+
                 <div class="col-span-1 sm:col-span-2">
                     <CosmicFormField
                         id="password_confirmation"
@@ -220,7 +250,7 @@ const submit = () => {
 .cosmic-button {
     position: relative;
     overflow: hidden;
-    background: linear-gradient(135deg, #9b87f5 0%, #33C3F0 100%);
+    background: linear-gradient(135deg, #9b87f5 0%, #33c3f0 100%);
     transition: all 0.3s ease;
 }
 

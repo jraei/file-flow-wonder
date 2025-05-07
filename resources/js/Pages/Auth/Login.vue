@@ -1,6 +1,5 @@
-
 <script setup>
-import { ref, reactive } from 'vue';
+import { ref, reactive } from "vue";
 import { Head, Link, useForm } from "@inertiajs/vue3";
 import CosmicAuthCard from "@/Components/Auth/CosmicAuthCard.vue";
 import CosmicFormField from "@/Components/Auth/CosmicFormField.vue";
@@ -26,7 +25,7 @@ const form = useForm({
 const submit = () => {
     // Show quantum authentication processing effect
     authCardRef.value?.startProcessing();
-    
+
     form.post(route("login"), {
         onFinish: () => form.reset("password"),
         onSuccess: () => {
@@ -36,7 +35,7 @@ const submit = () => {
         onError: () => {
             // Show failure animation
             authCardRef.value?.showFailure();
-        }
+        },
     });
 };
 </script>
@@ -44,9 +43,9 @@ const submit = () => {
 <template>
     <Head title="Log in" />
 
-    <CosmicAuthCard 
+    <CosmicAuthCard
         ref="authCardRef"
-        title="Log in to" 
+        title="Log in to"
         subtitle="Access your cosmic journey"
     >
         <div v-if="status" class="mb-4 text-sm font-medium text-green-600">
@@ -105,12 +104,12 @@ const submit = () => {
                     <div class="cosmic-button-stars"></div>
                 </PrimaryButton>
             </div>
-            
+
             <div class="mt-6 text-center">
                 <span class="text-gray-400">Don't have an account?</span>
                 <Link
                     :href="route('register')"
-                    class="ml-1 text-primary hover:text-primary-hover underline transition-colors"
+                    class="ml-1 underline transition-colors text-primary hover:text-primary-hover"
                 >
                     Register
                 </Link>
@@ -121,14 +120,14 @@ const submit = () => {
 
 <style scoped>
 .cosmic-checkbox:checked {
-    background-color: theme('colors.primary');
-    border-color: theme('colors.primary');
+    background-color: #9b87f5;
+    border-color: #9b87f5;
 }
 
 .cosmic-button {
     position: relative;
     overflow: hidden;
-    background: linear-gradient(135deg, #9b87f5 0%, #33C3F0 100%);
+    background: linear-gradient(135deg, #9b87f5 0%, #33c3f0 100%);
     transition: all 0.3s ease;
 }
 

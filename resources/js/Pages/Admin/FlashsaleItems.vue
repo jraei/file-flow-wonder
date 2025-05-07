@@ -91,7 +91,7 @@ const showBulkAssignModal = ref(false);
 const bulkAssignData = ref({
     flashsale_event_id: props.selectedEventId || "",
     layanan_ids: [],
-    discount_percentage: 10,
+    markup_percentage: 10,
     stok_tersedia: null,
     batas_user: null,
     status: "active",
@@ -244,7 +244,7 @@ const openBulkAssignModal = () => {
     bulkAssignData.value = {
         flashsale_event_id: selectedEvent.value,
         layanan_ids: [],
-        discount_percentage: 10,
+        markup_percentage: 10,
         stok_tersedia: null,
         batas_user: null,
         status: "active",
@@ -378,8 +378,8 @@ const filteredServices = computed(() => {
     const query = serviceSearchQuery.value.toLowerCase();
     return availableServices.value.filter((service) => {
         return (
-            service.name.toLowerCase().includes(query) ||
-            service.produk?.name?.toLowerCase().includes(query)
+            service.nama_layanan.toLowerCase().includes(query) ||
+            service.produk?.nama?.toLowerCase().includes(query)
         );
     });
 });
@@ -401,17 +401,17 @@ const calculateDiscount = (original, sale) => {
 };
 
 // Calculate flash sale price based on percentage
-const calculateDiscountedPrice = (service, percentage) => {
+const calculateMarkupPrice = (service, percentage) => {
     const price = service.harga_beli_idr || service.harga_beli;
     if (!price) return 0;
 
-    const discounted = price * (1 - percentage / 100);
-    return Math.max(1, Math.floor(discounted));
+    const markup = price * (1 + percentage / 100);
+    return Math.max(1, Math.ceil(markup));
 };
 
 // Reset all discounted prices when percentage changes
 watch(
-    () => bulkAssignData.value.discount_percentage,
+    () => bulkAssignData.value.markup_percentage,
     () => {
         // Recalculate would happen in the template
     }
@@ -844,22 +844,22 @@ watch(
                     <!-- Discount Settings -->
                     <div class="p-4 space-y-2 rounded-lg bg-dark-lighter">
                         <h4 class="mb-2 text-sm font-bold text-gray-300">
-                            Discount Settings
+                            Markup Settings
                         </h4>
 
                         <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
                             <!-- Discount Percentage -->
                             <div>
                                 <label
-                                    for="discount_percentage"
+                                    for="markup_percentage"
                                     class="block mb-1 text-sm font-medium text-gray-300"
-                                    >Discount Percentage</label
+                                    >Markup Percentage</label
                                 >
                                 <div class="relative">
                                     <input
-                                        id="discount_percentage"
+                                        id="markup_percentage"
                                         v-model="
-                                            bulkAssignData.discount_percentage
+                                            bulkAssignData.markup_percentage
                                         "
                                         type="number"
                                         min="1"
@@ -996,11 +996,11 @@ watch(
                                 <div class="flex items-start justify-between">
                                     <div>
                                         <p class="font-medium text-white">
-                                            {{ service.name }}
+                                            {{ service.nama_layanan }}
                                         </p>
                                         <p class="text-xs text-gray-400">
                                             {{
-                                                service.produk?.name ||
+                                                service.produk?.nama ||
                                                 "No product"
                                             }}
                                         </p>
@@ -1030,9 +1030,9 @@ watch(
                                                 class="font-medium text-green-400"
                                             >
                                                 {{
-                                                    calculateDiscountedPrice(
+                                                    calculateMarkupPrice(
                                                         service,
-                                                        bulkAssignData.discount_percentage
+                                                        bulkAssignData.markup_percentage
                                                     )
                                                 }}
                                             </span>
@@ -1073,9 +1073,8 @@ watch(
                                     <span
                                         class="px-2 py-1 text-xs rounded-full bg-primary/20 text-primary"
                                     >
-                                        {{
-                                            bulkAssignData.discount_percentage
-                                        }}% off
+                                        {{ bulkAssignData.markup_percentage }}%
+                                        Markup
                                     </span>
                                 </div>
                             </div>
