@@ -12,7 +12,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 
 const props = defineProps({
   theme: {
@@ -33,7 +33,7 @@ const isLowPowerDevice = ref(navigator.hardwareConcurrency
 
 // Compute how many stars to show based on density and device
 const starCount = computed(() => {
-  const base = isMobile.value ? 5 : isLowPowerDevice.value ? 8 : 12;
+  const base = isMobile.value ? 8 : isLowPowerDevice.value ? 12 : 20;
   return Math.floor(base * props.density);
 });
 

@@ -99,8 +99,13 @@ Route::prefix('admin')->middleware(['auth', 'admin'])->group(function () {
     // Deposit Management - using resource controller except edit and update
     Route::resource('/deposits', DepositController::class)->except(['edit', 'update']);
 
-    // Placeholder routes for all other admin pages
+    // Category Management with Moogold Integration
     Route::resource('/categories', KategoriController::class);
+    Route::post('/categories/{id}/link-moogold', [KategoriController::class, 'linkMoogold'])->name('categories.link-moogold');
+    Route::get('/categories/{id}/available-products', [KategoriController::class, 'getAvailableProducts'])->name('categories.available-products');
+    Route::post('/categories/{id}/bulk-assign', [KategoriController::class, 'bulkAssign'])->name('categories.bulk-assign');
+
+    // Placeholder routes for all other admin pages
     Route::resource('/products', ProdukController::class);
     Route::post('/services/getService/{provider}', [ProdukController::class, 'getProductsByProvider'])->name('products.getProductsByProvider');
 

@@ -1,3 +1,4 @@
+
 <script setup>
 import { ref, computed, getCurrentInstance } from "vue";
 import { Head, router } from "@inertiajs/vue3";
@@ -6,12 +7,15 @@ import DataTable from "@/Components/DataTable.vue";
 import Modal from "@/Components/Modal.vue";
 import Dropdown from "@/Components/Dropdown.vue";
 import Pagination from "@/Components/Pagination.vue";
+import MoogoldCategoryModal from "@/Components/Admin/Category/MoogoldCategoryModal.vue";
+import BulkAssignModal from "@/Components/Admin/Category/BulkAssignModal.vue";
 import axios from "axios";
 
 const props = defineProps({
     categories: Object,
     errors: Object,
     filters: Object,
+    staticCategories: Object,
 });
 
 const { proxy } = getCurrentInstance();
@@ -29,6 +33,20 @@ const categories = computed(() => props.categories.data || []);
 const columns = [
     { key: "id", label: "ID" },
     { key: "kategori_name", label: "Kategori" },
+    { 
+        key: "kode_kategori", 
+        label: "Moogold Code",
+        format: (value, item) => {
+            if (!value) return '<span class="text-gray-400 text-xs">Not linked</span>';
+            
+            const categoryName = props.staticCategories && props.staticCategories[value] 
+                ? props.staticCategories[value]
+                : 'Unknown';
+                
+            return `<span class="px-2 py-0.5 rounded-full text-xs bg-orange-500/20 text-orange-400 border border-orange-500/30">${value}</span>
+                   <span class="ml-1 text-xs text-gray-300">${categoryName}</span>`;
+        }
+    },
     {
         key: "status",
         label: "Status",
@@ -89,6 +107,20 @@ const handleDelete = (item) => {
     // In a real app, you would show a confirmation dialog before deleting
 };
 
+// Moogold linking modal
+const showMoogoldModal = ref(false);
+const handleLinkMoogold = (item) => {
+    selectedCategory.value = item;
+    showMoogoldModal.value = true;
+};
+
+// Bulk assign modal
+const showBulkAssignModal = ref(false);
+const handleBulkAssign = (item) => {
+    selectedCategory.value = item;
+    showBulkAssignModal.value = true;
+};
+
 // Form modal states
 const showForm = ref(false);
 const formMode = ref("add"); // 'add' or 'edit'
@@ -119,6 +151,15 @@ const closeForm = () => {
 const closeViewModal = () => {
     showViewModal.value = false;
     selectedCategory.value = null;
+};
+
+// Close modals and optionally refresh data
+const handleModalClose = (refresh = false) => {
+    showMoogoldModal.value = false;
+    showBulkAssignModal.value = false;
+    if (refresh) {
+        router.reload({ only: ['categories'] });
+    }
 };
 
 const saveCategory = () => {
@@ -244,6 +285,25 @@ const saveCategory = () => {
                                     class="block w-full px-4 py-2 text-sm text-left text-gray-300 hover:bg-dark-lighter hover:text-red-400"
                                 >
                                     Delete
+                                </button>
+                                <hr class="my-1 border-gray-700" />
+                                <button
+                                    @click="handleLinkMoogold(item)"
+                                    class="block w-full px-4 py-2 text-sm text-left text-gray-300 hover:bg-dark-lighter hover:text-orange-400"
+                                >
+                                    <span class="flex items-center space-x-1">
+                                        <span>🔗</span>
+                                        <span>Link Moogold</span>
+                                    </span>
+                                </button>
+                                <button
+                                    @click="handleBulkAssign(item)"
+                                    class="block w-full px-4 py-2 text-sm text-left text-gray-300 hover:bg-dark-lighter hover:text-blue-400"
+                                >
+                                    <span class="flex items-center space-x-1">
+                                        <span>📦</span>
+                                        <span>Manage Products</span>
+                                    </span>
                                 </button>
                             </div>
                         </template>
@@ -452,11 +512,49 @@ const saveCategory = () => {
                                 {{ selectedCategory.product_count || 0 }}
                             </p>
                         </div>
+                        
+                        <!-- Moogold Category Info -->
+                        <div class="p-3 rounded-lg bg-dark-lighter col-span-1 sm:col-span-2">
+                            <p class="text-sm text-gray-400">Moogold Category</p>
+                            <div class="mt-1">
+                                <div v-if="selectedCategory.kode_kategori" class="flex items-center space-x-2">
+                                    <span class="px-2 py-0.5 bg-orange-500/20 text-orange-400 text-xs rounded-full border border-orange-500/30 nebula-pulse">
+                                        {{ selectedCategory.kode_kategori }}
+                                    </span>
+                                    <span class="text-sm text-white">
+                                        {{ staticCategories && staticCategories[selectedCategory.kode_kategori] 
+                                            ? staticCategories[selectedCategory.kode_kategori] 
+                                            : 'Unknown Category' }}
+                                    </span>
+                                </div>
+                                <p v-else class="text-sm text-gray-400">
+                                    Not linked to any Moogold category
+                                </p>
+                            </div>
+                        </div>
                     </div>
 
                     <div
                         class="flex flex-col justify-end pt-3 space-y-2 sm:flex-row sm:pt-4 sm:space-y-0 sm:space-x-3"
                     >
+                        <button
+                            @click="handleBulkAssign(selectedCategory)"
+                            class="w-full px-4 py-2 text-white transition-all duration-200 rounded-lg shadow-lg sm:w-auto bg-blue-600 hover:bg-blue-700"
+                        >
+                            <span class="flex items-center justify-center space-x-1">
+                                <span>📦</span>
+                                <span>Manage Products</span>
+                            </span>
+                        </button>
+                        <button
+                            @click="handleLinkMoogold(selectedCategory)"
+                            class="w-full px-4 py-2 text-white transition-all duration-200 rounded-lg shadow-lg sm:w-auto bg-orange-600 hover:bg-orange-700"
+                        >
+                            <span class="flex items-center justify-center space-x-1">
+                                <span>🔗</span>
+                                <span>Link Moogold</span>
+                            </span>
+                        </button>
                         <button
                             @click="openEditForm(selectedCategory)"
                             class="w-full px-4 py-2 text-white transition-all duration-200 rounded-lg shadow-lg sm:w-auto bg-primary hover:bg-primary-hover hover:shadow-glow-primary"
@@ -473,5 +571,43 @@ const saveCategory = () => {
                 </div>
             </div>
         </Modal>
+
+        <!-- Moogold Link Modal -->
+        <MoogoldCategoryModal
+            :show="showMoogoldModal"
+            :category="selectedCategory"
+            :staticCategories="staticCategories"
+            @close="handleModalClose"
+        />
+
+        <!-- Bulk Assign Modal -->
+        <BulkAssignModal
+            :show="showBulkAssignModal"
+            :category="selectedCategory"
+            @close="handleModalClose"
+        />
     </AdminLayout>
 </template>
+
+<style scoped>
+/* Pulsing nebula borders */
+.nebula-pulse {
+    animation: nebula-border-pulse 3s infinite alternate;
+}
+
+@keyframes nebula-border-pulse {
+    0% {
+        box-shadow: 0 0 5px rgba(249, 115, 22, 0.3);
+    }
+    100% {
+        box-shadow: 0 0 15px rgba(249, 115, 22, 0.7);
+    }
+}
+
+/* Prevent animations for users who prefer reduced motion */
+@media (prefers-reduced-motion: reduce) {
+    .nebula-pulse {
+        animation: none;
+    }
+}
+</style>
