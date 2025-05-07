@@ -116,7 +116,7 @@ onUnmounted(() => {
         </div>
 
         <div
-            class="relative z-10 p-4 mx-auto max-w-7xl bg-gradient-to-r from-primary/20 to-primary/10 backdrop-blur rounded-2xl"
+            class="relative z-10 p-4 mx-auto max-w-7xl backdrop-blur rounded-2xl"
         >
             <!-- Flash Sale Header -->
             <FlashsaleHeader

@@ -128,7 +128,7 @@ onMounted(() => {
         <!-- User Limit Badge -->
         <div v-if="flashItem.batas_user" class="absolute z-20 top-2 right-2">
             <div
-                class="px-2 py-1 text-xs text-white border rounded-full bg-primary border-primary"
+                class="px-2 py-1 text-xs text-white border rounded-full bg-primary/10 border-primary/50"
             >
                 <span class="flex items-center">
                     <svg
@@ -216,7 +216,6 @@ onMounted(() => {
                 </div>
 
                 <div class="thermal-edge"></div>
-                -->
             </div>
         </div>
 
@@ -258,9 +257,9 @@ onMounted(() => {
     position: relative;
     overflow: hidden;
     transition: all 0.3s ease;
-    border: 1px solid rgba(155, 135, 245, 0.5);
     border-radius: 1rem;
-    background: rgba(33, 92, 187, 1); /* Deep space blue */
+    border: 1px solid rgba(51, 195, 240, 0.2);
+    background: rgba(28, 41, 83, 1);
     aspect-ratio: 5/3;
     height: 240px;
     max-width: 100%;
@@ -397,8 +396,8 @@ onMounted(() => {
     position: absolute;
     width: 60px;
     height: 60px;
-    right: 20px;
-    top: 20px;
+    right: 40px;
+    top: 60px;
     border-radius: 50%;
     background: radial-gradient(
         circle at 30% 30%,
@@ -423,8 +422,8 @@ onMounted(() => {
     position: absolute;
     width: 90px;
     height: 25px;
-    right: 5px;
-    top: 37px;
+    right: 25px;
+    top: 77px;
     border-radius: 50%;
     border: 1px solid rgba(155, 135, 245, 0.3);
     transform: rotate(-30deg);
@@ -467,7 +466,7 @@ onMounted(() => {
     height: 20%;
     padding: 0.75rem;
     border-top: 1px solid rgba(155, 135, 245, 0.1);
-    background-color: rgba(33, 92, 187, 0.9);
+    background-color: rgba(26, 40, 78, 1);
     display: flex;
     flex-direction: column;
     justify-content: flex-end;
@@ -596,15 +595,15 @@ onMounted(() => {
     .cosmic-planet {
         width: 40px;
         height: 40px;
-        right: 10px;
-        top: 10px;
+        right: 30px;
+        top: 60px;
     }
 
     .planet-ring {
         width: 60px;
         height: 16px;
-        right: 0;
-        top: 22px;
+        right: 20px;
+        top: 72px;
     }
 }
 

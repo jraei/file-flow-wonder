@@ -1,4 +1,3 @@
-
 <script setup>
 import { ref, computed, getCurrentInstance } from "vue";
 import { Head, router } from "@inertiajs/vue3";
@@ -33,19 +32,21 @@ const categories = computed(() => props.categories.data || []);
 const columns = [
     { key: "id", label: "ID" },
     { key: "kategori_name", label: "Kategori" },
-    { 
-        key: "kode_kategori", 
+    {
+        key: "kode_kategori",
         label: "Moogold Code",
         format: (value, item) => {
-            if (!value) return '<span class="text-gray-400 text-xs">Not linked</span>';
-            
-            const categoryName = props.staticCategories && props.staticCategories[value] 
-                ? props.staticCategories[value]
-                : 'Unknown';
-                
+            if (!value)
+                return '<span class="text-xs text-gray-400">Not linked</span>';
+
+            const categoryName =
+                props.staticCategories && props.staticCategories[value]
+                    ? props.staticCategories[value]
+                    : "Unknown";
+
             return `<span class="px-2 py-0.5 rounded-full text-xs bg-orange-500/20 text-orange-400 border border-orange-500/30">${value}</span>
                    <span class="ml-1 text-xs text-gray-300">${categoryName}</span>`;
-        }
+        },
     },
     {
         key: "status",
@@ -158,7 +159,7 @@ const handleModalClose = (refresh = false) => {
     showMoogoldModal.value = false;
     showBulkAssignModal.value = false;
     if (refresh) {
-        router.reload({ only: ['categories'] });
+        router.reload({ only: ["categories"] });
     }
 };
 
@@ -512,19 +513,36 @@ const saveCategory = () => {
                                 {{ selectedCategory.product_count || 0 }}
                             </p>
                         </div>
-                        
+
                         <!-- Moogold Category Info -->
-                        <div class="p-3 rounded-lg bg-dark-lighter col-span-1 sm:col-span-2">
-                            <p class="text-sm text-gray-400">Moogold Category</p>
+                        <div
+                            class="col-span-1 p-3 rounded-lg bg-dark-lighter sm:col-span-2"
+                        >
+                            <p class="text-sm text-gray-400">
+                                Moogold Category
+                            </p>
                             <div class="mt-1">
-                                <div v-if="selectedCategory.kode_kategori" class="flex items-center space-x-2">
-                                    <span class="px-2 py-0.5 bg-orange-500/20 text-orange-400 text-xs rounded-full border border-orange-500/30 nebula-pulse">
+                                <div
+                                    v-if="selectedCategory.kode_kategori"
+                                    class="flex items-center space-x-2"
+                                >
+                                    <span
+                                        class="px-2 py-0.5 bg-orange-500/20 text-orange-400 text-xs rounded-full border border-orange-500/30 nebula-pulse"
+                                    >
                                         {{ selectedCategory.kode_kategori }}
                                     </span>
                                     <span class="text-sm text-white">
-                                        {{ staticCategories && staticCategories[selectedCategory.kode_kategori] 
-                                            ? staticCategories[selectedCategory.kode_kategori] 
-                                            : 'Unknown Category' }}
+                                        {{
+                                            staticCategories &&
+                                            staticCategories[
+                                                selectedCategory.kode_kategori
+                                            ]
+                                                ? staticCategories[
+                                                      selectedCategory
+                                                          .kode_kategori
+                                                  ]
+                                                : "Unknown Category"
+                                        }}
                                     </span>
                                 </div>
                                 <p v-else class="text-sm text-gray-400">
@@ -539,18 +557,22 @@ const saveCategory = () => {
                     >
                         <button
                             @click="handleBulkAssign(selectedCategory)"
-                            class="w-full px-4 py-2 text-white transition-all duration-200 rounded-lg shadow-lg sm:w-auto bg-blue-600 hover:bg-blue-700"
+                            class="w-full px-4 py-2 text-white transition-all duration-200 bg-blue-600 rounded-lg shadow-lg sm:w-auto hover:bg-blue-700"
                         >
-                            <span class="flex items-center justify-center space-x-1">
+                            <span
+                                class="flex items-center justify-center space-x-1"
+                            >
                                 <span>📦</span>
                                 <span>Manage Products</span>
                             </span>
                         </button>
                         <button
                             @click="handleLinkMoogold(selectedCategory)"
-                            class="w-full px-4 py-2 text-white transition-all duration-200 rounded-lg shadow-lg sm:w-auto bg-orange-600 hover:bg-orange-700"
+                            class="w-full px-4 py-2 text-white transition-all duration-200 bg-orange-600 rounded-lg shadow-lg sm:w-auto hover:bg-orange-700"
                         >
-                            <span class="flex items-center justify-center space-x-1">
+                            <span
+                                class="flex items-center justify-center space-x-1"
+                            >
                                 <span>🔗</span>
                                 <span>Link Moogold</span>
                             </span>

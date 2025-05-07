@@ -1,4 +1,3 @@
-
 <?php
 
 namespace App\Http\Controllers\Admin;
@@ -157,18 +156,18 @@ class KategoriController extends Controller
     {
         $search = $request->input('search', '');
         $category = Kategori::findOrFail($id);
-        
+
         // Get products with pagination
         $query = Produk::where('status', 'active');
-        
+
         // Apply search if provided
         if ($search) {
             $query->where('nama', 'like', "%{$search}%");
         }
-        
+
         // Paginate results
         $products = $query->with('kategori')->paginate(20)->withQueryString();
-        
+
         return response()->json([
             'products' => $products,
             'category' => $category
@@ -186,22 +185,22 @@ class KategoriController extends Controller
         ]);
 
         $kategori = Kategori::findOrFail($id);
-        
+
         // Use transaction to ensure data integrity
         \DB::beginTransaction();
         try {
             Produk::whereIn('id', $validatedData['product_ids'])
                 ->update(['kategori_id' => $id]);
-            
+
             \DB::commit();
-            
+
             return response()->json([
                 'message' => count($validatedData['product_ids']) . ' products have been assigned to this category.',
                 'category' => $kategori
             ]);
         } catch (\Exception $e) {
             \DB::rollBack();
-            
+
             return response()->json([
                 'message' => 'Failed to assign products: ' . $e->getMessage()
             ], 500);
