@@ -1,104 +1,29 @@
-<script setup>
-import { ref } from "vue";
-import { Head } from "@inertiajs/vue3";
-import AdminLayout from "@/Layouts/AdminLayout.vue";
 
-// Mock data for charts and statistics
-// In a real application, this would come from the backend
-const stats = ref({
-    users: {
-        total: 1250,
-        growthPercent: 12.5,
-        isPositive: true,
-    },
-    revenue: {
-        total: 18500,
-        currency: "USD",
-        growthPercent: 8.2,
-        isPositive: true,
-    },
-    orders: {
-        total: 3784,
-        growthPercent: -2.4,
-        isPositive: false,
-    },
-    products: {
-        total: 152,
-        growthPercent: 5.1,
-        isPositive: true,
-    },
+<script setup>
+import { ref, computed, onMounted } from "vue";
+import { Head, usePage, router } from "@inertiajs/vue3";
+import AdminLayout from "@/Layouts/AdminLayout.vue";
+import { ChartArea, ChartPie, ArrowUp, ArrowDown, FileExcel, Calendar, Loader } from "lucide-vue-next";
+
+// Import chart libraries
+import { Line } from 'vue-chartjs';
+import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler, ArcElement } from 'chart.js';
+import { Doughnut } from 'vue-chartjs';
+
+// Register ChartJS components
+ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler, ArcElement);
+
+// Get data from props
+const props = defineProps({
+    metrics: Object,
+    charts: Object,
+    tables: Object,
+    period: String
 });
 
-const recentTransactions = ref([
-    {
-        id: "TX-1234",
-        user: "John Doe",
-        amount: 25.99,
-        status: "completed",
-        date: "2023-09-15",
-        game: "Mobile Legends",
-    },
-    {
-        id: "TX-1235",
-        user: "Jane Smith",
-        amount: 49.99,
-        status: "pending",
-        date: "2023-09-15",
-        game: "Free Fire",
-    },
-    {
-        id: "TX-1236",
-        user: "Robert Brown",
-        amount: 15.0,
-        status: "completed",
-        date: "2023-09-14",
-        game: "PUBG Mobile",
-    },
-    {
-        id: "TX-1237",
-        user: "Alice Johnson",
-        amount: 100.0,
-        status: "failed",
-        date: "2023-09-14",
-        game: "Genshin Impact",
-    },
-    {
-        id: "TX-1238",
-        user: "Chris Wilson",
-        amount: 30.5,
-        status: "completed",
-        date: "2023-09-13",
-        game: "Mobile Legends",
-    },
-]);
-
-const topProducts = ref([
-    {
-        id: 1,
-        name: "Mobile Legends",
-        sales: 1280,
-        revenue: 15360,
-        growth: 12.4,
-    },
-    { id: 2, name: "Free Fire", sales: 980, revenue: 11760, growth: 8.1 },
-    { id: 3, name: "PUBG Mobile", sales: 820, revenue: 9840, growth: 5.7 },
-    { id: 4, name: "Genshin Impact", sales: 650, revenue: 7800, growth: 10.2 },
-    { id: 5, name: "Valorant", sales: 520, revenue: 6240, growth: -2.3 },
-]);
-
-// Helper function for status styling
-const getStatusClass = (status) => {
-    switch (status) {
-        case "completed":
-            return "bg-green-500/20 text-green-400";
-        case "pending":
-            return "bg-yellow-500/20 text-yellow-400";
-        case "failed":
-            return "bg-red-500/20 text-red-400";
-        default:
-            return "bg-gray-500/20 text-gray-400";
-    }
-};
+// Reactive state
+const isLoading = ref(false);
+const selectedPeriod = ref(props.period || 'week');
 
 // Format currency
 const formatCurrency = (value) => {
@@ -107,17 +32,236 @@ const formatCurrency = (value) => {
         currency: "USD",
     }).format(value);
 };
+
+// Line chart configuration
+const revenueChartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    scales: {
+        y: {
+            ticks: {
+                color: '#F1F0FB' // Soft Gray
+            },
+            grid: {
+                color: '#2226'
+            }
+        },
+        x: {
+            ticks: {
+                color: '#F1F0FB' // Soft Gray
+            },
+            grid: {
+                color: '#2226'
+            }
+        }
+    },
+    plugins: {
+        tooltip: {
+            mode: 'index',
+            intersect: false
+        },
+        legend: {
+            display: true,
+            position: 'top',
+            labels: {
+                color: '#F1F0FB' // Soft Gray
+            }
+        }
+    },
+    interaction: {
+        intersect: false
+    },
+    elements: {
+        line: {
+            tension: 0.4
+        },
+        point: {
+            radius: 4,
+            hoverRadius: 6,
+            borderWidth: 2,
+            backgroundColor: '#1F2937' // Dark space
+        }
+    }
+};
+
+// Doughnut chart configuration
+const pieChartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+        legend: {
+            position: 'top',
+            labels: {
+                color: '#F1F0FB', // Soft Gray
+                padding: 16
+            }
+        }
+    },
+    cutout: '60%',
+    animation: {
+        animateRotate: true,
+        animateScale: true
+    }
+};
+
+// Helper function for status styling
+const getStatusClass = (status) => {
+    switch (status) {
+        case "completed":
+            return "bg-green-500/20 text-green-400";
+        case "pending":
+            return "bg-yellow-500/20 text-yellow-400";
+        case "processing":
+            return "bg-blue-500/20 text-blue-400";
+        case "failed":
+            return "bg-red-500/20 text-red-400";
+        case "cancelled":
+            return "bg-gray-500/20 text-gray-400";
+        default:
+            return "bg-gray-500/20 text-gray-400";
+    }
+};
+
+// Handle period change
+const changePeriod = (period) => {
+    if (selectedPeriod.value === period) return;
+    
+    isLoading.value = true;
+    selectedPeriod.value = period;
+    
+    router.visit(route('admin.dashboard', { period }), {
+        preserveScroll: true,
+        onSuccess: () => {
+            isLoading.value = false;
+        }
+    });
+};
+
+// Handle data export
+const exportData = (type) => {
+    const endpoint = route('admin.dashboard.export', {
+        period: selectedPeriod.value,
+        type: type // 'excel', 'csv', 'pdf'
+    });
+    
+    window.open(endpoint, '_blank');
+};
+
+// Cosmic particle effect for chart
+const initCosmicParticles = () => {
+    const canvas = document.getElementById('cosmicParticles');
+    if (!canvas) return;
+    
+    const ctx = canvas.getContext('2d');
+    const particles = [];
+    
+    // Configure canvas
+    canvas.width = canvas.offsetWidth;
+    canvas.height = canvas.offsetHeight;
+    
+    // Create particles
+    for (let i = 0; i < 50; i++) {
+        particles.push({
+            x: Math.random() * canvas.width,
+            y: Math.random() * canvas.height,
+            radius: Math.random() * 2 + 0.5,
+            color: `rgba(155, 135, 245, ${Math.random() * 0.5 + 0.25})`,
+            vx: Math.random() * 0.5 - 0.25,
+            vy: Math.random() * 0.5 - 0.25
+        });
+    }
+    
+    // Animation function
+    const animate = () => {
+        requestAnimationFrame(animate);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        particles.forEach(particle => {
+            // Move particle
+            particle.x += particle.vx;
+            particle.y += particle.vy;
+            
+            // Wrap around edges
+            if (particle.x < 0) particle.x = canvas.width;
+            if (particle.x > canvas.width) particle.x = 0;
+            if (particle.y < 0) particle.y = canvas.height;
+            if (particle.y > canvas.height) particle.y = 0;
+            
+            // Draw particle
+            ctx.beginPath();
+            ctx.arc(particle.x, particle.y, particle.radius, 0, Math.PI * 2);
+            ctx.fillStyle = particle.color;
+            ctx.fill();
+        });
+    };
+    
+    // Start animation
+    animate();
+    
+    // Handle resize
+    window.addEventListener('resize', () => {
+        canvas.width = canvas.offsetWidth;
+        canvas.height = canvas.offsetHeight;
+    });
+};
+
+// Initialize animation on component mount
+onMounted(() => {
+    setTimeout(initCosmicParticles, 500);
+});
 </script>
 
 <template>
     <Head title="Admin Dashboard" />
 
     <AdminLayout title="Dashboard">
+        <template #actions>
+            <div class="flex items-center gap-4">
+                <!-- Period Selector -->
+                <div class="flex bg-dark-card border border-gray-700 rounded-lg overflow-hidden">
+                    <button 
+                        v-for="period in ['day', 'week', 'month', 'year']" 
+                        :key="period"
+                        @click="changePeriod(period)"
+                        :class="[
+                            'px-3 py-2 text-sm font-medium transition-all duration-300',
+                            selectedPeriod === period 
+                                ? 'bg-primary/20 text-primary border-b-2 border-primary'
+                                : 'text-gray-400 hover:text-white'
+                        ]"
+                    >
+                        <Calendar class="inline-block w-4 h-4 mr-1" />
+                        {{ period.charAt(0).toUpperCase() + period.slice(1) }}
+                    </button>
+                </div>
+
+                <!-- Export Button -->
+                <div class="relative" x-data="{ open: false }">
+                    <button 
+                        @click="exportData('excel')"
+                        class="flex items-center px-4 py-2 text-sm font-medium text-white bg-primary/20 border border-primary/30 rounded-lg hover:bg-primary/30 transition-all duration-300"
+                    >
+                        <FileExcel class="w-4 h-4 mr-2" />
+                        Export Data
+                    </button>
+                </div>
+            </div>
+        </template>
+
         <div class="p-6">
+            <!-- Loading Overlay -->
+            <div v-if="isLoading" class="fixed inset-0 bg-dark-card/80 z-50 flex items-center justify-center">
+                <div class="flex flex-col items-center">
+                    <Loader class="w-12 h-12 text-primary animate-spin" />
+                    <span class="mt-4 text-white">Loading cosmic data...</span>
+                </div>
+            </div>
+
+            <!-- Cosmic Particles Canvas -->
+            <canvas id="cosmicParticles" class="absolute inset-0 pointer-events-none"></canvas>
+
             <!-- Stats Grid -->
-            <div
-                class="grid grid-cols-1 gap-6 mb-8 sm:grid-cols-2 lg:grid-cols-4"
-            >
+            <div class="grid grid-cols-1 gap-6 mb-8 sm:grid-cols-2 lg:grid-cols-4">
                 <!-- Users Stat Card -->
                 <div
                     class="p-6 transition-all duration-300 border border-gray-700 rounded-lg shadow-lg bg-gradient-to-br from-dark-card to-dark-lighter hover:shadow-glow-primary"
@@ -128,50 +272,22 @@ const formatCurrency = (value) => {
                                 Total Users
                             </p>
                             <h2 class="mt-2 text-3xl font-bold text-white">
-                                {{ stats.users.total.toLocaleString() }}
+                                {{ metrics?.users?.total.toLocaleString() }}
                             </h2>
                             <div
                                 :class="[
                                     'flex items-center mt-2 text-sm',
-                                    stats.users.isPositive
+                                    metrics?.users?.isPositive
                                         ? 'text-green-400'
                                         : 'text-red-400',
                                 ]"
                             >
-                                <svg
-                                    v-if="stats.users.isPositive"
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    class="w-4 h-4 mr-1"
-                                    viewBox="0 0 20 20"
-                                    fill="currentColor"
-                                >
-                                    <path
-                                        fill-rule="evenodd"
-                                        d="M12 7a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0V8.414l-4.293 4.293a1 1 0 01-1.414 0L8 10.414l-4.293 4.293a1 1 0 01-1.414-1.414l5-5a1 1 0 011.414 0L11 10.586 14.586 7H12z"
-                                        clip-rule="evenodd"
-                                    />
-                                </svg>
-                                <svg
-                                    v-else
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    class="w-4 h-4 mr-1"
-                                    viewBox="0 0 20 20"
-                                    fill="currentColor"
-                                >
-                                    <path
-                                        fill-rule="evenodd"
-                                        d="M12 13a1 1 0 100 2h5a1 1 0 001-1v-5a1 1 0 10-2 0v2.586l-4.293-4.293a1 1 0 00-1.414 0L8 9.586l-4.293-4.293a1 1 0 00-1.414 1.414l5 5a1 1 0 001.414 0L11 9.414 14.586 13H12z"
-                                        clip-rule="evenodd"
-                                    />
-                                </svg>
-                                <span
-                                    >{{ Math.abs(stats.users.growthPercent) }}%
-                                    {{
-                                        stats.users.isPositive
-                                            ? "increase"
-                                            : "decrease"
-                                    }}</span
-                                >
+                                <ArrowUp v-if="metrics?.users?.isPositive" class="w-4 h-4 mr-1" />
+                                <ArrowDown v-else class="w-4 h-4 mr-1" />
+                                <span>
+                                    {{ Math.abs(metrics?.users?.growthPercent || 0) }}%
+                                    {{ metrics?.users?.isPositive ? "increase" : "decrease" }}
+                                </span>
                             </div>
                         </div>
                         <div class="p-3 rounded-lg bg-indigo-500/20">
@@ -191,14 +307,12 @@ const formatCurrency = (value) => {
                             </svg>
                         </div>
                     </div>
-                    <!-- Mini Sparkline graph would go here in a real implementation -->
-                    <div
-                        class="w-full h-2 mt-4 overflow-hidden bg-gray-700 rounded-full"
-                    >
+                    <!-- Sparkline graph -->
+                    <div class="w-full h-2 mt-4 overflow-hidden bg-gray-700 rounded-full">
                         <div
-                            class="h-full rounded-full bg-gradient-to-r from-primary to-secondary"
+                            class="h-full rounded-full bg-gradient-to-r from-primary to-secondary animate-pulse"
                             :style="{
-                                width: `${stats.users.growthPercent * 5}%`,
+                                width: `${Math.max(5, Math.abs(metrics?.users?.growthPercent || 0) * 5)}%`,
                             }"
                         ></div>
                     </div>
@@ -214,52 +328,22 @@ const formatCurrency = (value) => {
                                 Total Revenue
                             </p>
                             <h2 class="mt-2 text-3xl font-bold text-white">
-                                {{ formatCurrency(stats.revenue.total) }}
+                                {{ formatCurrency(metrics?.revenue?.total || 0) }}
                             </h2>
                             <div
                                 :class="[
                                     'flex items-center mt-2 text-sm',
-                                    stats.revenue.isPositive
+                                    metrics?.revenue?.isPositive
                                         ? 'text-green-400'
                                         : 'text-red-400',
                                 ]"
                             >
-                                <svg
-                                    v-if="stats.revenue.isPositive"
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    class="w-4 h-4 mr-1"
-                                    viewBox="0 0 20 20"
-                                    fill="currentColor"
-                                >
-                                    <path
-                                        fill-rule="evenodd"
-                                        d="M12 7a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0V8.414l-4.293 4.293a1 1 0 01-1.414 0L8 10.414l-4.293 4.293a1 1 0 01-1.414-1.414l5-5a1 1 0 011.414 0L11 10.586 14.586 7H12z"
-                                        clip-rule="evenodd"
-                                    />
-                                </svg>
-                                <svg
-                                    v-else
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    class="w-4 h-4 mr-1"
-                                    viewBox="0 0 20 20"
-                                    fill="currentColor"
-                                >
-                                    <path
-                                        fill-rule="evenodd"
-                                        d="M12 13a1 1 0 100 2h5a1 1 0 001-1v-5a1 1 0 10-2 0v2.586l-4.293-4.293a1 1 0 00-1.414 0L8 9.586l-4.293-4.293a1 1 0 00-1.414 1.414l5 5a1 1 0 001.414 0L11 9.414 14.586 13H12z"
-                                        clip-rule="evenodd"
-                                    />
-                                </svg>
-                                <span
-                                    >{{
-                                        Math.abs(stats.revenue.growthPercent)
-                                    }}%
-                                    {{
-                                        stats.revenue.isPositive
-                                            ? "increase"
-                                            : "decrease"
-                                    }}</span
-                                >
+                                <ArrowUp v-if="metrics?.revenue?.isPositive" class="w-4 h-4 mr-1" />
+                                <ArrowDown v-else class="w-4 h-4 mr-1" />
+                                <span>
+                                    {{ Math.abs(metrics?.revenue?.growthPercent || 0) }}%
+                                    {{ metrics?.revenue?.isPositive ? "increase" : "decrease" }}
+                                </span>
                             </div>
                         </div>
                         <div class="p-3 rounded-lg bg-teal-500/20">
@@ -279,14 +363,12 @@ const formatCurrency = (value) => {
                             </svg>
                         </div>
                     </div>
-                    <!-- Mini Sparkline graph would go here in a real implementation -->
-                    <div
-                        class="w-full h-2 mt-4 overflow-hidden bg-gray-700 rounded-full"
-                    >
+                    <!-- Sparkline graph -->
+                    <div class="w-full h-2 mt-4 overflow-hidden bg-gray-700 rounded-full">
                         <div
-                            class="h-full rounded-full bg-gradient-to-r from-secondary to-primary"
+                            class="h-full rounded-full bg-gradient-to-r from-secondary to-primary animate-pulse"
                             :style="{
-                                width: `${stats.revenue.growthPercent * 5}%`,
+                                width: `${Math.max(5, Math.abs(metrics?.revenue?.growthPercent || 0) * 5)}%`,
                             }"
                         ></div>
                     </div>
@@ -302,50 +384,22 @@ const formatCurrency = (value) => {
                                 Total Orders
                             </p>
                             <h2 class="mt-2 text-3xl font-bold text-white">
-                                {{ stats.orders.total.toLocaleString() }}
+                                {{ metrics?.orders?.total.toLocaleString() }}
                             </h2>
                             <div
                                 :class="[
                                     'flex items-center mt-2 text-sm',
-                                    stats.orders.isPositive
+                                    metrics?.orders?.isPositive
                                         ? 'text-green-400'
                                         : 'text-red-400',
                                 ]"
                             >
-                                <svg
-                                    v-if="stats.orders.isPositive"
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    class="w-4 h-4 mr-1"
-                                    viewBox="0 0 20 20"
-                                    fill="currentColor"
-                                >
-                                    <path
-                                        fill-rule="evenodd"
-                                        d="M12 7a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0V8.414l-4.293 4.293a1 1 0 01-1.414 0L8 10.414l-4.293 4.293a1 1 0 01-1.414-1.414l5-5a1 1 0 011.414 0L11 10.586 14.586 7H12z"
-                                        clip-rule="evenodd"
-                                    />
-                                </svg>
-                                <svg
-                                    v-else
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    class="w-4 h-4 mr-1"
-                                    viewBox="0 0 20 20"
-                                    fill="currentColor"
-                                >
-                                    <path
-                                        fill-rule="evenodd"
-                                        d="M12 13a1 1 0 100 2h5a1 1 0 001-1v-5a1 1 0 10-2 0v2.586l-4.293-4.293a1 1 0 00-1.414 0L8 9.586l-4.293-4.293a1 1 0 00-1.414 1.414l5 5a1 1 0 001.414 0L11 9.414 14.586 13H12z"
-                                        clip-rule="evenodd"
-                                    />
-                                </svg>
-                                <span
-                                    >{{ Math.abs(stats.orders.growthPercent) }}%
-                                    {{
-                                        stats.orders.isPositive
-                                            ? "increase"
-                                            : "decrease"
-                                    }}</span
-                                >
+                                <ArrowUp v-if="metrics?.orders?.isPositive" class="w-4 h-4 mr-1" />
+                                <ArrowDown v-else class="w-4 h-4 mr-1" />
+                                <span>
+                                    {{ Math.abs(metrics?.orders?.growthPercent || 0) }}%
+                                    {{ metrics?.orders?.isPositive ? "increase" : "decrease" }}
+                                </span>
                             </div>
                         </div>
                         <div class="p-3 rounded-lg bg-pink-500/20">
@@ -365,17 +419,12 @@ const formatCurrency = (value) => {
                             </svg>
                         </div>
                     </div>
-                    <!-- Mini Sparkline graph would go here in a real implementation -->
-                    <div
-                        class="w-full h-2 mt-4 overflow-hidden bg-gray-700 rounded-full"
-                    >
+                    <!-- Sparkline graph -->
+                    <div class="w-full h-2 mt-4 overflow-hidden bg-gray-700 rounded-full">
                         <div
-                            class="h-full rounded-full bg-gradient-to-r from-primary to-secondary"
+                            class="h-full rounded-full bg-gradient-to-r from-primary to-secondary animate-pulse"
                             :style="{
-                                width: `${Math.max(
-                                    2,
-                                    Math.abs(stats.orders.growthPercent) * 5
-                                )}%`,
+                                width: `${Math.max(5, Math.abs(metrics?.orders?.growthPercent || 0) * 5)}%`,
                             }"
                         ></div>
                     </div>
@@ -391,52 +440,22 @@ const formatCurrency = (value) => {
                                 Active Products
                             </p>
                             <h2 class="mt-2 text-3xl font-bold text-white">
-                                {{ stats.products.total }}
+                                {{ metrics?.products?.total }}
                             </h2>
                             <div
                                 :class="[
                                     'flex items-center mt-2 text-sm',
-                                    stats.products.isPositive
+                                    metrics?.products?.isPositive
                                         ? 'text-green-400'
                                         : 'text-red-400',
                                 ]"
                             >
-                                <svg
-                                    v-if="stats.products.isPositive"
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    class="w-4 h-4 mr-1"
-                                    viewBox="0 0 20 20"
-                                    fill="currentColor"
-                                >
-                                    <path
-                                        fill-rule="evenodd"
-                                        d="M12 7a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0V8.414l-4.293 4.293a1 1 0 01-1.414 0L8 10.414l-4.293 4.293a1 1 0 01-1.414-1.414l5-5a1 1 0 011.414 0L11 10.586 14.586 7H12z"
-                                        clip-rule="evenodd"
-                                    />
-                                </svg>
-                                <svg
-                                    v-else
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    class="w-4 h-4 mr-1"
-                                    viewBox="0 0 20 20"
-                                    fill="currentColor"
-                                >
-                                    <path
-                                        fill-rule="evenodd"
-                                        d="M12 13a1 1 0 100 2h5a1 1 0 001-1v-5a1 1 0 10-2 0v2.586l-4.293-4.293a1 1 0 00-1.414 0L8 9.586l-4.293-4.293a1 1 0 00-1.414 1.414l5 5a1 1 0 001.414 0L11 9.414 14.586 13H12z"
-                                        clip-rule="evenodd"
-                                    />
-                                </svg>
-                                <span
-                                    >{{
-                                        Math.abs(stats.products.growthPercent)
-                                    }}%
-                                    {{
-                                        stats.products.isPositive
-                                            ? "increase"
-                                            : "decrease"
-                                    }}</span
-                                >
+                                <ArrowUp v-if="metrics?.products?.isPositive" class="w-4 h-4 mr-1" />
+                                <ArrowDown v-else class="w-4 h-4 mr-1" />
+                                <span>
+                                    {{ Math.abs(metrics?.products?.growthPercent || 0) }}%
+                                    {{ metrics?.products?.isPositive ? "increase" : "decrease" }}
+                                </span>
                             </div>
                         </div>
                         <div class="p-3 rounded-lg bg-purple-500/20">
@@ -456,14 +475,14 @@ const formatCurrency = (value) => {
                             </svg>
                         </div>
                     </div>
-                    <!-- Mini Sparkline graph would go here in a real implementation -->
+                    <!-- Sparkline graph -->
                     <div
                         class="w-full h-2 mt-4 overflow-hidden bg-gray-700 rounded-full"
                     >
                         <div
-                            class="h-full rounded-full bg-gradient-to-r from-primary to-secondary"
+                            class="h-full rounded-full bg-gradient-to-r from-secondary to-primary animate-pulse"
                             :style="{
-                                width: `${stats.products.growthPercent * 5}%`,
+                                width: `${Math.max(5, Math.abs(metrics?.products?.growthPercent || 0) * 5)}%`,
                             }"
                         ></div>
                     </div>
@@ -474,84 +493,55 @@ const formatCurrency = (value) => {
             <div class="grid grid-cols-1 gap-6 mb-8 lg:grid-cols-2">
                 <!-- Revenue Chart -->
                 <div
-                    class="p-6 border border-gray-700 rounded-lg shadow-lg bg-dark-card"
+                    class="relative p-6 border border-gray-700 rounded-lg shadow-lg bg-dark-card overflow-hidden"
                 >
-                    <h3 class="mb-6 text-xl font-semibold text-white">
+                    <h3 class="mb-6 text-xl font-semibold text-white flex items-center">
+                        <ChartArea class="w-5 h-5 mr-2" />
                         Revenue Trend
                     </h3>
-                    <div class="w-full h-80">
-                        <!-- This would be replaced with an actual chart component in a real implementation -->
-                        <div
-                            class="flex items-center justify-center w-full h-full p-4 border border-gray-700 rounded-lg bg-dark-lighter"
-                        >
-                            <div class="text-center">
-                                <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    class="w-16 h-16 mx-auto mb-4 text-gray-500"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                    stroke="currentColor"
-                                >
-                                    <path
-                                        stroke-linecap="round"
-                                        stroke-linejoin="round"
-                                        stroke-width="2"
-                                        d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
-                                    />
-                                </svg>
-                                <p class="text-gray-400">
-                                    Revenue Chart Visualization
-                                </p>
-                                <p class="mt-2 text-sm text-gray-500">
-                                    This would be a line chart showing revenue
-                                    trends over time
-                                </p>
-                            </div>
+
+                    <!-- Chart Background Effects -->
+                    <div class="absolute inset-0 bg-gradient-to-br from-primary/5 to-secondary/5 z-0"></div>
+                    <div class="absolute bottom-0 left-0 right-0 h-1/3 bg-gradient-to-t from-primary/10 to-transparent z-0"></div>
+                    
+                    <!-- Chart Container -->
+                    <div class="relative z-10 w-full h-80">
+                        <Line 
+                            v-if="charts?.revenue_trend?.labels?.length" 
+                            :data="{
+                                labels: charts.revenue_trend.labels,
+                                datasets: charts.revenue_trend.datasets
+                            }" 
+                            :options="revenueChartOptions" 
+                        />
+                        <div v-else class="flex items-center justify-center h-full">
+                            <p class="text-gray-400">No data available for selected period</p>
                         </div>
                     </div>
                 </div>
 
                 <!-- Orders Chart -->
                 <div
-                    class="p-6 border border-gray-700 rounded-lg shadow-lg bg-dark-card"
+                    class="relative p-6 border border-gray-700 rounded-lg shadow-lg bg-dark-card overflow-hidden"
                 >
-                    <h3 class="mb-6 text-xl font-semibold text-white">
+                    <h3 class="mb-6 text-xl font-semibold text-white flex items-center">
+                        <ChartPie class="w-5 h-5 mr-2" />
                         Order Statistics
                     </h3>
-                    <div class="w-full h-80">
-                        <!-- This would be replaced with an actual chart component in a real implementation -->
-                        <div
-                            class="flex items-center justify-center w-full h-full p-4 border border-gray-700 rounded-lg bg-dark-lighter"
-                        >
-                            <div class="text-center">
-                                <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    class="w-16 h-16 mx-auto mb-4 text-gray-500"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                    stroke="currentColor"
-                                >
-                                    <path
-                                        stroke-linecap="round"
-                                        stroke-linejoin="round"
-                                        stroke-width="2"
-                                        d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z"
-                                    />
-                                    <path
-                                        stroke-linecap="round"
-                                        stroke-linejoin="round"
-                                        stroke-width="2"
-                                        d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z"
-                                    />
-                                </svg>
-                                <p class="text-gray-400">
-                                    Order Statistics Visualization
-                                </p>
-                                <p class="mt-2 text-sm text-gray-500">
-                                    This would be a pie/doughnut chart showing
-                                    order distribution
-                                </p>
-                            </div>
+                    
+                    <!-- Chart Background Effects -->
+                    <div class="absolute inset-0 bg-gradient-to-br from-secondary/5 to-primary/5 z-0"></div>
+                    <div class="absolute bottom-0 left-0 right-0 h-1/3 bg-gradient-to-t from-secondary/10 to-transparent z-0"></div>
+
+                    <!-- Chart Container -->
+                    <div class="relative z-10 w-full h-80">
+                        <Doughnut 
+                            v-if="charts?.order_stats?.statusDistribution?.labels?.length" 
+                            :data="charts.order_stats.statusDistribution" 
+                            :options="pieChartOptions" 
+                        />
+                        <div v-else class="flex items-center justify-center h-full">
+                            <p class="text-gray-400">No data available for selected period</p>
                         </div>
                     </div>
                 </div>
@@ -569,11 +559,12 @@ const formatCurrency = (value) => {
                         <h3 class="text-xl font-semibold text-white">
                             Recent Transactions
                         </h3>
-                        <button
+                        <router-link
+                            :to="{ name: 'pembelians.index' }"
                             class="transition-colors text-secondary hover:text-secondary-hover"
                         >
                             View All
-                        </button>
+                        </router-link>
                     </div>
                     <div class="overflow-x-auto">
                         <table class="w-full min-w-full">
@@ -613,7 +604,7 @@ const formatCurrency = (value) => {
                             </thead>
                             <tbody class="divide-y divide-gray-700">
                                 <tr
-                                    v-for="transaction in recentTransactions"
+                                    v-for="transaction in tables?.recent_transactions"
                                     :key="transaction.id"
                                     class="transition-colors hover:bg-dark-lighter"
                                 >
@@ -640,9 +631,7 @@ const formatCurrency = (value) => {
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <span
                                             :class="[
-                                                getStatusClass(
-                                                    transaction.status
-                                                ),
+                                                getStatusClass(transaction.status),
                                                 'px-2 py-1 text-xs rounded-full',
                                             ]"
                                         >
@@ -653,6 +642,11 @@ const formatCurrency = (value) => {
                                         class="px-6 py-4 text-sm text-gray-300 whitespace-nowrap"
                                     >
                                         {{ transaction.date }}
+                                    </td>
+                                </tr>
+                                <tr v-if="!tables?.recent_transactions?.length" class="hover:bg-dark-lighter">
+                                    <td colspan="6" class="px-6 py-8 text-center text-gray-400">
+                                        No recent transactions found
                                     </td>
                                 </tr>
                             </tbody>
@@ -670,11 +664,12 @@ const formatCurrency = (value) => {
                         <h3 class="text-xl font-semibold text-white">
                             Top Products
                         </h3>
-                        <button
+                        <router-link
+                            :to="{ name: 'products.index' }"
                             class="transition-colors text-secondary hover:text-secondary-hover"
                         >
                             View All
-                        </button>
+                        </router-link>
                     </div>
                     <div class="overflow-x-auto">
                         <table class="w-full min-w-full">
@@ -704,7 +699,7 @@ const formatCurrency = (value) => {
                             </thead>
                             <tbody class="divide-y divide-gray-700">
                                 <tr
-                                    v-for="product in topProducts"
+                                    v-for="product in tables?.top_products"
                                     :key="product.id"
                                     class="transition-colors hover:bg-dark-lighter"
                                 >
@@ -733,41 +728,16 @@ const formatCurrency = (value) => {
                                                     'flex items-center',
                                                 ]"
                                             >
-                                                <svg
-                                                    v-if="product.growth >= 0"
-                                                    xmlns="http://www.w3.org/2000/svg"
-                                                    class="w-4 h-4 mr-1"
-                                                    viewBox="0 0 20 20"
-                                                    fill="currentColor"
-                                                >
-                                                    <path
-                                                        fill-rule="evenodd"
-                                                        d="M12 7a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0V8.414l-4.293 4.293a1 1 0 01-1.414 0L8 10.414l-4.293 4.293a1 1 0 01-1.414-1.414l5-5a1 1 0 011.414 0L11 10.586 14.586 7H12z"
-                                                        clip-rule="evenodd"
-                                                    />
-                                                </svg>
-                                                <svg
-                                                    v-else
-                                                    xmlns="http://www.w3.org/2000/svg"
-                                                    class="w-4 h-4 mr-1"
-                                                    viewBox="0 0 20 20"
-                                                    fill="currentColor"
-                                                >
-                                                    <path
-                                                        fill-rule="evenodd"
-                                                        d="M12 13a1 1 0 100 2h5a1 1 0 001-1v-5a1 1 0 10-2 0v2.586l-4.293-4.293a1 1 0 00-1.414 0L8 9.586l-4.293-4.293a1 1 0 00-1.414 1.414l5 5a1 1 0 001.414 0L11 9.414 14.586 13H12z"
-                                                        clip-rule="evenodd"
-                                                    />
-                                                </svg>
-                                                <span
-                                                    >{{
-                                                        Math.abs(
-                                                            product.growth
-                                                        ).toFixed(1)
-                                                    }}%</span
-                                                >
+                                                <ArrowUp v-if="product.growth >= 0" class="w-4 h-4 mr-1" />
+                                                <ArrowDown v-else class="w-4 h-4 mr-1" />
+                                                <span>{{ Math.abs(product.growth).toFixed(1) }}%</span>
                                             </div>
                                         </div>
+                                    </td>
+                                </tr>
+                                <tr v-if="!tables?.top_products?.length" class="hover:bg-dark-lighter">
+                                    <td colspan="4" class="px-6 py-8 text-center text-gray-400">
+                                        No top products found
                                     </td>
                                 </tr>
                             </tbody>
