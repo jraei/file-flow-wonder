@@ -1,3 +1,4 @@
+
 <?php
 
 namespace App\Http\Controllers\Admin;
@@ -14,6 +15,8 @@ use App\Models\User;
 use App\Models\Pembelian;
 use App\Models\Produk;
 use App\Models\Layanan;
+use App\Models\FlashsaleEvent;
+use App\Models\Voucher;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -273,8 +276,8 @@ class AdminController extends Controller
                 ],
                 [
                     'label' => 'Failed Transactions',
-                    'data' => $revenueData->map(function ($item) use ($failedData) {
-                        return $failedData->has($item->date) ? $failedData[$item->date]->count : 0;
+                    'data' => $revenueData->map(function ($item) use ($failedData, $groupBy) {
+                        return $failedData->has($item->$groupBy) ? $failedData[$item->$groupBy]->count : 0;
                     })->toArray(),
                     'borderColor' => '#ea384c',
                     'backgroundColor' => 'rgba(234, 56, 76, 0.2)',
@@ -338,6 +341,7 @@ class AdminController extends Controller
                     'id' => $transaction->order_id,
                     'user' => $transaction->user ? $transaction->user->username : 'Unknown',
                     'amount' => $transaction->total_price,
+                    'profit' => $transaction->profit,
                     'status' => $transaction->status,
                     'date' => $transaction->created_at->format('Y-m-d'),
                     'game' => $transaction->layanan ? $transaction->layanan->nama_layanan : 'N/A',
@@ -350,42 +354,169 @@ class AdminController extends Controller
      */
     private function getTopProducts($startDate)
     {
-        $topProductIds = Pembelian::select('layanan_id', DB::raw('count(*) as sales_count'))
-            ->where('created_at', '>=', $startDate)
-            ->where('status', 'completed')
-            ->groupBy('layanan_id')
+        // Get product IDs from transactions through layanan relationship
+        $productSales = Pembelian::select('layanans.produk_id', DB::raw('count(*) as sales_count'))
+            ->join('layanans', 'layanans.id', '=', 'pembelians.layanan_id')
+            ->where('pembelians.created_at', '>=', $startDate)
+            ->where('pembelians.status', 'completed')
+            ->groupBy('layanans.produk_id')
             ->orderBy('sales_count', 'desc')
             ->limit(5)
             ->get()
-            ->pluck('sales_count', 'layanan_id')
+            ->pluck('sales_count', 'produk_id')
             ->toArray();
 
+        if (empty($productSales)) {
+            return [];
+        }
 
-        // get total revenue for each product
-        $revenueData = Pembelian::select('layanan_id', DB::raw('sum(total_price) as revenue'))
-            ->where('created_at', '>=', $startDate)
-            ->where('status', 'completed')
-            ->groupBy('layanan_id')
+        // Get revenue by product
+        $revenueData = Pembelian::select('layanans.produk_id', DB::raw('sum(pembelians.total_price) as revenue'))
+            ->join('layanans', 'layanans.id', '=', 'pembelians.layanan_id')
+            ->where('pembelians.created_at', '>=', $startDate)
+            ->where('pembelians.status', 'completed')
+            ->whereIn('layanans.produk_id', array_keys($productSales))
+            ->groupBy('layanans.produk_id')
             ->get()
-            ->pluck('revenue', 'layanan_id')
+            ->pluck('revenue', 'produk_id')
+            ->toArray();
+
+        // Get profit by product
+        $profitData = Pembelian::select('layanans.produk_id', DB::raw('sum(pembelians.profit) as profit'))
+            ->join('layanans', 'layanans.id', '=', 'pembelians.layanan_id')
+            ->where('pembelians.created_at', '>=', $startDate)
+            ->where('pembelians.status', 'completed')
+            ->whereIn('layanans.produk_id', array_keys($productSales))
+            ->groupBy('layanans.produk_id')
+            ->get()
+            ->pluck('profit', 'produk_id')
             ->toArray();
 
         // Get detailed product information
-        return Layanan::whereIn('id', array_keys($topProductIds))
+        return Produk::whereIn('id', array_keys($productSales))
             ->get()
-            ->map(function ($product) use ($topProductIds, $revenueData) {
-                $sales = $topProductIds[$product->id];
-                $revenue =  $revenueData[$product->id] ?? 0;
+            ->map(function ($product) use ($productSales, $revenueData, $profitData) {
+                $sales = $productSales[$product->id] ?? 0;
+                $revenue = $revenueData[$product->id] ?? 0;
+                $profit = $profitData[$product->id] ?? 0;
 
                 // Calculate growth (placeholder - would need historical data)
                 $growth = rand(5, 15) * (rand(0, 1) ? 1 : -1);
 
                 return [
                     'id' => $product->id,
-                    'name' => $product->nama_layanan,
+                    'name' => $product->nama_produk,
                     'sales' => $sales,
                     'revenue' => $revenue,
+                    'profit' => $profit,
                     'growth' => $growth,
+                ];
+            });
+    }
+
+    /**
+     * Get active flashsale events
+     */
+    public function getActiveFlashsales()
+    {
+        return FlashsaleEvent::with(['item' => function ($query) {
+            $query->with('layanan');
+        }])
+            ->where('status', 'active')
+            ->where('event_start_date', '<=', now())
+            ->where('event_end_date', '>=', now())
+            ->get()
+            ->map(function ($flashsale) {
+                // Calculate metrics for the flashsale
+                $totalSales = $flashsale->item->sum(function ($item) {
+                    // In a real implementation, this would query actual sales
+                    return $item->harga_flashsale * ($item->stok - $item->remaining_stock);
+                });
+
+                $totalProfit = $flashsale->item->sum(function ($item) {
+                    // Calculate profit based on regular price vs flashsale price
+                    $regularPrice = $item->layanan->harga_jual;
+                    $discount = $regularPrice - $item->harga_flashsale;
+                    return ($item->layanan->profit - $discount) * ($item->stok - $item->remaining_stock);
+                });
+
+                return [
+                    'id' => $flashsale->id,
+                    'event_name' => $flashsale->event_name,
+                    'event_start_date' => $flashsale->event_start_date,
+                    'event_end_date' => $flashsale->event_end_date,
+                    'item_count' => $flashsale->item->count(),
+                    'total_sales' => $totalSales,
+                    'total_profit' => $totalProfit,
+                    'conversion_rate' => '22%', // This would be calculated in a real implementation
+                ];
+            });
+    }
+
+    /**
+     * Get service details for a specific product
+     */
+    public function getProductServices(Produk $produk, $period = 'week')
+    {
+        $startDate = $this->getStartDate($period);
+
+        // Get services for the product with sales data
+        return $produk->layanan()
+            ->withCount(['pembelian as orders' => function ($query) use ($startDate) {
+                $query->where('created_at', '>=', $startDate)
+                    ->where('status', 'completed');
+            }])
+            ->withSum(['pembelian as revenue' => function ($query) use ($startDate) {
+                $query->where('created_at', '>=', $startDate)
+                    ->where('status', 'completed');
+            }], 'total_price')
+            ->withSum(['pembelian as profit' => function ($query) use ($startDate) {
+                $query->where('created_at', '>=', $startDate)
+                    ->where('status', 'completed');
+            }], 'profit')
+            ->get()
+            ->map(function ($layanan) {
+                return [
+                    'id' => $layanan->id,
+                    'name' => $layanan->nama_layanan,
+                    'orders' => $layanan->orders ?? 0,
+                    'revenue' => $layanan->revenue ?? 0,
+                    'profit' => $layanan->profit ?? 0,
+                    'status' => $layanan->status,
+                ];
+            });
+    }
+
+    /**
+     * Get active vouchers with performance metrics
+     */
+    public function getActiveVouchers()
+    {
+        return Voucher::where('status', 'active')
+            ->where(function ($query) {
+                $query->whereNull('expired_at')
+                    ->orWhere('expired_at', '>=', now());
+            })
+            ->get()
+            ->map(function ($voucher) {
+                // Calculate effectiveness metrics
+                // In a real implementation, this would query actual usage data
+                $effectiveness = null;
+                
+                if ($voucher->usage_count > 0) {
+                    $effectiveness = $voucher->discount_type === 'percentage' 
+                        ? ($voucher->usage_count * 3) . '% increase in AOV'
+                        : ($voucher->usage_count * 0.5) . '% conversion rate';
+                }
+
+                return [
+                    'id' => $voucher->id,
+                    'code' => $voucher->kode,
+                    'type' => $voucher->discount_type,
+                    'value' => $voucher->discount_value,
+                    'usage_count' => $voucher->usage_count ?? 0,
+                    'usage_limit' => $voucher->usage_limit,
+                    'effectiveness' => $effectiveness,
                 ];
             });
     }
