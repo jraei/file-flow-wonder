@@ -1,4 +1,3 @@
-
 <?php
 
 namespace App\Http\Controllers\Admin;
@@ -15,8 +14,6 @@ use App\Models\User;
 use App\Models\Pembelian;
 use App\Models\Produk;
 use App\Models\Layanan;
-use App\Models\FlashsaleEvent;
-use App\Models\Voucher;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -27,16 +24,16 @@ class AdminController extends Controller
         // Get time period from request or default to 'week'
         $period = $request->get('period', 'week');
         $validPeriods = ['day', 'week', 'month', 'year'];
-
+        
         if (!in_array($period, $validPeriods)) {
             $period = 'week';
         }
-
+        
         // Cache key based on period
         $cacheKey = "admin_dashboard_{$period}";
-
+        
         // Return cached data if available (5 minutes TTL)
-        return Inertia::render('Admin/Dashboard', Cache::remember($cacheKey, 300, function () use ($period) {
+        return Inertia::render('Admin/Dashboard', Cache::remember($cacheKey, 300, function() use ($period) {
             return [
                 'metrics' => $this->getMetrics($period),
                 'charts' => $this->getCharts($period),
@@ -45,26 +42,26 @@ class AdminController extends Controller
             ];
         }));
     }
-
+    
     /**
      * Get key metrics data
      */
     private function getMetrics($period)
     {
         $startDate = $this->getStartDate($period);
-
+        
         // User growth metrics
         $userMetrics = $this->getUserGrowthMetrics($startDate);
-
+        
         // Revenue metrics
         $revenueMetrics = $this->getRevenueMetrics($startDate);
-
+        
         // Order metrics
         $orderMetrics = $this->getOrderMetrics($startDate);
-
+        
         // Product metrics
         $productMetrics = $this->getProductMetrics($startDate);
-
+        
         return [
             'users' => $userMetrics,
             'revenue' => $revenueMetrics,
@@ -72,39 +69,39 @@ class AdminController extends Controller
             'products' => $productMetrics
         ];
     }
-
+    
     /**
      * Get charts data
      */
     private function getCharts($period)
     {
         $startDate = $this->getStartDate($period);
-
+        
         return [
             'revenue_trend' => $this->getRevenueTrend($startDate, $period),
             'order_stats' => $this->getOrderStats($startDate)
         ];
     }
-
+    
     /**
      * Get tables data
      */
     private function getTables($period)
     {
         $startDate = $this->getStartDate($period);
-
+        
         return [
             'recent_transactions' => $this->getRecentTransactions($startDate),
             'top_products' => $this->getTopProducts($startDate)
         ];
     }
-
+    
     /**
      * Get start date based on time period
      */
     private function getStartDate($period)
     {
-        switch ($period) {
+        switch($period) {
             case 'day':
                 return Carbon::now()->subDay();
             case 'week':
@@ -117,7 +114,7 @@ class AdminController extends Controller
                 return Carbon::now()->subWeek();
         }
     }
-
+    
     /**
      * Get user growth metrics
      */
@@ -126,11 +123,11 @@ class AdminController extends Controller
         $totalUsers = User::count();
         $previousPeriodUsers = User::where('created_at', '<', $startDate)->count();
         $newUsers = $totalUsers - $previousPeriodUsers;
-
-        $growthPercent = $previousPeriodUsers > 0
-            ? round(($newUsers / $previousPeriodUsers) * 100, 2)
+        
+        $growthPercent = $previousPeriodUsers > 0 
+            ? round(($newUsers / $previousPeriodUsers) * 100, 2) 
             : 100;
-
+            
         return [
             'total' => $totalUsers,
             'growthPercent' => $growthPercent,
@@ -138,7 +135,7 @@ class AdminController extends Controller
             'newUsers' => $newUsers
         ];
     }
-
+    
     /**
      * Get revenue metrics
      */
@@ -147,20 +144,20 @@ class AdminController extends Controller
         // Get total revenue from successful transactions
         $totalRevenue = Pembelian::where('status', 'completed')
             ->sum('total_price');
-
+            
         // Get revenue from previous period
         $previousRevenue = Pembelian::where('status', 'completed')
             ->where('created_at', '<', $startDate)
             ->sum('total_price');
-
+            
         // Calculate current period revenue
         $currentRevenue = $totalRevenue - $previousRevenue;
-
+        
         // Calculate growth
-        $growthPercent = $previousRevenue > 0
-            ? round((($currentRevenue / $previousRevenue) * 100), 2)
+        $growthPercent = $previousRevenue > 0 
+            ? round((($currentRevenue / $previousRevenue) * 100), 2) 
             : 100;
-
+            
         return [
             'total' => $totalRevenue,
             'currency' => 'USD', // Adjust as needed
@@ -168,7 +165,7 @@ class AdminController extends Controller
             'isPositive' => $growthPercent >= 0
         ];
     }
-
+    
     /**
      * Get order metrics
      */
@@ -176,25 +173,25 @@ class AdminController extends Controller
     {
         // Get total orders
         $totalOrders = Pembelian::count();
-
+        
         // Get orders from previous period
         $previousOrders = Pembelian::where('created_at', '<', $startDate)->count();
-
+        
         // Calculate current period orders
         $currentOrders = $totalOrders - $previousOrders;
-
+        
         // Calculate growth
-        $growthPercent = $previousOrders > 0
-            ? round((($currentOrders / $previousOrders) * 100), 2)
+        $growthPercent = $previousOrders > 0 
+            ? round((($currentOrders / $previousOrders) * 100), 2) 
             : 100;
-
+            
         return [
             'total' => $totalOrders,
             'growthPercent' => $growthPercent,
             'isPositive' => $growthPercent >= 0
         ];
     }
-
+    
     /**
      * Get product metrics
      */
@@ -202,24 +199,24 @@ class AdminController extends Controller
     {
         // Get active products count
         $totalProducts = Produk::where('status', 'active')->count();
-
+        
         // Get products from previous period
         $previousProducts = Produk::where('status', 'active')
             ->where('created_at', '<', $startDate)
             ->count();
-
+            
         // Calculate growth
-        $growthPercent = $previousProducts > 0
-            ? round((($totalProducts - $previousProducts) / $previousProducts) * 100, 2)
+        $growthPercent = $previousProducts > 0 
+            ? round((($totalProducts - $previousProducts) / $previousProducts) * 100, 2) 
             : 100;
-
+            
         return [
             'total' => $totalProducts,
             'growthPercent' => $growthPercent,
             'isPositive' => $growthPercent >= 0
         ];
     }
-
+    
     /**
      * Get revenue trend data
      */
@@ -227,7 +224,7 @@ class AdminController extends Controller
     {
         $format = '%Y-%m-%d';
         $groupBy = 'date';
-
+        
         if ($period === 'year') {
             $format = '%Y-%m';
             $groupBy = 'month';
@@ -235,30 +232,30 @@ class AdminController extends Controller
             $format = '%Y-%m-%d %H:00:00';
             $groupBy = 'hour';
         }
-
+        
         // Get revenue data
         $revenueData = Pembelian::select(
-            DB::raw("DATE_FORMAT(created_at, '{$format}') as {$groupBy}"),
-            DB::raw('SUM(total_price) as revenue'),
-            DB::raw('SUM(profit) as profit')
-        )
+                DB::raw("DATE_FORMAT(created_at, '{$format}') as {$groupBy}"),
+                DB::raw('SUM(total_price) as revenue'),
+                DB::raw('SUM(profit) as profit')
+            )
             ->where('created_at', '>=', $startDate)
             ->groupBy($groupBy)
             ->orderBy($groupBy, 'asc')
             ->get();
-
+            
         // Get failed transactions
         $failedData = Pembelian::select(
-            DB::raw("DATE_FORMAT(created_at, '{$format}') as {$groupBy}"),
-            DB::raw('COUNT(*) as count')
-        )
+                DB::raw("DATE_FORMAT(created_at, '{$format}') as {$groupBy}"),
+                DB::raw('COUNT(*) as count')
+            )
             ->where('status', 'failed')
             ->where('created_at', '>=', $startDate)
             ->groupBy($groupBy)
             ->orderBy($groupBy, 'asc')
             ->get()
             ->keyBy($groupBy);
-
+            
         return [
             'labels' => $revenueData->pluck($groupBy)->toArray(),
             'datasets' => [
@@ -276,16 +273,16 @@ class AdminController extends Controller
                 ],
                 [
                     'label' => 'Failed Transactions',
-                    'data' => $revenueData->map(function ($item) use ($failedData, $groupBy) {
-                        return $failedData->has($item->$groupBy) ? $failedData[$item->$groupBy]->count : 0;
+                    'data' => $revenueData->map(function ($item) use ($failedData) {
+                        return $failedData->has($item->date) ? $failedData[$item->date]->count : 0;
                     })->toArray(),
                     'borderColor' => '#ea384c',
                     'backgroundColor' => 'rgba(234, 56, 76, 0.2)',
-                ]
+                }
             ]
         ];
     }
-
+    
     /**
      * Get order statistics
      */
@@ -300,7 +297,7 @@ class AdminController extends Controller
                 return [$item->status => $item->count];
             })
             ->toArray();
-
+        
         // Define colors for statuses
         $statusColors = [
             'pending' => '#FEC6A1',    // Soft Orange
@@ -309,7 +306,7 @@ class AdminController extends Controller
             'failed' => '#ea384c',     // Red
             'cancelled' => '#8E9196'   // Neutral Gray
         ];
-
+        
         return [
             'statusDistribution' => [
                 'labels' => array_keys($statusDistribution),
@@ -325,7 +322,7 @@ class AdminController extends Controller
             ]
         ];
     }
-
+    
     /**
      * Get recent transactions
      */
@@ -341,182 +338,44 @@ class AdminController extends Controller
                     'id' => $transaction->order_id,
                     'user' => $transaction->user ? $transaction->user->username : 'Unknown',
                     'amount' => $transaction->total_price,
-                    'profit' => $transaction->profit,
                     'status' => $transaction->status,
                     'date' => $transaction->created_at->format('Y-m-d'),
                     'game' => $transaction->layanan ? $transaction->layanan->nama_layanan : 'N/A',
                 ];
             });
     }
-
+    
     /**
      * Get top products
      */
     private function getTopProducts($startDate)
     {
-        // Get product IDs from transactions through layanan relationship
-        $productSales = Pembelian::select('layanans.produk_id', DB::raw('count(*) as sales_count'))
-            ->join('layanans', 'layanans.id', '=', 'pembelians.layanan_id')
-            ->where('pembelians.created_at', '>=', $startDate)
-            ->where('pembelians.status', 'completed')
-            ->groupBy('layanans.produk_id')
+        $topProductIds = Pembelian::select('layanan_id', DB::raw('count(*) as sales_count'))
+            ->where('created_at', '>=', $startDate)
+            ->where('status', 'completed')
+            ->groupBy('layanan_id')
             ->orderBy('sales_count', 'desc')
             ->limit(5)
             ->get()
-            ->pluck('sales_count', 'produk_id')
+            ->pluck('sales_count', 'layanan_id')
             ->toArray();
-
-        if (empty($productSales)) {
-            return [];
-        }
-
-        // Get revenue by product
-        $revenueData = Pembelian::select('layanans.produk_id', DB::raw('sum(pembelians.total_price) as revenue'))
-            ->join('layanans', 'layanans.id', '=', 'pembelians.layanan_id')
-            ->where('pembelians.created_at', '>=', $startDate)
-            ->where('pembelians.status', 'completed')
-            ->whereIn('layanans.produk_id', array_keys($productSales))
-            ->groupBy('layanans.produk_id')
-            ->get()
-            ->pluck('revenue', 'produk_id')
-            ->toArray();
-
-        // Get profit by product
-        $profitData = Pembelian::select('layanans.produk_id', DB::raw('sum(pembelians.profit) as profit'))
-            ->join('layanans', 'layanans.id', '=', 'pembelians.layanan_id')
-            ->where('pembelians.created_at', '>=', $startDate)
-            ->where('pembelians.status', 'completed')
-            ->whereIn('layanans.produk_id', array_keys($productSales))
-            ->groupBy('layanans.produk_id')
-            ->get()
-            ->pluck('profit', 'produk_id')
-            ->toArray();
-
+            
         // Get detailed product information
-        return Produk::whereIn('id', array_keys($productSales))
+        return Layanan::whereIn('id', array_keys($topProductIds))
             ->get()
-            ->map(function ($product) use ($productSales, $revenueData, $profitData) {
-                $sales = $productSales[$product->id] ?? 0;
-                $revenue = $revenueData[$product->id] ?? 0;
-                $profit = $profitData[$product->id] ?? 0;
-
+            ->map(function ($product) use ($topProductIds) {
+                $sales = $topProductIds[$product->id];
+                $revenue = $sales * $product->price;
+                
                 // Calculate growth (placeholder - would need historical data)
                 $growth = rand(5, 15) * (rand(0, 1) ? 1 : -1);
-
+                
                 return [
                     'id' => $product->id,
-                    'name' => $product->nama_produk,
+                    'name' => $product->nama_layanan,
                     'sales' => $sales,
                     'revenue' => $revenue,
-                    'profit' => $profit,
                     'growth' => $growth,
-                ];
-            });
-    }
-
-    /**
-     * Get active flashsale events
-     */
-    public function getActiveFlashsales()
-    {
-        return FlashsaleEvent::with(['item' => function ($query) {
-            $query->with('layanan');
-        }])
-            ->where('status', 'active')
-            ->where('event_start_date', '<=', now())
-            ->where('event_end_date', '>=', now())
-            ->get()
-            ->map(function ($flashsale) {
-                // Calculate metrics for the flashsale
-                $totalSales = $flashsale->item->sum(function ($item) {
-                    // In a real implementation, this would query actual sales
-                    return $item->harga_flashsale * ($item->stok - $item->remaining_stock);
-                });
-
-                $totalProfit = $flashsale->item->sum(function ($item) {
-                    // Calculate profit based on regular price vs flashsale price
-                    $regularPrice = $item->layanan->harga_jual;
-                    $discount = $regularPrice - $item->harga_flashsale;
-                    return ($item->layanan->profit - $discount) * ($item->stok - $item->remaining_stock);
-                });
-
-                return [
-                    'id' => $flashsale->id,
-                    'event_name' => $flashsale->event_name,
-                    'event_start_date' => $flashsale->event_start_date,
-                    'event_end_date' => $flashsale->event_end_date,
-                    'item_count' => $flashsale->item->count(),
-                    'total_sales' => $totalSales,
-                    'total_profit' => $totalProfit,
-                    'conversion_rate' => '22%', // This would be calculated in a real implementation
-                ];
-            });
-    }
-
-    /**
-     * Get service details for a specific product
-     */
-    public function getProductServices(Produk $produk, $period = 'week')
-    {
-        $startDate = $this->getStartDate($period);
-
-        // Get services for the product with sales data
-        return $produk->layanan()
-            ->withCount(['pembelian as orders' => function ($query) use ($startDate) {
-                $query->where('created_at', '>=', $startDate)
-                    ->where('status', 'completed');
-            }])
-            ->withSum(['pembelian as revenue' => function ($query) use ($startDate) {
-                $query->where('created_at', '>=', $startDate)
-                    ->where('status', 'completed');
-            }], 'total_price')
-            ->withSum(['pembelian as profit' => function ($query) use ($startDate) {
-                $query->where('created_at', '>=', $startDate)
-                    ->where('status', 'completed');
-            }], 'profit')
-            ->get()
-            ->map(function ($layanan) {
-                return [
-                    'id' => $layanan->id,
-                    'name' => $layanan->nama_layanan,
-                    'orders' => $layanan->orders ?? 0,
-                    'revenue' => $layanan->revenue ?? 0,
-                    'profit' => $layanan->profit ?? 0,
-                    'status' => $layanan->status,
-                ];
-            });
-    }
-
-    /**
-     * Get active vouchers with performance metrics
-     */
-    public function getActiveVouchers()
-    {
-        return Voucher::where('status', 'active')
-            ->where(function ($query) {
-                $query->whereNull('expired_at')
-                    ->orWhere('expired_at', '>=', now());
-            })
-            ->get()
-            ->map(function ($voucher) {
-                // Calculate effectiveness metrics
-                // In a real implementation, this would query actual usage data
-                $effectiveness = null;
-                
-                if ($voucher->usage_count > 0) {
-                    $effectiveness = $voucher->discount_type === 'percentage' 
-                        ? ($voucher->usage_count * 3) . '% increase in AOV'
-                        : ($voucher->usage_count * 0.5) . '% conversion rate';
-                }
-
-                return [
-                    'id' => $voucher->id,
-                    'code' => $voucher->kode,
-                    'type' => $voucher->discount_type,
-                    'value' => $voucher->discount_value,
-                    'usage_count' => $voucher->usage_count ?? 0,
-                    'usage_limit' => $voucher->usage_limit,
-                    'effectiveness' => $effectiveness,
                 ];
             });
     }
@@ -529,7 +388,7 @@ class AdminController extends Controller
         // Export functionality would be implemented here
         // It would generate an Excel file from the dashboard data
         // and return a download response
-
+        
         // For now, just return a placeholder response
         return response()->json([
             'success' => true,
