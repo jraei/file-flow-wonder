@@ -1,34 +1,35 @@
 <?php
 
-use Inertia\Inertia;
-use App\Models\Banner;
-use Illuminate\Support\Facades\Route;
-use Illuminate\Foundation\Application;
-use App\Http\Controllers\IndexController;
-use App\Http\Controllers\OrderController;
-use App\Http\Controllers\MoogoldController;
-use App\Http\Controllers\ProfileController;
-use App\Http\Controllers\DashboardController;
-use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\AdminController;
 use App\Http\Controllers\Admin\BannerController;
-use App\Http\Controllers\Admin\ProdukController;
-use App\Http\Controllers\Admin\TripayController;
-use App\Http\Controllers\Admin\DepositController;
-use App\Http\Controllers\Admin\LayananController;
-use App\Http\Controllers\Admin\VoucherController;
-use App\Http\Controllers\Admin\KategoriController;
-use App\Http\Controllers\Admin\ProviderController;
-use App\Http\Controllers\Admin\PayMethodController;
-use App\Http\Controllers\Admin\PembelianController;
-use App\Http\Controllers\Admin\PembayaranController;
-use App\Http\Controllers\Admin\ProfitProdukController;
+use App\Http\Controllers\Admin\CheckUsernameController;
+use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
+use App\Http\Controllers\Admin\DigiflazzController;
+use App\Http\Controllers\Admin\FlashsaleEventController;
 use App\Http\Controllers\Admin\FlashsaleItemController;
 use App\Http\Controllers\Admin\ItemThumbnailController;
-use App\Http\Controllers\Admin\FlashsaleEventController;
+use App\Http\Controllers\Admin\KategoriController;
+use App\Http\Controllers\Admin\LayananController;
+use App\Http\Controllers\Admin\PayMethodController;
 use App\Http\Controllers\Admin\PaymentProviderController;
+use App\Http\Controllers\Admin\PembayaranController;
+use App\Http\Controllers\Admin\PembelianController;
+use App\Http\Controllers\Admin\ProdukController;
 use App\Http\Controllers\Admin\ProdukInputFieldController;
 use App\Http\Controllers\Admin\ProdukInputOptionController;
+use App\Http\Controllers\Admin\ProfitProdukController;
+use App\Http\Controllers\Admin\ProviderController;
+use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\Admin\VoucherController;
+use App\Http\Controllers\AjaxController;
+use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\IndexController;
+use App\Http\Controllers\MoogoldController;
+use App\Http\Controllers\OrderController;
+use App\Http\Controllers\ProfileController;
+use Illuminate\Foundation\Application;
+use Illuminate\Support\Facades\Route;
+use Inertia\Inertia;
 
 /*
 |--------------------------------------------------------------------------
@@ -41,29 +42,51 @@ use App\Http\Controllers\Admin\ProdukInputOptionController;
 |
 */
 
+Route::get('/', [IndexController::class, 'index'])->name('home');
 
+Route::get('/order/{produk}', [OrderController::class, 'index'])->name('order.index');
 
-Route::get('/', [IndexController::class, 'index'])->name('index');
-Route::get('/leaderboard', [IndexController::class, 'leaderboard'])->name('leaderboard');
-Route::get('/cek-transaksi', [IndexController::class, 'cekTransaksi'])->name('cek-transaksi');
+Route::post('/check-username', [CheckUsernameController::class, 'index'])->name('check.username');
 
-// Order Processing Routes
-Route::get('/order/{produk:slug}', [OrderController::class, 'index'])->name('order.index');
-Route::post('/order/confirm', [OrderController::class, 'confirmOrder'])->name('order.confirm');
-Route::post('/order/process', [OrderController::class, 'processOrder'])->name('order.process');
+Route::post('/order', [OrderController::class, 'store'])->name('order.store');
 
-// Order Invoice
-Route::get('/order/invoice/{order_id}', [OrderController::class, 'invoice'])->name('order.invoice');
+Route::get('/order/invoice/{reference_id}', [OrderController::class, 'invoice'])->name('order.invoice');
 
+Route::get('/cektransaksi', function () {
+    return Inertia::render('CekTransaksi');
+})->name('cektransaksi');
+
+Route::get('/cektransaksi/{reference_id}', [OrderController::class, 'cekTransaksi'])->name('order.cektransaksi');
+
+Route::get('/leaderboard', function() {
+    return Inertia::render('Leaderboard');
+})->name('leaderboard');
+
+Route::get('/moogold/categories', [MoogoldController::class, 'getCategories'])->name('moogold.categories');
+Route::get('/moogold/product', [MoogoldController::class, 'getProduct'])->name('moogold.product');
+Route::get('/moogold/sku/{id}', [MoogoldController::class, 'getSKU'])->name('moogold.sku');
+
+Route::get('/dashboard', function () {
+    return Inertia::render('Dashboard/Index');
+})->middleware(['auth', 'verified'])->name('dashboard');
+
+// AJAX Controller
+Route::get('/ajax/v1/userdata', [AjaxController::class, 'getUserData'])->name('ajax.userdata');
 
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
-});
 
-// Route::get('moogold/product', [MoogoldController::class, 'getMoogoldProducts'])->name('moogold.balance');
-// Route::get('moogold/services', [MoogoldController::class, 'getMoogoldServices'])->name('moogold.balance');
+    // Dashboard
+    Route::get('/dashboard/balance', [DashboardController::class, 'balance'])->name('dashboard.balance');
+    Route::get('/dashboard/topup', [DashboardController::class, 'topup'])->name('dashboard.topup');
+    Route::post('/dashboard/topup/process', [DashboardController::class, 'processTopup'])->name('dashboard.process.topup');
+    Route::get('/dashboard/topup/invoice/{deposit}', [DashboardController::class, 'showInvoice'])->name('invoice.topup');
+    Route::get('/dashboard/transactions', [DashboardController::class, 'transactions'])->name('dashboard.transactions');
+    Route::get('/dashboard/mutations', [DashboardController::class, 'mutations'])->name('dashboard.mutations');
+    Route::get('/dashboard/affiliate', [DashboardController::class, 'affiliate'])->name('dashboard.affiliate');
+});
 
 // Admin Routes
 Route::prefix('admin')->middleware(['auth', 'admin'])->group(function () {

@@ -2,13 +2,16 @@
 import GuestLayout from "@/Layouts/GuestLayout.vue";
 import DashboardSidebar from "@/Components/Dashboard/Sidebar.vue";
 import { Link, useForm } from "@inertiajs/vue3";
-import { computed } from "vue";
-import { Image, Wallet, CreditCard } from "lucide-vue-next";
+import { computed, ref } from "vue";
+import { Image, Wallet, CreditCard, Loader } from "lucide-vue-next";
 
 const props = defineProps({
     balance: { type: Number, required: true },
     payMethods: { type: Object, required: true },
+    hasPendingDeposit: { type: Boolean, default: false },
 });
+
+const isLoading = ref(false);
 
 // get selected payment method
 const payMethod = computed(() => {
@@ -29,6 +32,7 @@ const feeAmount = computed(() => {
             return payMethod.value.fee_fixed;
         }
     }
+    return 0;
 });
 
 function formatCurrency(amount) {
@@ -44,6 +48,46 @@ const form = useForm({
     nominal: "",
     methodName: "",
 });
+
+const submit = () => {
+    if (!form.nominal || !form.methodName) {
+        window.$swal.fire({
+            icon: 'error',
+            title: 'Oops...',
+            text: 'Please select both amount and payment method',
+        });
+        return;
+    }
+    
+    if (form.nominal < 10000) {
+        window.$swal.fire({
+            icon: 'error',
+            title: 'Minimum Deposit',
+            text: 'Minimum deposit amount is Rp 10,000',
+        });
+        return;
+    }
+    
+    if (props.hasPendingDeposit) {
+        window.$swal.fire({
+            icon: 'warning',
+            title: 'Pending Deposit',
+            text: 'You have a pending deposit. Please complete it or wait for it to expire before creating a new one.',
+        });
+        return;
+    }
+    
+    isLoading.value = true;
+    form.post(route('dashboard.process.topup'), {
+        preserveScroll: true,
+        onSuccess: () => {
+            isLoading.value = false;
+        },
+        onError: () => {
+            isLoading.value = false;
+        }
+    });
+};
 
 const paymentAmounts = [10000, 50000, 100000, 200000, 500000];
 console.log(payMethod.value);
@@ -97,16 +141,16 @@ console.log(payMethod.value);
                                         id="nominal"
                                         v-model="form.nominal"
                                         type="number"
-                                        min="1"
+                                        min="10000"
                                         class="w-full px-3 py-2 text-white border rounded-lg border-secondary bg-secondary/20 focus:ring-2 focus:ring-primary focus:border-transparent"
                                     />
                                 </div>
                             </div>
                             <span
                                 class="block mt-2 text-xs text-secondary"
-                                v-if="form.nominal < 1000"
+                                v-if="form.nominal < 10000"
                             >
-                                Minimal Deposit Rp 1.000</span
+                                Minimal Deposit Rp 10.000</span
                             >
                             <div
                                 class="grid grid-cols-2 gap-3 mt-4 md:grid-cols-3 md:gap-4"
@@ -378,10 +422,17 @@ console.log(payMethod.value);
                                     <button
                                         @click="submit"
                                         type="submit"
-                                        class="w-full px-4 py-2 text-white transition-all duration-200 rounded-lg shadow bg-primary/70 hover:bg-primary-hover hover:shadow-glow-primary"
+                                        class="w-full px-4 py-2 text-white transition-all duration-200 rounded-lg shadow bg-primary/70 hover:bg-primary-hover hover:shadow-glow-primary disabled:opacity-50 disabled:cursor-not-allowed relative"
+                                        :disabled="isLoading || props.hasPendingDeposit"
                                     >
-                                        Bayar
+                                        <span v-if="!isLoading">Bayar</span>
+                                        <span v-else class="flex items-center justify-center">
+                                            <Loader class="w-5 h-5 mr-2 animate-spin" /> Processing...
+                                        </span>
                                     </button>
+                                    <p v-if="props.hasPendingDeposit" class="mt-2 text-xs text-center text-secondary">
+                                        You have a pending deposit. Please complete it or wait for it to expire.
+                                    </p>
                                 </div>
                             </div>
                         </div>
