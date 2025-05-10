@@ -4,11 +4,14 @@ namespace App\Http\Controllers;
 
 use App\Models\Deposit;
 use App\Models\PayMethod;
+use App\Models\Pembelian;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use App\Http\Controllers\Admin\TripayController;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Response;
 use Illuminate\Support\Facades\Validator;
 
 class DashboardController extends Controller
@@ -144,9 +147,126 @@ class DashboardController extends Controller
         ]);
     }
 
-    public function transactions()
+    /**
+     * Display the transaction history for authenticated user with filters.
+     */
+    public function transactions(Request $request)
     {
-        return Inertia::render('Dashboard/Transactions');
+        $user = $request->user();
+        $cacheKey = 'transactions_' . $user->id . '_' . md5(json_encode($request->all()));
+        $perPage = $request->input('per_page', 10);
+
+        // Try to get from cache with 5 min TTL
+        $transactions = Cache::remember($cacheKey, 300, function () use ($request, $user, $perPage) {
+            return Pembelian::with(['layanan', 'layanan.produk'])
+                ->where('user_id', $user->id)
+                ->when($request->input('status'), function ($query, $status) {
+                    if ($status !== 'all') {
+                        $query->where('status', $status);
+                    }
+                })
+                ->when($request->input('search'), function ($query, $search) {
+                    $query->where(function ($q) use ($search) {
+                        $q->where('order_id', 'like', "%{$search}%")
+                            ->orWhereHas('layanan', function ($q) use ($search) {
+                                $q->where('nama_layanan', 'like', "%{$search}%");
+                            });
+                    });
+                })
+                ->when($request->input('date_start') && $request->input('date_end'), function ($query) use ($request) {
+                    $start = date('Y-m-d 00:00:00', strtotime($request->input('date_start')));
+                    $end = date('Y-m-d 23:59:59', strtotime($request->input('date_end')));
+                    $query->whereBetween('created_at', [$start, $end]);
+                })
+                ->when($request->input('sort_by') && $request->input('sort_order'), function ($query) use ($request) {
+                    $query->orderBy($request->input('sort_by'), $request->input('sort_order'));
+                }, function ($query) {
+                    $query->latest();
+                })
+                ->paginate($perPage)
+                ->withQueryString();
+        });
+
+        return Inertia::render('Dashboard/Transactions', [
+            'transactions' => $transactions,
+            'filters' => [
+                'status' => $request->input('status', ''),
+                'date_start' => $request->input('date_start', ''),
+                'date_end' => $request->input('date_end', ''),
+                'search' => $request->input('search', ''),
+                'sort_by' => $request->input('sort_by', 'created_at'),
+                'sort_order' => $request->input('sort_order', 'desc'),
+            ],
+        ]);
+    }
+
+    /**
+     * Export transactions to CSV
+     */
+    public function exportTransactions(Request $request)
+    {
+        $user = $request->user();
+        
+        $transactions = Pembelian::with(['layanan', 'layanan.produk'])
+            ->where('user_id', $user->id)
+            ->when($request->input('status'), function ($query, $status) {
+                if ($status !== 'all') {
+                    $query->where('status', $status);
+                }
+            })
+            ->when($request->input('search'), function ($query, $search) {
+                $query->where(function ($q) use ($search) {
+                    $q->where('order_id', 'like', "%{$search}%")
+                        ->orWhereHas('layanan', function ($q) use ($search) {
+                            $q->where('nama_layanan', 'like', "%{$search}%");
+                        });
+                });
+            })
+            ->when($request->input('date_start') && $request->input('date_end'), function ($query) use ($request) {
+                $start = date('Y-m-d 00:00:00', strtotime($request->input('date_start')));
+                $end = date('Y-m-d 23:59:59', strtotime($request->input('date_end')));
+                $query->whereBetween('created_at', [$start, $end]);
+            })
+            ->when($request->input('sort_by') && $request->input('sort_order'), function ($query) use ($request) {
+                $query->orderBy($request->input('sort_by'), $request->input('sort_order'));
+            }, function ($query) {
+                $query->latest();
+            })
+            ->get();
+
+        // Create CSV file
+        $headers = [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => 'attachment; filename="transactions.csv"',
+            'Pragma' => 'no-cache',
+            'Cache-Control' => 'must-revalidate, post-check=0, pre-check=0',
+            'Expires' => '0',
+        ];
+
+        $columns = ['Invoice', 'Item', 'User Input', 'Price', 'Date', 'Status'];
+        
+        $callback = function() use ($transactions, $columns) {
+            $file = fopen('php://output', 'w');
+            fputcsv($file, $columns);
+
+            foreach ($transactions as $transaction) {
+                $row = [
+                    $transaction->order_id,
+                    $transaction->layanan->nama_layanan ?? 'Unknown Service',
+                    $transaction->input_zone ? 
+                        "{$transaction->input_id} (Zone {$transaction->input_zone})" : 
+                        $transaction->input_id,
+                    'Rp ' . number_format($transaction->price, 0, ',', '.'),
+                    $transaction->created_at->format('d-m-Y H:i'),
+                    $transaction->status,
+                ];
+                fputcsv($file, $row);
+            }
+            
+            fclose($file);
+        };
+
+        return Response::stream($callback, 200, $headers);
     }
 
     public function mutations()

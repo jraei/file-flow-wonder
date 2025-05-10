@@ -116,4 +116,63 @@ class Pembelian extends Model
                 ];
             });
     }
+
+    /**
+     * Scope for transactions belonging to a specific user
+     */
+    public function scopeForUser($query, $userId)
+    {
+        return $query->where('user_id', $userId);
+    }
+
+    /**
+     * Add transaction filters for data table
+     * Accepts:
+     * - status (pending/processing/completed/failed/cancelled)
+     * - search (free text: searches order_id or layanan.nama)
+     * - date_range: [start, end] (YYYY-MM-DD)
+     * - sort_by: any valid column (default: created_at)
+     * - sort_order: asc/desc (default: desc)
+     */
+    public function scopeWithFilters($query, $request)
+    {
+        // Filter by status
+        $status = $request->input('status');
+        if ($status && strtolower($status) !== 'all') {
+            $query->where('status', $status);
+        }
+
+        // Filter by date range
+        $start = $request->input('date_start');
+        $end = $request->input('date_end');
+        if ($start && $end) {
+            // Coerce valid format
+            $dateStart = date('Y-m-d 00:00:00', strtotime($start));
+            $dateEnd = date('Y-m-d 23:59:59', strtotime($end));
+            $query->whereBetween('created_at', [$dateStart, $dateEnd]);
+        }
+
+        // Search filter
+        $search = $request->input('search');
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                // Search by order_id or layanan name
+                $q->where('order_id', 'like', "%$search%")
+                    ->orWhereHas('layanan', function ($q) use ($search) {
+                        $q->where('nama_layanan', 'like', "%$search%");
+                    });
+            });
+        }
+
+        // Sorting
+        $sortBy = $request->input('sort_by', 'created_at');
+        $allowedSorts = ['order_id', 'created_at', 'price', 'status'];
+        if (!in_array($sortBy, $allowedSorts)) {
+            $sortBy = 'created_at';
+        }
+        $sortOrder = $request->input('sort_order', 'desc');
+        $query->orderBy($sortBy, $sortOrder === 'asc' ? 'asc' : 'desc');
+
+        return $query;
+    }
 }

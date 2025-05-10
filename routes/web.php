@@ -29,6 +29,7 @@ use App\Http\Controllers\Admin\FlashsaleEventController;
 use App\Http\Controllers\Admin\PaymentProviderController;
 use App\Http\Controllers\Admin\ProdukInputFieldController;
 use App\Http\Controllers\Admin\ProdukInputOptionController;
+use App\Http\Controllers\AjaxController;
 
 /*
 |--------------------------------------------------------------------------
@@ -40,8 +41,6 @@ use App\Http\Controllers\Admin\ProdukInputOptionController;
 | contains the "web" middleware group. Now create something great!
 |
 */
-
-
 
 Route::get('/', [IndexController::class, 'index'])->name('index');
 Route::get('/leaderboard', [IndexController::class, 'leaderboard'])->name('leaderboard');
@@ -178,8 +177,11 @@ require __DIR__ . '/auth.php';
 Route::middleware(['auth', 'verified'])->prefix('dashboard')->group(function () {
     Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('/balance', [DashboardController::class, 'balance'])->name('dashboard.balance');
+    Route::get('/topup', [DashboardController::class, 'topup'])->name('dashboard.topup');
+    Route::post('/topup', [DashboardController::class, 'processTopup'])->name('topup.process');
+    Route::get('/topup/{deposit:deposit_id}', [DashboardController::class, 'showInvoice'])->name('invoice.topup');
     Route::get('/transactions', [DashboardController::class, 'transactions'])->name('dashboard.transactions');
+    Route::get('/transactions/export', [DashboardController::class, 'exportTransactions'])->name('transactions.export');
     Route::get('/mutations', [DashboardController::class, 'mutations'])->name('dashboard.mutations');
     Route::get('/affiliate', [DashboardController::class, 'affiliate'])->name('dashboard.affiliate');
-    Route::get('/topup', [DashboardController::class, 'topup'])->name('dashboard.topup');
 });
