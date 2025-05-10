@@ -1,29 +1,57 @@
-
 <script setup>
 import { ref, computed, onMounted } from "vue";
-import { Head, usePage, router } from "@inertiajs/vue3";
+import { Head, usePage, router, Link } from "@inertiajs/vue3";
 import AdminLayout from "@/Layouts/AdminLayout.vue";
-import { ChartArea, ChartPie, ArrowUp, ArrowDown, FileExcel, Calendar, Loader } from "lucide-vue-next";
+import {
+    ChartArea,
+    ChartPie,
+    ArrowUp,
+    ArrowDown,
+    FileDown,
+    Calendar,
+    Loader,
+} from "lucide-vue-next";
 
 // Import chart libraries
-import { Line } from 'vue-chartjs';
-import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler, ArcElement } from 'chart.js';
-import { Doughnut } from 'vue-chartjs';
+import { Line } from "vue-chartjs";
+import {
+    Chart as ChartJS,
+    CategoryScale,
+    LinearScale,
+    PointElement,
+    LineElement,
+    Title,
+    Tooltip,
+    Legend,
+    Filler,
+    ArcElement,
+} from "chart.js";
+import { Doughnut } from "vue-chartjs";
 
 // Register ChartJS components
-ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler, ArcElement);
+ChartJS.register(
+    CategoryScale,
+    LinearScale,
+    PointElement,
+    LineElement,
+    Title,
+    Tooltip,
+    Legend,
+    Filler,
+    ArcElement
+);
 
 // Get data from props
 const props = defineProps({
     metrics: Object,
     charts: Object,
     tables: Object,
-    period: String
+    period: String,
 });
 
 // Reactive state
 const isLoading = ref(false);
-const selectedPeriod = ref(props.period || 'week');
+const selectedPeriod = ref(props.period || "week");
 
 // Format currency
 const formatCurrency = (value) => {
@@ -40,48 +68,48 @@ const revenueChartOptions = {
     scales: {
         y: {
             ticks: {
-                color: '#F1F0FB' // Soft Gray
+                color: "#F1F0FB", // Soft Gray
             },
             grid: {
-                color: '#2226'
-            }
+                color: "#2226",
+            },
         },
         x: {
             ticks: {
-                color: '#F1F0FB' // Soft Gray
+                color: "#F1F0FB", // Soft Gray
             },
             grid: {
-                color: '#2226'
-            }
-        }
+                color: "#2226",
+            },
+        },
     },
     plugins: {
         tooltip: {
-            mode: 'index',
-            intersect: false
+            mode: "index",
+            intersect: false,
         },
         legend: {
             display: true,
-            position: 'top',
+            position: "top",
             labels: {
-                color: '#F1F0FB' // Soft Gray
-            }
-        }
+                color: "#F1F0FB", // Soft Gray
+            },
+        },
     },
     interaction: {
-        intersect: false
+        intersect: false,
     },
     elements: {
         line: {
-            tension: 0.4
+            tension: 0.4,
         },
         point: {
             radius: 4,
             hoverRadius: 6,
             borderWidth: 2,
-            backgroundColor: '#1F2937' // Dark space
-        }
-    }
+            backgroundColor: "#1F2937", // Dark space
+        },
+    },
 };
 
 // Doughnut chart configuration
@@ -90,18 +118,18 @@ const pieChartOptions = {
     maintainAspectRatio: false,
     plugins: {
         legend: {
-            position: 'top',
+            position: "top",
             labels: {
-                color: '#F1F0FB', // Soft Gray
-                padding: 16
-            }
-        }
+                color: "#F1F0FB", // Soft Gray
+                padding: 16,
+            },
+        },
     },
-    cutout: '60%',
+    cutout: "60%",
     animation: {
         animateRotate: true,
-        animateScale: true
-    }
+        animateScale: true,
+    },
 };
 
 // Helper function for status styling
@@ -125,40 +153,40 @@ const getStatusClass = (status) => {
 // Handle period change
 const changePeriod = (period) => {
     if (selectedPeriod.value === period) return;
-    
+
     isLoading.value = true;
     selectedPeriod.value = period;
-    
-    router.visit(route('admin.dashboard', { period }), {
+
+    router.visit(route("admin.dashboard", { period }), {
         preserveScroll: true,
         onSuccess: () => {
             isLoading.value = false;
-        }
+        },
     });
 };
 
 // Handle data export
 const exportData = (type) => {
-    const endpoint = route('admin.dashboard.export', {
+    const endpoint = route("admin.dashboard.export", {
         period: selectedPeriod.value,
-        type: type // 'excel', 'csv', 'pdf'
+        type: type, // 'excel', 'csv', 'pdf'
     });
-    
-    window.open(endpoint, '_blank');
+
+    window.open(endpoint, "_blank");
 };
 
 // Cosmic particle effect for chart
 const initCosmicParticles = () => {
-    const canvas = document.getElementById('cosmicParticles');
+    const canvas = document.getElementById("cosmicParticles");
     if (!canvas) return;
-    
-    const ctx = canvas.getContext('2d');
+
+    const ctx = canvas.getContext("2d");
     const particles = [];
-    
+
     // Configure canvas
     canvas.width = canvas.offsetWidth;
     canvas.height = canvas.offsetHeight;
-    
+
     // Create particles
     for (let i = 0; i < 50; i++) {
         particles.push({
@@ -167,26 +195,26 @@ const initCosmicParticles = () => {
             radius: Math.random() * 2 + 0.5,
             color: `rgba(155, 135, 245, ${Math.random() * 0.5 + 0.25})`,
             vx: Math.random() * 0.5 - 0.25,
-            vy: Math.random() * 0.5 - 0.25
+            vy: Math.random() * 0.5 - 0.25,
         });
     }
-    
+
     // Animation function
     const animate = () => {
         requestAnimationFrame(animate);
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        
-        particles.forEach(particle => {
+
+        particles.forEach((particle) => {
             // Move particle
             particle.x += particle.vx;
             particle.y += particle.vy;
-            
+
             // Wrap around edges
             if (particle.x < 0) particle.x = canvas.width;
             if (particle.x > canvas.width) particle.x = 0;
             if (particle.y < 0) particle.y = canvas.height;
             if (particle.y > canvas.height) particle.y = 0;
-            
+
             // Draw particle
             ctx.beginPath();
             ctx.arc(particle.x, particle.y, particle.radius, 0, Math.PI * 2);
@@ -194,12 +222,12 @@ const initCosmicParticles = () => {
             ctx.fill();
         });
     };
-    
+
     // Start animation
     animate();
-    
+
     // Handle resize
-    window.addEventListener('resize', () => {
+    window.addEventListener("resize", () => {
         canvas.width = canvas.offsetWidth;
         canvas.height = canvas.offsetHeight;
     });
@@ -215,42 +243,45 @@ onMounted(() => {
     <Head title="Admin Dashboard" />
 
     <AdminLayout title="Dashboard">
-        <template #actions>
-            <div class="flex items-center gap-4">
-                <!-- Period Selector -->
-                <div class="flex bg-dark-card border border-gray-700 rounded-lg overflow-hidden">
-                    <button 
-                        v-for="period in ['day', 'week', 'month', 'year']" 
-                        :key="period"
-                        @click="changePeriod(period)"
-                        :class="[
-                            'px-3 py-2 text-sm font-medium transition-all duration-300',
-                            selectedPeriod === period 
-                                ? 'bg-primary/20 text-primary border-b-2 border-primary'
-                                : 'text-gray-400 hover:text-white'
-                        ]"
-                    >
-                        <Calendar class="inline-block w-4 h-4 mr-1" />
-                        {{ period.charAt(0).toUpperCase() + period.slice(1) }}
-                    </button>
-                </div>
-
-                <!-- Export Button -->
-                <div class="relative" x-data="{ open: false }">
-                    <button 
-                        @click="exportData('excel')"
-                        class="flex items-center px-4 py-2 text-sm font-medium text-white bg-primary/20 border border-primary/30 rounded-lg hover:bg-primary/30 transition-all duration-300"
-                    >
-                        <FileExcel class="w-4 h-4 mr-2" />
-                        Export Data
-                    </button>
-                </div>
+        <div class="flex items-center gap-4 px-6">
+            <!-- Period Selector -->
+            <div
+                class="flex overflow-hidden border border-gray-700 rounded-lg bg-dark-card"
+            >
+                <button
+                    v-for="period in ['day', 'week', 'month', 'year']"
+                    :key="period"
+                    @click="changePeriod(period)"
+                    :class="[
+                        'px-3 py-2 text-sm font-medium transition-all duration-300',
+                        selectedPeriod === period
+                            ? 'bg-primary/20 text-primary border-b-2 border-primary'
+                            : 'text-gray-400 hover:text-white',
+                    ]"
+                >
+                    <Calendar class="inline-block w-4 h-4 mr-1" />
+                    {{ period.charAt(0).toUpperCase() + period.slice(1) }}
+                </button>
             </div>
-        </template>
+
+            <!-- Export Button -->
+            <div class="relative" x-data="{ open: false }">
+                <button
+                    @click="exportData('excel')"
+                    class="flex items-center px-4 py-2 text-sm font-medium text-white transition-all duration-300 border rounded-lg bg-primary/20 border-primary/30 hover:bg-primary/30"
+                >
+                    <FileDown class="w-4 h-4 mr-2" />
+                    Export Data
+                </button>
+            </div>
+        </div>
 
         <div class="p-6">
             <!-- Loading Overlay -->
-            <div v-if="isLoading" class="fixed inset-0 bg-dark-card/80 z-50 flex items-center justify-center">
+            <div
+                v-if="isLoading"
+                class="fixed inset-0 z-50 flex items-center justify-center bg-dark-card/80"
+            >
                 <div class="flex flex-col items-center">
                     <Loader class="w-12 h-12 text-primary animate-spin" />
                     <span class="mt-4 text-white">Loading cosmic data...</span>
@@ -258,10 +289,15 @@ onMounted(() => {
             </div>
 
             <!-- Cosmic Particles Canvas -->
-            <canvas id="cosmicParticles" class="absolute inset-0 pointer-events-none"></canvas>
+            <canvas
+                id="cosmicParticles"
+                class="absolute inset-0 pointer-events-none"
+            ></canvas>
 
             <!-- Stats Grid -->
-            <div class="grid grid-cols-1 gap-6 mb-8 sm:grid-cols-2 lg:grid-cols-4">
+            <div
+                class="grid grid-cols-1 gap-6 mb-8 sm:grid-cols-2 lg:grid-cols-4"
+            >
                 <!-- Users Stat Card -->
                 <div
                     class="p-6 transition-all duration-300 border border-gray-700 rounded-lg shadow-lg bg-gradient-to-br from-dark-card to-dark-lighter hover:shadow-glow-primary"
@@ -282,11 +318,22 @@ onMounted(() => {
                                         : 'text-red-400',
                                 ]"
                             >
-                                <ArrowUp v-if="metrics?.users?.isPositive" class="w-4 h-4 mr-1" />
+                                <ArrowUp
+                                    v-if="metrics?.users?.isPositive"
+                                    class="w-4 h-4 mr-1"
+                                />
                                 <ArrowDown v-else class="w-4 h-4 mr-1" />
                                 <span>
-                                    {{ Math.abs(metrics?.users?.growthPercent || 0) }}%
-                                    {{ metrics?.users?.isPositive ? "increase" : "decrease" }}
+                                    {{
+                                        Math.abs(
+                                            metrics?.users?.growthPercent || 0
+                                        )
+                                    }}%
+                                    {{
+                                        metrics?.users?.isPositive
+                                            ? "increase"
+                                            : "decrease"
+                                    }}
                                 </span>
                             </div>
                         </div>
@@ -308,11 +355,18 @@ onMounted(() => {
                         </div>
                     </div>
                     <!-- Sparkline graph -->
-                    <div class="w-full h-2 mt-4 overflow-hidden bg-gray-700 rounded-full">
+                    <div
+                        class="w-full h-2 mt-4 overflow-hidden bg-gray-700 rounded-full"
+                    >
                         <div
                             class="h-full rounded-full bg-gradient-to-r from-primary to-secondary animate-pulse"
                             :style="{
-                                width: `${Math.max(5, Math.abs(metrics?.users?.growthPercent || 0) * 5)}%`,
+                                width: `${Math.max(
+                                    5,
+                                    Math.abs(
+                                        metrics?.users?.growthPercent || 0
+                                    ) * 5
+                                )}%`,
                             }"
                         ></div>
                     </div>
@@ -328,7 +382,9 @@ onMounted(() => {
                                 Total Revenue
                             </p>
                             <h2 class="mt-2 text-3xl font-bold text-white">
-                                {{ formatCurrency(metrics?.revenue?.total || 0) }}
+                                {{
+                                    formatCurrency(metrics?.revenue?.total || 0)
+                                }}
                             </h2>
                             <div
                                 :class="[
@@ -338,11 +394,22 @@ onMounted(() => {
                                         : 'text-red-400',
                                 ]"
                             >
-                                <ArrowUp v-if="metrics?.revenue?.isPositive" class="w-4 h-4 mr-1" />
+                                <ArrowUp
+                                    v-if="metrics?.revenue?.isPositive"
+                                    class="w-4 h-4 mr-1"
+                                />
                                 <ArrowDown v-else class="w-4 h-4 mr-1" />
                                 <span>
-                                    {{ Math.abs(metrics?.revenue?.growthPercent || 0) }}%
-                                    {{ metrics?.revenue?.isPositive ? "increase" : "decrease" }}
+                                    {{
+                                        Math.abs(
+                                            metrics?.revenue?.growthPercent || 0
+                                        )
+                                    }}%
+                                    {{
+                                        metrics?.revenue?.isPositive
+                                            ? "increase"
+                                            : "decrease"
+                                    }}
                                 </span>
                             </div>
                         </div>
@@ -364,11 +431,18 @@ onMounted(() => {
                         </div>
                     </div>
                     <!-- Sparkline graph -->
-                    <div class="w-full h-2 mt-4 overflow-hidden bg-gray-700 rounded-full">
+                    <div
+                        class="w-full h-2 mt-4 overflow-hidden bg-gray-700 rounded-full"
+                    >
                         <div
                             class="h-full rounded-full bg-gradient-to-r from-secondary to-primary animate-pulse"
                             :style="{
-                                width: `${Math.max(5, Math.abs(metrics?.revenue?.growthPercent || 0) * 5)}%`,
+                                width: `${Math.max(
+                                    5,
+                                    Math.abs(
+                                        metrics?.revenue?.growthPercent || 0
+                                    ) * 5
+                                )}%`,
                             }"
                         ></div>
                     </div>
@@ -394,11 +468,22 @@ onMounted(() => {
                                         : 'text-red-400',
                                 ]"
                             >
-                                <ArrowUp v-if="metrics?.orders?.isPositive" class="w-4 h-4 mr-1" />
+                                <ArrowUp
+                                    v-if="metrics?.orders?.isPositive"
+                                    class="w-4 h-4 mr-1"
+                                />
                                 <ArrowDown v-else class="w-4 h-4 mr-1" />
                                 <span>
-                                    {{ Math.abs(metrics?.orders?.growthPercent || 0) }}%
-                                    {{ metrics?.orders?.isPositive ? "increase" : "decrease" }}
+                                    {{
+                                        Math.abs(
+                                            metrics?.orders?.growthPercent || 0
+                                        )
+                                    }}%
+                                    {{
+                                        metrics?.orders?.isPositive
+                                            ? "increase"
+                                            : "decrease"
+                                    }}
                                 </span>
                             </div>
                         </div>
@@ -420,11 +505,18 @@ onMounted(() => {
                         </div>
                     </div>
                     <!-- Sparkline graph -->
-                    <div class="w-full h-2 mt-4 overflow-hidden bg-gray-700 rounded-full">
+                    <div
+                        class="w-full h-2 mt-4 overflow-hidden bg-gray-700 rounded-full"
+                    >
                         <div
                             class="h-full rounded-full bg-gradient-to-r from-primary to-secondary animate-pulse"
                             :style="{
-                                width: `${Math.max(5, Math.abs(metrics?.orders?.growthPercent || 0) * 5)}%`,
+                                width: `${Math.max(
+                                    5,
+                                    Math.abs(
+                                        metrics?.orders?.growthPercent || 0
+                                    ) * 5
+                                )}%`,
                             }"
                         ></div>
                     </div>
@@ -450,11 +542,23 @@ onMounted(() => {
                                         : 'text-red-400',
                                 ]"
                             >
-                                <ArrowUp v-if="metrics?.products?.isPositive" class="w-4 h-4 mr-1" />
+                                <ArrowUp
+                                    v-if="metrics?.products?.isPositive"
+                                    class="w-4 h-4 mr-1"
+                                />
                                 <ArrowDown v-else class="w-4 h-4 mr-1" />
                                 <span>
-                                    {{ Math.abs(metrics?.products?.growthPercent || 0) }}%
-                                    {{ metrics?.products?.isPositive ? "increase" : "decrease" }}
+                                    {{
+                                        Math.abs(
+                                            metrics?.products?.growthPercent ||
+                                                0
+                                        )
+                                    }}%
+                                    {{
+                                        metrics?.products?.isPositive
+                                            ? "increase"
+                                            : "decrease"
+                                    }}
                                 </span>
                             </div>
                         </div>
@@ -482,7 +586,12 @@ onMounted(() => {
                         <div
                             class="h-full rounded-full bg-gradient-to-r from-secondary to-primary animate-pulse"
                             :style="{
-                                width: `${Math.max(5, Math.abs(metrics?.products?.growthPercent || 0) * 5)}%`,
+                                width: `${Math.max(
+                                    5,
+                                    Math.abs(
+                                        metrics?.products?.growthPercent || 0
+                                    ) * 5
+                                )}%`,
                             }"
                         ></div>
                     </div>
@@ -493,55 +602,80 @@ onMounted(() => {
             <div class="grid grid-cols-1 gap-6 mb-8 lg:grid-cols-2">
                 <!-- Revenue Chart -->
                 <div
-                    class="relative p-6 border border-gray-700 rounded-lg shadow-lg bg-dark-card overflow-hidden"
+                    class="relative p-6 overflow-hidden border border-gray-700 rounded-lg shadow-lg bg-dark-card"
                 >
-                    <h3 class="mb-6 text-xl font-semibold text-white flex items-center">
+                    <h3
+                        class="flex items-center mb-6 text-xl font-semibold text-white"
+                    >
                         <ChartArea class="w-5 h-5 mr-2" />
                         Revenue Trend
                     </h3>
 
                     <!-- Chart Background Effects -->
-                    <div class="absolute inset-0 bg-gradient-to-br from-primary/5 to-secondary/5 z-0"></div>
-                    <div class="absolute bottom-0 left-0 right-0 h-1/3 bg-gradient-to-t from-primary/10 to-transparent z-0"></div>
-                    
+                    <div
+                        class="absolute inset-0 z-0 bg-gradient-to-br from-primary/5 to-secondary/5"
+                    ></div>
+                    <div
+                        class="absolute bottom-0 left-0 right-0 z-0 h-1/3 bg-gradient-to-t from-primary/10 to-transparent"
+                    ></div>
+
                     <!-- Chart Container -->
                     <div class="relative z-10 w-full h-80">
-                        <Line 
-                            v-if="charts?.revenue_trend?.labels?.length" 
+                        <Line
+                            v-if="charts?.revenue_trend?.labels?.length"
                             :data="{
                                 labels: charts.revenue_trend.labels,
-                                datasets: charts.revenue_trend.datasets
-                            }" 
-                            :options="revenueChartOptions" 
+                                datasets: charts.revenue_trend.datasets,
+                            }"
+                            :options="revenueChartOptions"
                         />
-                        <div v-else class="flex items-center justify-center h-full">
-                            <p class="text-gray-400">No data available for selected period</p>
+                        <div
+                            v-else
+                            class="flex items-center justify-center h-full"
+                        >
+                            <p class="text-gray-400">
+                                No data available for selected period
+                            </p>
                         </div>
                     </div>
                 </div>
 
                 <!-- Orders Chart -->
                 <div
-                    class="relative p-6 border border-gray-700 rounded-lg shadow-lg bg-dark-card overflow-hidden"
+                    class="relative p-6 overflow-hidden border border-gray-700 rounded-lg shadow-lg bg-dark-card"
                 >
-                    <h3 class="mb-6 text-xl font-semibold text-white flex items-center">
+                    <h3
+                        class="flex items-center mb-6 text-xl font-semibold text-white"
+                    >
                         <ChartPie class="w-5 h-5 mr-2" />
                         Order Statistics
                     </h3>
-                    
+
                     <!-- Chart Background Effects -->
-                    <div class="absolute inset-0 bg-gradient-to-br from-secondary/5 to-primary/5 z-0"></div>
-                    <div class="absolute bottom-0 left-0 right-0 h-1/3 bg-gradient-to-t from-secondary/10 to-transparent z-0"></div>
+                    <div
+                        class="absolute inset-0 z-0 bg-gradient-to-br from-secondary/5 to-primary/5"
+                    ></div>
+                    <div
+                        class="absolute bottom-0 left-0 right-0 z-0 h-1/3 bg-gradient-to-t from-secondary/10 to-transparent"
+                    ></div>
 
                     <!-- Chart Container -->
                     <div class="relative z-10 w-full h-80">
-                        <Doughnut 
-                            v-if="charts?.order_stats?.statusDistribution?.labels?.length" 
-                            :data="charts.order_stats.statusDistribution" 
-                            :options="pieChartOptions" 
+                        <Doughnut
+                            v-if="
+                                charts?.order_stats?.statusDistribution?.labels
+                                    ?.length
+                            "
+                            :data="charts.order_stats.statusDistribution"
+                            :options="pieChartOptions"
                         />
-                        <div v-else class="flex items-center justify-center h-full">
-                            <p class="text-gray-400">No data available for selected period</p>
+                        <div
+                            v-else
+                            class="flex items-center justify-center h-full"
+                        >
+                            <p class="text-gray-400">
+                                No data available for selected period
+                            </p>
                         </div>
                     </div>
                 </div>
@@ -583,7 +717,7 @@ onMounted(() => {
                                     <th
                                         class="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-400 uppercase"
                                     >
-                                        Game
+                                        Service
                                     </th>
                                     <th
                                         class="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-400 uppercase"
@@ -631,7 +765,9 @@ onMounted(() => {
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <span
                                             :class="[
-                                                getStatusClass(transaction.status),
+                                                getStatusClass(
+                                                    transaction.status
+                                                ),
                                                 'px-2 py-1 text-xs rounded-full',
                                             ]"
                                         >
@@ -644,8 +780,14 @@ onMounted(() => {
                                         {{ transaction.date }}
                                     </td>
                                 </tr>
-                                <tr v-if="!tables?.recent_transactions?.length" class="hover:bg-dark-lighter">
-                                    <td colspan="6" class="px-6 py-8 text-center text-gray-400">
+                                <tr
+                                    v-if="!tables?.recent_transactions?.length"
+                                    class="hover:bg-dark-lighter"
+                                >
+                                    <td
+                                        colspan="6"
+                                        class="px-6 py-8 text-center text-gray-400"
+                                    >
                                         No recent transactions found
                                     </td>
                                 </tr>
@@ -662,14 +804,14 @@ onMounted(() => {
                         class="flex items-center justify-between p-6 border-b border-gray-700"
                     >
                         <h3 class="text-xl font-semibold text-white">
-                            Top Products
+                            Top Service
                         </h3>
-                        <router-link
-                            :to="{ name: 'products.index' }"
+                        <Link
+                            :href="route('services.index')"
                             class="transition-colors text-secondary hover:text-secondary-hover"
                         >
                             View All
-                        </router-link>
+                        </Link>
                     </div>
                     <div class="overflow-x-auto">
                         <table class="w-full min-w-full">
@@ -678,7 +820,7 @@ onMounted(() => {
                                     <th
                                         class="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-400 uppercase"
                                     >
-                                        Product
+                                        Service
                                     </th>
                                     <th
                                         class="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-400 uppercase"
@@ -728,15 +870,33 @@ onMounted(() => {
                                                     'flex items-center',
                                                 ]"
                                             >
-                                                <ArrowUp v-if="product.growth >= 0" class="w-4 h-4 mr-1" />
-                                                <ArrowDown v-else class="w-4 h-4 mr-1" />
-                                                <span>{{ Math.abs(product.growth).toFixed(1) }}%</span>
+                                                <ArrowUp
+                                                    v-if="product.growth >= 0"
+                                                    class="w-4 h-4 mr-1"
+                                                />
+                                                <ArrowDown
+                                                    v-else
+                                                    class="w-4 h-4 mr-1"
+                                                />
+                                                <span
+                                                    >{{
+                                                        Math.abs(
+                                                            product.growth
+                                                        ).toFixed(1)
+                                                    }}%</span
+                                                >
                                             </div>
                                         </div>
                                     </td>
                                 </tr>
-                                <tr v-if="!tables?.top_products?.length" class="hover:bg-dark-lighter">
-                                    <td colspan="4" class="px-6 py-8 text-center text-gray-400">
+                                <tr
+                                    v-if="!tables?.top_products?.length"
+                                    class="hover:bg-dark-lighter"
+                                >
+                                    <td
+                                        colspan="4"
+                                        class="px-6 py-8 text-center text-gray-400"
+                                    >
                                         No top products found
                                     </td>
                                 </tr>
