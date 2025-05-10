@@ -1,3 +1,4 @@
+
 <?php
 
 use Inertia\Inertia;
@@ -70,10 +71,13 @@ Route::prefix('admin')->middleware(['auth', 'admin'])->group(function () {
     Route::get('/', [AdminController::class, 'index'])->name('admin.dashboard');
 
     Route::get('dashboard', [AdminController::class, 'index'])->name('admin.dashboard');
-    Route::get('dashboard/export', [
-        AdminController::class,
-        'exportDashboard'
-    ])->name('admin.dashboard.export');
+    Route::get('dashboard/export', [AdminController::class, 'exportDashboard'])->name('admin.dashboard.export');
+    
+    // Dashboard API endpoints
+    Route::get('dashboard/products', [AdminController::class, 'getProducts']);
+    Route::get('dashboard/product-services/{productId?}', [AdminController::class, 'getProductServices']);
+    Route::get('dashboard/flashsales', [AdminController::class, 'getFlashsales']);
+    Route::get('dashboard/vouchers', [AdminController::class, 'getVouchers']);
 
     // Settings routes
     Route::get('/settings', [AdminController::class, 'settings'])->name('admin.settings');

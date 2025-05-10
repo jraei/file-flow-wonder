@@ -1,1048 +1,793 @@
-<script setup>
-import { ref, computed, onMounted } from "vue";
-import { Head, usePage, router, Link } from "@inertiajs/vue3";
-import AdminLayout from "@/Layouts/AdminLayout.vue";
-import {
-    ChartArea,
-    ChartPie,
-    ArrowUp,
-    ArrowDown,
-    FileDown,
-    Calendar,
-    Loader,
-} from "lucide-vue-next";
 
-// Import chart libraries
-import { Line } from "vue-chartjs";
-import {
-    Chart as ChartJS,
-    CategoryScale,
-    LinearScale,
-    PointElement,
-    LineElement,
-    Title,
-    Tooltip,
-    Legend,
-    Filler,
-    ArcElement,
-} from "chart.js";
-import { Doughnut } from "vue-chartjs";
+<template>
+  <div class="space-y-8">
+    <!-- Period Selector -->
+    <div class="flex flex-wrap items-center gap-3 mb-6 bg-secondary/10 p-4 rounded-lg shadow-md">
+      <h2 class="text-xl font-bold text-white mr-4">Dashboard Analytics</h2>
+      <div class="flex gap-2">
+        <button
+          v-for="option in periodOptions"
+          :key="option.value"
+          @click="changePeriod(option.value)"
+          :class="[
+            'px-3 py-1 rounded-lg transition-all duration-300 text-sm',
+            period === option.value
+              ? 'bg-primary text-white shadow-lg'
+              : 'bg-secondary/20 text-white/70 hover:bg-secondary/30'
+          ]"
+        >
+          {{ option.label }}
+        </button>
+      </div>
+      
+      <!-- Custom Date Range -->
+      <div class="ml-auto flex items-center gap-2">
+        <button
+          @click="showCustomDatePicker = !showCustomDatePicker"
+          class="px-3 py-1 rounded-lg bg-secondary/20 text-white/70 hover:bg-secondary/30 transition-all duration-300 text-sm flex items-center gap-1"
+        >
+          <span>Custom Range</span>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 6h18M3 12h18M3 18h18"></path>
+          </svg>
+        </button>
+        <div class="px-3 py-1 rounded-lg bg-primary/20 text-white text-sm" v-if="period === 'custom'">
+          {{ formatDate(customDateRange.start) }} - {{ formatDate(customDateRange.end) }}
+        </div>
+      </div>
+      
+      <!-- Custom Date Picker (conditionally rendered) -->
+      <div v-if="showCustomDatePicker" class="w-full mt-4 bg-secondary/20 p-4 rounded-lg flex flex-wrap gap-4 items-end">
+        <div>
+          <label class="block text-sm text-white/70 mb-1">Start Date</label>
+          <input 
+            type="date" 
+            v-model="customDateRange.start" 
+            class="bg-secondary/30 border border-secondary/40 rounded px-3 py-2 text-white"
+          >
+        </div>
+        <div>
+          <label class="block text-sm text-white/70 mb-1">End Date</label>
+          <input 
+            type="date" 
+            v-model="customDateRange.end" 
+            class="bg-secondary/30 border border-secondary/40 rounded px-3 py-2 text-white"
+          >
+        </div>
+        <button 
+          @click="applyCustomRange"
+          class="px-4 py-2 rounded-lg bg-primary text-white hover:bg-primary/90 transition-all duration-300"
+        >
+          Apply
+        </button>
+        <button 
+          @click="showCustomDatePicker = false"
+          class="px-4 py-2 rounded-lg bg-secondary/40 text-white/80 hover:bg-secondary/60 transition-all duration-300"
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
 
-// Register ChartJS components
-ChartJS.register(
-    CategoryScale,
-    LinearScale,
-    PointElement,
-    LineElement,
-    Title,
-    Tooltip,
-    Legend,
-    Filler,
-    ArcElement
-);
+    <!-- Key Metrics Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <!-- Users Metric -->
+      <div class="bg-primary/20 rounded-lg p-5 shadow-md">
+        <div class="flex justify-between mb-2">
+          <h3 class="text-primary/80">Users</h3>
+          <div class="text-xs px-2 py-0.5 rounded-full" :class="{
+            'bg-green-500/20 text-green-300': metrics.users.isPositive,
+            'bg-red-500/20 text-red-300': !metrics.users.isPositive
+          }">
+            {{ metrics.users.growthPercent > 0 ? '+' : '' }}{{ metrics.users.growthPercent }}%
+          </div>
+        </div>
+        <div class="text-2xl font-bold text-white mb-1">{{ metrics.users.total }}</div>
+        <div class="text-sm text-white/60">
+          {{ metrics.users.newUsers }} new in this period
+        </div>
+      </div>
 
-// Get data from props
-const props = defineProps({
+      <!-- Revenue Metric -->
+      <div class="bg-secondary/10 rounded-lg p-5 shadow-md">
+        <div class="flex justify-between mb-2">
+          <h3 class="text-secondary">Revenue</h3>
+          <div class="text-xs px-2 py-0.5 rounded-full" :class="{
+            'bg-green-500/20 text-green-300': metrics.revenue.isPositive,
+            'bg-red-500/20 text-red-300': !metrics.revenue.isPositive
+          }">
+            {{ metrics.revenue.growthPercent > 0 ? '+' : '' }}{{ metrics.revenue.growthPercent }}%
+          </div>
+        </div>
+        <div class="text-2xl font-bold text-white mb-1">{{ formatCurrency(metrics.revenue.total) }}</div>
+        <div class="text-sm text-white/60">
+          {{ metrics.revenue.currency }}
+        </div>
+      </div>
+
+      <!-- Orders Metric -->
+      <div class="bg-primary/20 rounded-lg p-5 shadow-md">
+        <div class="flex justify-between mb-2">
+          <h3 class="text-primary/80">Orders</h3>
+          <div class="text-xs px-2 py-0.5 rounded-full" :class="{
+            'bg-green-500/20 text-green-300': metrics.orders.isPositive,
+            'bg-red-500/20 text-red-300': !metrics.orders.isPositive
+          }">
+            {{ metrics.orders.growthPercent > 0 ? '+' : '' }}{{ metrics.orders.growthPercent }}%
+          </div>
+        </div>
+        <div class="text-2xl font-bold text-white mb-1">{{ metrics.orders.total }}</div>
+        <div class="text-sm text-white/60">
+          Total transactions
+        </div>
+      </div>
+
+      <!-- Products Metric -->
+      <div class="bg-secondary/10 rounded-lg p-5 shadow-md">
+        <div class="flex justify-between mb-2">
+          <h3 class="text-secondary">Products</h3>
+          <div class="text-xs px-2 py-0.5 rounded-full" :class="{
+            'bg-green-500/20 text-green-300': metrics.products.isPositive,
+            'bg-red-500/20 text-red-300': !metrics.products.isPositive
+          }">
+            {{ metrics.products.growthPercent > 0 ? '+' : '' }}{{ metrics.products.growthPercent }}%
+          </div>
+        </div>
+        <div class="text-2xl font-bold text-white mb-1">{{ metrics.products.total }}</div>
+        <div class="text-sm text-white/60">
+          Active products
+        </div>
+      </div>
+    </div>
+
+    <!-- Charts Row -->
+    <div class="grid grid-cols-1 lg:grid-cols-5 gap-6">
+      <!-- Revenue Chart -->
+      <div class="lg:col-span-3 bg-secondary/10 p-5 rounded-lg shadow-md">
+        <h3 class="text-xl font-semibold text-white mb-4">Revenue Trend</h3>
+        <div class="h-80">
+          <canvas ref="revenueChartCanvas"></canvas>
+        </div>
+      </div>
+
+      <!-- Status Distribution -->
+      <div class="lg:col-span-2 bg-primary/20 p-5 rounded-lg shadow-md">
+        <h3 class="text-xl font-semibold text-white mb-4">Order Status</h3>
+        <div class="h-80">
+          <canvas ref="statusChartCanvas"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Product Selector and Service Analytics -->
+    <div class="bg-secondary/10 p-5 rounded-lg shadow-md">
+      <div class="flex flex-wrap justify-between items-center mb-4">
+        <h3 class="text-xl font-semibold text-white">Product-Specific Analytics</h3>
+        
+        <div class="relative flex items-center space-x-2">
+          <select 
+            v-model="selectedProductId" 
+            @change="loadProductServices"
+            class="bg-primary/20 border border-primary/30 rounded-lg px-4 py-2 text-white appearance-none"
+          >
+            <option value="">All Products</option>
+            <option v-for="product in products" :key="product.id" :value="product.id">
+              {{ product.name }}
+            </option>
+          </select>
+          
+          <!-- Cosmic selector icon -->
+          <div class="absolute right-3 pointer-events-none">
+            <div class="w-4 h-4 rounded-full bg-primary/50 animate-pulse"></div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Service Data Table -->
+      <div class="overflow-x-auto">
+        <table class="w-full text-white/90">
+          <thead>
+            <tr class="text-left">
+              <th class="py-2 px-4 border-b border-white/10">Service Name</th>
+              <th class="py-2 px-4 border-b border-white/10 text-right">Orders</th>
+              <th class="py-2 px-4 border-b border-white/10 text-right">Revenue</th>
+              <th class="py-2 px-4 border-b border-white/10 text-right">Profit</th>
+              <th class="py-2 px-4 border-b border-white/10 text-right">Growth</th>
+            </tr>
+          </thead>
+          <tbody>
+            <template v-if="loading">
+              <tr v-for="i in 5" :key="i">
+                <td class="py-3 px-4"><div class="h-4 bg-white/10 rounded animate-pulse"></div></td>
+                <td class="py-3 px-4"><div class="h-4 bg-white/10 rounded animate-pulse"></div></td>
+                <td class="py-3 px-4"><div class="h-4 bg-white/10 rounded animate-pulse"></div></td>
+                <td class="py-3 px-4"><div class="h-4 bg-white/10 rounded animate-pulse"></div></td>
+                <td class="py-3 px-4"><div class="h-4 bg-white/10 rounded animate-pulse"></div></td>
+              </tr>
+            </template>
+            <template v-else>
+              <tr v-for="service in topServices" :key="service.id" class="hover:bg-white/5">
+                <td class="py-3 px-4">{{ service.name }}</td>
+                <td class="py-3 px-4 text-right">{{ service.sales }}</td>
+                <td class="py-3 px-4 text-right">{{ formatCurrency(service.revenue) }}</td>
+                <td class="py-3 px-4 text-right">{{ formatCurrency(service.profit) }}</td>
+                <td class="py-3 px-4 text-right">
+                  <div class="flex justify-end items-center">
+                    <span :class="service.growth > 0 ? 'text-green-400' : 'text-red-400'">
+                      {{ service.growth > 0 ? '+' : '' }}{{ service.growth }}%
+                    </span>
+                    <svg v-if="service.growth > 0" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-green-400 ml-1">
+                      <path d="M7 17l5-5 5 5"></path>
+                      <path d="M7 7h10"></path>
+                    </svg>
+                    <svg v-else width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-red-400 ml-1">
+                      <path d="M7 7l5 5 5-5"></path>
+                      <path d="M7 17h10"></path>
+                    </svg>
+                  </div>
+                </td>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Flashsale Event Monitoring -->
+    <div class="bg-primary/20 p-5 rounded-lg shadow-md">
+      <h3 class="text-xl font-semibold text-white mb-4">Flashsale Events</h3>
+      
+      <div v-if="flashsales.length === 0" class="text-center py-6 text-white/60">
+        No active flashsale events
+      </div>
+      
+      <div v-else class="space-y-4">
+        <div v-for="event in flashsales" :key="event.id" class="bg-secondary/10 rounded-lg p-4">
+          <div class="flex flex-wrap justify-between items-center mb-3">
+            <div>
+              <h4 class="text-lg font-medium text-secondary">{{ event.event_name }}</h4>
+              <p class="text-sm text-white/60">
+                {{ formatDate(event.event_start_date) }} - {{ formatDate(event.event_end_date) }}
+              </p>
+            </div>
+            <div class="text-right">
+              <div class="text-white font-medium">{{ event.item.length }} Items</div>
+              <div class="text-sm text-white/60">
+                {{ formatCurrency(event.total_revenue) }} Revenue
+              </div>
+            </div>
+          </div>
+          
+          <!-- Progress bar showing time remaining -->
+          <div class="relative h-2 bg-secondary/10 rounded-full overflow-hidden mb-3">
+            <div 
+              class="absolute top-0 left-0 h-full bg-gradient-to-r from-primary to-secondary"
+              :style="{width: `${calculateFlashsaleProgress(event)}%`}"
+            ></div>
+          </div>
+          
+          <!-- Top selling items -->
+          <div v-if="event.item && event.item.length > 0" class="mt-3">
+            <h5 class="text-sm font-medium text-white/70 mb-2">Top Performing Items:</h5>
+            <div class="flex flex-wrap gap-2">
+              <div 
+                v-for="item in event.top_items.slice(0, 3)" 
+                :key="item.id"
+                class="bg-white/10 rounded-full px-3 py-1 text-xs text-white/90"
+              >
+                {{ item.service_name }} ({{ item.sold }})
+              </div>
+              <div 
+                v-if="event.top_items.length > 3"
+                class="bg-white/10 rounded-full px-3 py-1 text-xs text-white/90"
+              >
+                +{{ event.top_items.length - 3 }} more
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Voucher Utilization Dashboard -->
+    <div class="bg-secondary/10 p-5 rounded-lg shadow-md">
+      <h3 class="text-xl font-semibold text-white mb-4">Voucher Utilization</h3>
+      
+      <div v-if="vouchers.length === 0" class="text-center py-6 text-white/60">
+        No active vouchers
+      </div>
+      
+      <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div 
+          v-for="voucher in vouchers" 
+          :key="voucher.id"
+          class="bg-primary/20 rounded-lg p-4"
+        >
+          <div class="flex justify-between mb-2">
+            <h4 class="font-medium text-white">{{ voucher.kode_voucher }}</h4>
+            <span class="text-sm" :class="{
+              'text-green-300': voucher.utilization_pct < 50,
+              'text-yellow-300': voucher.utilization_pct >= 50 && voucher.utilization_pct < 80,
+              'text-red-300': voucher.utilization_pct >= 80
+            }">
+              {{ Math.round(voucher.utilization_pct) }}% Used
+            </span>
+          </div>
+          
+          <div class="text-sm text-white/60 mb-3">
+            {{ voucher.usage_count }}/{{ voucher.usage_limit }} Redeemed
+          </div>
+          
+          <!-- Usage progress bar with cosmic styling -->
+          <div class="relative h-3 bg-white/10 rounded-full overflow-hidden">
+            <div 
+              class="absolute top-0 left-0 h-full"
+              :class="{
+                'bg-gradient-to-r from-green-500 to-green-300': voucher.utilization_pct < 50,
+                'bg-gradient-to-r from-yellow-500 to-yellow-300': voucher.utilization_pct >= 50 && voucher.utilization_pct < 80,
+                'bg-gradient-to-r from-red-500 to-red-300': voucher.utilization_pct >= 80
+              }"
+              :style="{width: `${voucher.utilization_pct}%`}"
+            ></div>
+            
+            <!-- Cosmic particles effect -->
+            <div class="absolute top-0 left-0 w-full h-full opacity-50">
+              <div 
+                v-for="i in 5" 
+                :key="i"
+                class="absolute h-1 w-1 rounded-full bg-white/80 animate-pulse"
+                :style="{
+                  left: `${Math.random() * 100}%`, 
+                  top: `${Math.random() * 100}%`,
+                  animationDelay: `${i * 0.1}s`
+                }"
+              ></div>
+            </div>
+          </div>
+          
+          <div class="flex justify-between mt-3 text-xs text-white/60">
+            <span>Valid until: {{ formatDate(voucher.expired_at) }}</span>
+            <span>{{ voucher.nilai }}% OFF</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Table Section -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <!-- Recent Transactions -->
+      <div class="bg-secondary/10 p-5 rounded-lg shadow-md">
+        <div class="flex justify-between mb-4">
+          <h3 class="text-xl font-semibold text-white">Recent Transactions</h3>
+          <button @click="exportTransactions" class="bg-primary/20 hover:bg-primary/30 text-white px-3 py-1 rounded-lg flex items-center gap-1 transition-colors">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M3 15v4c0 1.1.9 2 2 2h14a2 2 0 0 0 2-2v-4M17 9l-5 5-5-5M12 12.8V3"></path>
+            </svg>
+            <span>Export</span>
+          </button>
+        </div>
+        
+        <div class="overflow-x-auto">
+          <table class="w-full text-white/90">
+            <thead>
+              <tr class="text-left">
+                <th class="py-2 px-4 border-b border-white/10">ID</th>
+                <th class="py-2 px-4 border-b border-white/10">User</th>
+                <th class="py-2 px-4 border-b border-white/10">Game</th>
+                <th class="py-2 px-4 border-b border-white/10 text-right">Amount</th>
+                <th class="py-2 px-4 border-b border-white/10 text-right">Profit</th>
+                <th class="py-2 px-4 border-b border-white/10 text-center">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="tx in tables.recent_transactions" :key="tx.id" class="hover:bg-white/5">
+                <td class="py-2 px-4">{{ tx.id }}</td>
+                <td class="py-2 px-4">{{ tx.user }}</td>
+                <td class="py-2 px-4">{{ tx.game }}</td>
+                <td class="py-2 px-4 text-right">{{ formatCurrency(tx.amount) }}</td>
+                <td class="py-2 px-4 text-right">{{ formatCurrency(tx.profit || 0) }}</td>
+                <td class="py-2 px-4">
+                  <div class="flex justify-center">
+                    <span class="px-2 py-1 text-xs rounded-full" :class="{
+                      'bg-green-500/20 text-green-300': tx.status === 'completed',
+                      'bg-yellow-500/20 text-yellow-300': tx.status === 'pending',
+                      'bg-red-500/20 text-red-300': tx.status === 'failed',
+                      'bg-blue-500/20 text-blue-300': tx.status === 'processing',
+                      'bg-gray-500/20 text-gray-300': tx.status === 'cancelled'
+                    }">
+                      {{ tx.status }}
+                    </span>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Top Products -->
+      <div class="bg-primary/20 p-5 rounded-lg shadow-md">
+        <div class="flex justify-between mb-4">
+          <h3 class="text-xl font-semibold text-white">Top Products</h3>
+          <button @click="exportTopProducts" class="bg-secondary/20 hover:bg-secondary/30 text-white px-3 py-1 rounded-lg flex items-center gap-1 transition-colors">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M3 15v4c0 1.1.9 2 2 2h14a2 2 0 0 0 2-2v-4M17 9l-5 5-5-5M12 12.8V3"></path>
+            </svg>
+            <span>Export</span>
+          </button>
+        </div>
+        
+        <div class="overflow-x-auto">
+          <table class="w-full text-white/90">
+            <thead>
+              <tr class="text-left">
+                <th class="py-2 px-4 border-b border-white/10">Product</th>
+                <th class="py-2 px-4 border-b border-white/10 text-right">Sales</th>
+                <th class="py-2 px-4 border-b border-white/10 text-right">Revenue</th>
+                <th class="py-2 px-4 border-b border-white/10 text-right">Profit</th>
+                <th class="py-2 px-4 border-b border-white/10 text-right">Growth</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="product in tables.top_products" :key="product.id" class="hover:bg-white/5">
+                <td class="py-2 px-4">{{ product.name }}</td>
+                <td class="py-2 px-4 text-right">{{ product.sales }}</td>
+                <td class="py-2 px-4 text-right">{{ formatCurrency(product.revenue) }}</td>
+                <td class="py-2 px-4 text-right">{{ formatCurrency(product.profit || 0) }}</td>
+                <td class="py-2 px-4 text-right">
+                  <div class="flex justify-end items-center">
+                    <span :class="product.growth >= 0 ? 'text-green-400' : 'text-red-400'">
+                      {{ product.growth >= 0 ? '+' : '' }}{{ product.growth }}%
+                    </span>
+                    <svg v-if="product.growth >= 0" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-green-400 ml-1">
+                      <path d="M7 17l5-5 5 5"></path>
+                      <path d="M7 7h10"></path>
+                    </svg>
+                    <svg v-else width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-red-400 ml-1">
+                      <path d="M7 7l5 5 5-5"></path>
+                      <path d="M7 17h10"></path>
+                    </svg>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script>
+import { defineComponent, ref, onMounted, computed, nextTick } from "vue";
+import { router } from "@inertiajs/vue3";
+import Chart from "chart.js/auto";
+import flatpickr from "flatpickr";
+
+export default defineComponent({
+  props: {
     metrics: Object,
     charts: Object,
     tables: Object,
     period: String,
-});
+  },
+  
+  setup(props) {
+    // Charts references
+    const revenueChartCanvas = ref(null);
+    const statusChartCanvas = ref(null);
+    let revenueChart = null;
+    let statusChart = null;
 
-// Reactive state
-const isLoading = ref(false);
-const selectedPeriod = ref(props.period || "week");
+    // Period selector
+    const periodOptions = [
+      { label: "Day", value: "day" },
+      { label: "Week", value: "week" },
+      { label: "Month", value: "month" },
+      { label: "Year", value: "year" },
+      { label: "Lifetime", value: "lifetime" },
+    ];
+    
+    // Custom date range
+    const showCustomDatePicker = ref(false);
+    const customDateRange = ref({
+      start: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      end: new Date().toISOString().split('T')[0],
+    });
+    
+    // Product and service data
+    const selectedProductId = ref("");
+    const products = ref([]);
+    const topServices = ref([]);
+    const loading = ref(false);
 
-// Format currency
-const formatCurrency = (value) => {
-    return new Intl.NumberFormat("en-US", {
+    // Flashsales and vouchers
+    const flashsales = ref([]);
+    const vouchers = ref([]);
+    
+    // Format helpers
+    const formatCurrency = (value) => {
+      return new Intl.NumberFormat("id-ID", {
         style: "currency",
-        currency: "USD",
-    }).format(value);
-};
-
-// Line chart configuration
-const revenueChartOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    scales: {
-        y: {
-            ticks: {
-                color: "#F1F0FB", // Soft Gray
-            },
-            grid: {
-                color: "#2226",
-            },
-        },
-        x: {
-            ticks: {
-                color: "#F1F0FB", // Soft Gray
-            },
-            grid: {
-                color: "#2226",
-            },
-        },
-    },
-    plugins: {
-        tooltip: {
-            mode: "index",
-            intersect: false,
-        },
-        legend: {
-            display: true,
-            position: "top",
-            labels: {
-                color: "#F1F0FB", // Soft Gray
-            },
-        },
-    },
-    interaction: {
-        intersect: false,
-    },
-    elements: {
-        line: {
-            tension: 0.4,
-        },
-        point: {
-            radius: 4,
-            hoverRadius: 6,
-            borderWidth: 2,
-            backgroundColor: "#1F2937", // Dark space
-        },
-    },
-};
-
-// Doughnut chart configuration
-const pieChartOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-        legend: {
-            position: "top",
-            labels: {
-                color: "#F1F0FB", // Soft Gray
-                padding: 16,
-            },
-        },
-    },
-    cutout: "60%",
-    animation: {
-        animateRotate: true,
-        animateScale: true,
-    },
-};
-
-// Helper function for status styling
-const getStatusClass = (status) => {
-    switch (status) {
-        case "completed":
-            return "bg-green-500/20 text-green-400";
-        case "pending":
-            return "bg-yellow-500/20 text-yellow-400";
-        case "processing":
-            return "bg-blue-500/20 text-blue-400";
-        case "failed":
-            return "bg-red-500/20 text-red-400";
-        case "cancelled":
-            return "bg-gray-500/20 text-gray-400";
-        default:
-            return "bg-gray-500/20 text-gray-400";
-    }
-};
-
-// Handle period change
-const changePeriod = (period) => {
-    if (selectedPeriod.value === period) return;
-
-    isLoading.value = true;
-    selectedPeriod.value = period;
-
-    router.visit(route("admin.dashboard", { period }), {
-        preserveScroll: true,
-        onSuccess: () => {
-            isLoading.value = false;
-        },
-    });
-};
-
-// Handle data export
-const exportData = (type) => {
-    const endpoint = route("admin.dashboard.export", {
-        period: selectedPeriod.value,
-        type: type, // 'excel', 'csv', 'pdf'
-    });
-
-    window.open(endpoint, "_blank");
-};
-
-// Cosmic particle effect for chart
-const initCosmicParticles = () => {
-    const canvas = document.getElementById("cosmicParticles");
-    if (!canvas) return;
-
-    const ctx = canvas.getContext("2d");
-    const particles = [];
-
-    // Configure canvas
-    canvas.width = canvas.offsetWidth;
-    canvas.height = canvas.offsetHeight;
-
-    // Create particles
-    for (let i = 0; i < 50; i++) {
-        particles.push({
-            x: Math.random() * canvas.width,
-            y: Math.random() * canvas.height,
-            radius: Math.random() * 2 + 0.5,
-            color: `rgba(155, 135, 245, ${Math.random() * 0.5 + 0.25})`,
-            vx: Math.random() * 0.5 - 0.25,
-            vy: Math.random() * 0.5 - 0.25,
-        });
-    }
-
-    // Animation function
-    const animate = () => {
-        requestAnimationFrame(animate);
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-        particles.forEach((particle) => {
-            // Move particle
-            particle.x += particle.vx;
-            particle.y += particle.vy;
-
-            // Wrap around edges
-            if (particle.x < 0) particle.x = canvas.width;
-            if (particle.x > canvas.width) particle.x = 0;
-            if (particle.y < 0) particle.y = canvas.height;
-            if (particle.y > canvas.height) particle.y = 0;
-
-            // Draw particle
-            ctx.beginPath();
-            ctx.arc(particle.x, particle.y, particle.radius, 0, Math.PI * 2);
-            ctx.fillStyle = particle.color;
-            ctx.fill();
-        });
+        currency: "IDR",
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0,
+      }).format(value);
     };
-
-    // Start animation
-    animate();
-
-    // Handle resize
-    window.addEventListener("resize", () => {
-        canvas.width = canvas.offsetWidth;
-        canvas.height = canvas.offsetHeight;
+    
+    const formatDate = (dateString) => {
+      const date = new Date(dateString);
+      return date.toLocaleDateString("id-ID", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+      });
+    };
+    
+    // Change period and reload dashboard
+    const changePeriod = (newPeriod) => {
+      router.visit(route("admin.dashboard", { period: newPeriod }), {
+        preserveState: true,
+        preserveScroll: true,
+      });
+    };
+    
+    // Apply custom date range
+    const applyCustomRange = () => {
+      router.visit(
+        route("admin.dashboard", {
+          period: "custom",
+          start_date: customDateRange.value.start,
+          end_date: customDateRange.value.end,
+        }),
+        {
+          preserveState: true,
+          preserveScroll: true,
+        }
+      );
+      showCustomDatePicker.value = false;
+    };
+    
+    // Load product-specific services
+    const loadProductServices = async () => {
+      loading.value = true;
+      try {
+        const response = await fetch(`/admin/dashboard/product-services${
+          selectedProductId.value ? `/${selectedProductId.value}` : ''
+        }?period=${props.period}`);
+        
+        const data = await response.json();
+        topServices.value = data.services;
+      } catch (error) {
+        console.error("Failed to load services:", error);
+        topServices.value = [];
+      } finally {
+        loading.value = false;
+      }
+    };
+    
+    // Calculate flashsale progress percentage
+    const calculateFlashsaleProgress = (event) => {
+      const now = new Date();
+      const start = new Date(event.event_start_date);
+      const end = new Date(event.event_end_date);
+      
+      const totalDuration = end - start;
+      const elapsed = now - start;
+      
+      if (elapsed < 0) return 0;
+      if (elapsed > totalDuration) return 100;
+      
+      return (elapsed / totalDuration) * 100;
+    };
+    
+    // Export functions
+    const exportTransactions = () => {
+      window.location.href = route("admin.dashboard.export", {
+        type: "transactions",
+        period: props.period
+      });
+    };
+    
+    const exportTopProducts = () => {
+      window.location.href = route("admin.dashboard.export", {
+        type: "products",
+        period: props.period
+      });
+    };
+    
+    // Initialize UI components
+    const setupCharts = () => {
+      // Revenue trend chart
+      if (revenueChartCanvas.value && props.charts?.revenue_trend) {
+        const ctx = revenueChartCanvas.value.getContext("2d");
+        
+        // Destroy previous chart instance if it exists
+        if (revenueChart) revenueChart.destroy();
+        
+        revenueChart = new Chart(ctx, {
+          type: "line",
+          data: {
+            labels: props.charts.revenue_trend.labels,
+            datasets: props.charts.revenue_trend.datasets,
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: {
+                position: "top",
+                labels: {
+                  color: "rgba(255, 255, 255, 0.7)",
+                  font: {
+                    family: "'Inter', sans-serif",
+                  },
+                },
+              },
+              tooltip: {
+                backgroundColor: "rgba(0, 0, 0, 0.7)",
+                titleColor: "#fff",
+                bodyColor: "#fff",
+                borderColor: "rgba(255, 255, 255, 0.2)",
+                borderWidth: 1,
+              },
+            },
+            scales: {
+              x: {
+                grid: {
+                  color: "rgba(255, 255, 255, 0.05)",
+                },
+                ticks: {
+                  color: "rgba(255, 255, 255, 0.5)",
+                  font: {
+                    family: "'Inter', sans-serif",
+                  },
+                },
+              },
+              y: {
+                grid: {
+                  color: "rgba(255, 255, 255, 0.05)",
+                },
+                ticks: {
+                  color: "rgba(255, 255, 255, 0.5)",
+                  font: {
+                    family: "'Inter', sans-serif",
+                  },
+                  callback: function(value) {
+                    return new Intl.NumberFormat("id-ID", {
+                      style: "currency",
+                      currency: "IDR",
+                      notation: "compact",
+                      compactDisplay: "short",
+                    }).format(value);
+                  },
+                },
+              },
+            },
+            interaction: {
+              mode: "index",
+              intersect: false,
+            },
+            animation: {
+              duration: 1000,
+            },
+            elements: {
+              point: {
+                radius: 3,
+                hoverRadius: 5,
+              },
+              line: {
+                tension: 0.2,
+              },
+            },
+          },
+        });
+      }
+      
+      // Order status chart
+      if (statusChartCanvas.value && props.charts?.order_stats) {
+        const ctx = statusChartCanvas.value.getContext("2d");
+        
+        // Destroy previous chart instance if it exists
+        if (statusChart) statusChart.destroy();
+        
+        statusChart = new Chart(ctx, {
+          type: "doughnut",
+          data: props.charts.order_stats.statusDistribution,
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: {
+                position: "right",
+                labels: {
+                  color: "rgba(255, 255, 255, 0.7)",
+                  font: {
+                    family: "'Inter', sans-serif",
+                  },
+                },
+              },
+              tooltip: {
+                backgroundColor: "rgba(0, 0, 0, 0.7)",
+                titleColor: "#fff",
+                bodyColor: "#fff",
+              },
+            },
+            cutout: "65%",
+            animation: {
+              animateRotate: true,
+              animateScale: true,
+            },
+          },
+        });
+      }
+    };
+    
+    // Load initial data
+    const loadDashboardData = async () => {
+      // Load products for the dropdown
+      try {
+        const response = await fetch("/admin/dashboard/products");
+        const data = await response.json();
+        products.value = data;
+      } catch (error) {
+        console.error("Failed to load products:", error);
+        products.value = [];
+      }
+      
+      // Load flashsale events
+      try {
+        const response = await fetch(`/admin/dashboard/flashsales?period=${props.period}`);
+        const data = await response.json();
+        flashsales.value = data;
+      } catch (error) {
+        console.error("Failed to load flashsales:", error);
+        flashsales.value = [];
+      }
+      
+      // Load vouchers
+      try {
+        const response = await fetch(`/admin/dashboard/vouchers?period=${props.period}`);
+        const data = await response.json();
+        vouchers.value = data;
+      } catch (error) {
+        console.error("Failed to load vouchers:", error);
+        vouchers.value = [];
+      }
+      
+      // Load initial services data (all products)
+      loadProductServices();
+    };
+    
+    // Set up everything when component mounts
+    onMounted(() => {
+      nextTick(() => {
+        setupCharts();
+        loadDashboardData();
+      });
     });
-};
-
-// Initialize animation on component mount
-onMounted(() => {
-    setTimeout(initCosmicParticles, 500);
+    
+    return {
+      revenueChartCanvas,
+      statusChartCanvas,
+      periodOptions,
+      showCustomDatePicker,
+      customDateRange,
+      selectedProductId,
+      products,
+      topServices,
+      loading,
+      flashsales,
+      vouchers,
+      formatCurrency,
+      formatDate,
+      changePeriod,
+      applyCustomRange,
+      loadProductServices,
+      calculateFlashsaleProgress,
+      exportTransactions,
+      exportTopProducts,
+    };
+  },
 });
 </script>
-
-<template>
-    <Head title="Admin Dashboard" />
-
-    <AdminLayout title="Dashboard">
-        <div class="flex items-center gap-4 px-6">
-            <!-- Period Selector -->
-            <div
-                class="flex overflow-hidden border border-gray-700 rounded-lg bg-dark-card"
-            >
-                <button
-                    v-for="period in ['day', 'week', 'month', 'year']"
-                    :key="period"
-                    @click="changePeriod(period)"
-                    :class="[
-                        'px-3 py-2 text-sm font-medium transition-all duration-300',
-                        selectedPeriod === period
-                            ? 'bg-primary/20 text-primary border-b-2 border-primary'
-                            : 'text-gray-400 hover:text-white',
-                    ]"
-                >
-                    <Calendar class="inline-block w-4 h-4 mr-1" />
-                    {{ period.charAt(0).toUpperCase() + period.slice(1) }}
-                </button>
-            </div>
-
-            <!-- Export Button -->
-            <div class="relative" x-data="{ open: false }">
-                <button
-                    @click="exportData('excel')"
-                    class="flex items-center px-4 py-2 text-sm font-medium text-white transition-all duration-300 border rounded-lg bg-primary/20 border-primary/30 hover:bg-primary/30"
-                >
-                    <FileDown class="w-4 h-4 mr-2" />
-                    Export Data
-                </button>
-            </div>
-        </div>
-
-        <div class="p-6">
-            <!-- Loading Overlay -->
-            <div
-                v-if="isLoading"
-                class="fixed inset-0 z-50 flex items-center justify-center bg-dark-card/80"
-            >
-                <div class="flex flex-col items-center">
-                    <Loader class="w-12 h-12 text-primary animate-spin" />
-                    <span class="mt-4 text-white">Loading cosmic data...</span>
-                </div>
-            </div>
-
-            <!-- Cosmic Particles Canvas -->
-            <canvas
-                id="cosmicParticles"
-                class="absolute inset-0 pointer-events-none"
-            ></canvas>
-
-            <!-- Stats Grid -->
-            <div
-                class="grid grid-cols-1 gap-6 mb-8 sm:grid-cols-2 lg:grid-cols-4"
-            >
-                <!-- Users Stat Card -->
-                <div
-                    class="p-6 transition-all duration-300 border border-gray-700 rounded-lg shadow-lg bg-gradient-to-br from-dark-card to-dark-lighter hover:shadow-glow-primary"
-                >
-                    <div class="flex items-start justify-between">
-                        <div>
-                            <p class="text-sm font-medium text-gray-400">
-                                Total Users
-                            </p>
-                            <h2 class="mt-2 text-3xl font-bold text-white">
-                                {{ metrics?.users?.total.toLocaleString() }}
-                            </h2>
-                            <div
-                                :class="[
-                                    'flex items-center mt-2 text-sm',
-                                    metrics?.users?.isPositive
-                                        ? 'text-green-400'
-                                        : 'text-red-400',
-                                ]"
-                            >
-                                <ArrowUp
-                                    v-if="metrics?.users?.isPositive"
-                                    class="w-4 h-4 mr-1"
-                                />
-                                <ArrowDown v-else class="w-4 h-4 mr-1" />
-                                <span>
-                                    {{
-                                        Math.abs(
-                                            metrics?.users?.growthPercent || 0
-                                        )
-                                    }}%
-                                    {{
-                                        metrics?.users?.isPositive
-                                            ? "increase"
-                                            : "decrease"
-                                    }}
-                                </span>
-                            </div>
-                        </div>
-                        <div class="p-3 rounded-lg bg-indigo-500/20">
-                            <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                class="w-8 h-8 text-primary"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                            >
-                                <path
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                    stroke-width="2"
-                                    d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"
-                                />
-                            </svg>
-                        </div>
-                    </div>
-                    <!-- Sparkline graph -->
-                    <div
-                        class="w-full h-2 mt-4 overflow-hidden bg-gray-700 rounded-full"
-                    >
-                        <div
-                            class="h-full rounded-full bg-gradient-to-r from-primary to-secondary animate-pulse"
-                            :style="{
-                                width: `${Math.max(
-                                    5,
-                                    Math.abs(
-                                        metrics?.users?.growthPercent || 0
-                                    ) * 5
-                                )}%`,
-                            }"
-                        ></div>
-                    </div>
-                </div>
-
-                <!-- Revenue Stat Card -->
-                <div
-                    class="p-6 transition-all duration-300 border border-gray-700 rounded-lg shadow-lg bg-gradient-to-br from-dark-card to-dark-lighter hover:shadow-glow-secondary"
-                >
-                    <div class="flex items-start justify-between">
-                        <div>
-                            <p class="text-sm font-medium text-gray-400">
-                                Total Revenue
-                            </p>
-                            <h2 class="mt-2 text-3xl font-bold text-white">
-                                {{
-                                    formatCurrency(metrics?.revenue?.total || 0)
-                                }}
-                            </h2>
-                            <div
-                                :class="[
-                                    'flex items-center mt-2 text-sm',
-                                    metrics?.revenue?.isPositive
-                                        ? 'text-green-400'
-                                        : 'text-red-400',
-                                ]"
-                            >
-                                <ArrowUp
-                                    v-if="metrics?.revenue?.isPositive"
-                                    class="w-4 h-4 mr-1"
-                                />
-                                <ArrowDown v-else class="w-4 h-4 mr-1" />
-                                <span>
-                                    {{
-                                        Math.abs(
-                                            metrics?.revenue?.growthPercent || 0
-                                        )
-                                    }}%
-                                    {{
-                                        metrics?.revenue?.isPositive
-                                            ? "increase"
-                                            : "decrease"
-                                    }}
-                                </span>
-                            </div>
-                        </div>
-                        <div class="p-3 rounded-lg bg-teal-500/20">
-                            <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                class="w-8 h-8 text-secondary"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                            >
-                                <path
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                    stroke-width="2"
-                                    d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                                />
-                            </svg>
-                        </div>
-                    </div>
-                    <!-- Sparkline graph -->
-                    <div
-                        class="w-full h-2 mt-4 overflow-hidden bg-gray-700 rounded-full"
-                    >
-                        <div
-                            class="h-full rounded-full bg-gradient-to-r from-secondary to-primary animate-pulse"
-                            :style="{
-                                width: `${Math.max(
-                                    5,
-                                    Math.abs(
-                                        metrics?.revenue?.growthPercent || 0
-                                    ) * 5
-                                )}%`,
-                            }"
-                        ></div>
-                    </div>
-                </div>
-
-                <!-- Orders Stat Card -->
-                <div
-                    class="p-6 transition-all duration-300 border border-gray-700 rounded-lg shadow-lg bg-gradient-to-br from-dark-card to-dark-lighter hover:shadow-glow-primary"
-                >
-                    <div class="flex items-start justify-between">
-                        <div>
-                            <p class="text-sm font-medium text-gray-400">
-                                Total Orders
-                            </p>
-                            <h2 class="mt-2 text-3xl font-bold text-white">
-                                {{ metrics?.orders?.total.toLocaleString() }}
-                            </h2>
-                            <div
-                                :class="[
-                                    'flex items-center mt-2 text-sm',
-                                    metrics?.orders?.isPositive
-                                        ? 'text-green-400'
-                                        : 'text-red-400',
-                                ]"
-                            >
-                                <ArrowUp
-                                    v-if="metrics?.orders?.isPositive"
-                                    class="w-4 h-4 mr-1"
-                                />
-                                <ArrowDown v-else class="w-4 h-4 mr-1" />
-                                <span>
-                                    {{
-                                        Math.abs(
-                                            metrics?.orders?.growthPercent || 0
-                                        )
-                                    }}%
-                                    {{
-                                        metrics?.orders?.isPositive
-                                            ? "increase"
-                                            : "decrease"
-                                    }}
-                                </span>
-                            </div>
-                        </div>
-                        <div class="p-3 rounded-lg bg-pink-500/20">
-                            <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                class="w-8 h-8 text-pink-400"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                            >
-                                <path
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                    stroke-width="2"
-                                    d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"
-                                />
-                            </svg>
-                        </div>
-                    </div>
-                    <!-- Sparkline graph -->
-                    <div
-                        class="w-full h-2 mt-4 overflow-hidden bg-gray-700 rounded-full"
-                    >
-                        <div
-                            class="h-full rounded-full bg-gradient-to-r from-primary to-secondary animate-pulse"
-                            :style="{
-                                width: `${Math.max(
-                                    5,
-                                    Math.abs(
-                                        metrics?.orders?.growthPercent || 0
-                                    ) * 5
-                                )}%`,
-                            }"
-                        ></div>
-                    </div>
-                </div>
-
-                <!-- Products Stat Card -->
-                <div
-                    class="p-6 transition-all duration-300 border border-gray-700 rounded-lg shadow-lg bg-gradient-to-br from-dark-card to-dark-lighter hover:shadow-glow-secondary"
-                >
-                    <div class="flex items-start justify-between">
-                        <div>
-                            <p class="text-sm font-medium text-gray-400">
-                                Active Products
-                            </p>
-                            <h2 class="mt-2 text-3xl font-bold text-white">
-                                {{ metrics?.products?.total }}
-                            </h2>
-                            <div
-                                :class="[
-                                    'flex items-center mt-2 text-sm',
-                                    metrics?.products?.isPositive
-                                        ? 'text-green-400'
-                                        : 'text-red-400',
-                                ]"
-                            >
-                                <ArrowUp
-                                    v-if="metrics?.products?.isPositive"
-                                    class="w-4 h-4 mr-1"
-                                />
-                                <ArrowDown v-else class="w-4 h-4 mr-1" />
-                                <span>
-                                    {{
-                                        Math.abs(
-                                            metrics?.products?.growthPercent ||
-                                                0
-                                        )
-                                    }}%
-                                    {{
-                                        metrics?.products?.isPositive
-                                            ? "increase"
-                                            : "decrease"
-                                    }}
-                                </span>
-                            </div>
-                        </div>
-                        <div class="p-3 rounded-lg bg-purple-500/20">
-                            <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                class="w-8 h-8 text-purple-400"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                            >
-                                <path
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                    stroke-width="2"
-                                    d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
-                                />
-                            </svg>
-                        </div>
-                    </div>
-                    <!-- Sparkline graph -->
-                    <div
-                        class="w-full h-2 mt-4 overflow-hidden bg-gray-700 rounded-full"
-                    >
-                        <div
-                            class="h-full rounded-full bg-gradient-to-r from-secondary to-primary animate-pulse"
-                            :style="{
-                                width: `${Math.max(
-                                    5,
-                                    Math.abs(
-                                        metrics?.products?.growthPercent || 0
-                                    ) * 5
-                                )}%`,
-                            }"
-                        ></div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Charts Section -->
-            <div class="grid grid-cols-1 gap-6 mb-8 lg:grid-cols-2">
-                <!-- Revenue Chart -->
-                <div
-                    class="relative p-6 overflow-hidden border border-gray-700 rounded-lg shadow-lg bg-dark-card"
-                >
-                    <h3
-                        class="flex items-center mb-6 text-xl font-semibold text-white"
-                    >
-                        <ChartArea class="w-5 h-5 mr-2" />
-                        Revenue Trend
-                    </h3>
-
-                    <!-- Chart Background Effects -->
-                    <div
-                        class="absolute inset-0 z-0 bg-gradient-to-br from-primary/5 to-secondary/5"
-                    ></div>
-                    <div
-                        class="absolute bottom-0 left-0 right-0 z-0 h-1/3 bg-gradient-to-t from-primary/10 to-transparent"
-                    ></div>
-
-                    <!-- Chart Container -->
-                    <div class="relative z-10 w-full h-80">
-                        <Line
-                            v-if="charts?.revenue_trend?.labels?.length"
-                            :data="{
-                                labels: charts.revenue_trend.labels,
-                                datasets: charts.revenue_trend.datasets,
-                            }"
-                            :options="revenueChartOptions"
-                        />
-                        <div
-                            v-else
-                            class="flex items-center justify-center h-full"
-                        >
-                            <p class="text-gray-400">
-                                No data available for selected period
-                            </p>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Orders Chart -->
-                <div
-                    class="relative p-6 overflow-hidden border border-gray-700 rounded-lg shadow-lg bg-dark-card"
-                >
-                    <h3
-                        class="flex items-center mb-6 text-xl font-semibold text-white"
-                    >
-                        <ChartPie class="w-5 h-5 mr-2" />
-                        Order Statistics
-                    </h3>
-
-                    <!-- Chart Background Effects -->
-                    <div
-                        class="absolute inset-0 z-0 bg-gradient-to-br from-secondary/5 to-primary/5"
-                    ></div>
-                    <div
-                        class="absolute bottom-0 left-0 right-0 z-0 h-1/3 bg-gradient-to-t from-secondary/10 to-transparent"
-                    ></div>
-
-                    <!-- Chart Container -->
-                    <div class="relative z-10 w-full h-80">
-                        <Doughnut
-                            v-if="
-                                charts?.order_stats?.statusDistribution?.labels
-                                    ?.length
-                            "
-                            :data="charts.order_stats.statusDistribution"
-                            :options="pieChartOptions"
-                        />
-                        <div
-                            v-else
-                            class="flex items-center justify-center h-full"
-                        >
-                            <p class="text-gray-400">
-                                No data available for selected period
-                            </p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Recent Transactions and Top Products -->
-            <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
-                <!-- Recent Transactions -->
-                <div
-                    class="overflow-hidden border border-gray-700 rounded-lg shadow-lg bg-dark-card"
-                >
-                    <div
-                        class="flex items-center justify-between p-6 border-b border-gray-700"
-                    >
-                        <h3 class="text-xl font-semibold text-white">
-                            Recent Transactions
-                        </h3>
-                        <router-link
-                            :to="{ name: 'pembelians.index' }"
-                            class="transition-colors text-secondary hover:text-secondary-hover"
-                        >
-                            View All
-                        </router-link>
-                    </div>
-                    <div class="overflow-x-auto">
-                        <table class="w-full min-w-full">
-                            <thead>
-                                <tr class="bg-dark-lighter">
-                                    <th
-                                        class="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-400 uppercase"
-                                    >
-                                        Transaction ID
-                                    </th>
-                                    <th
-                                        class="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-400 uppercase"
-                                    >
-                                        User
-                                    </th>
-                                    <th
-                                        class="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-400 uppercase"
-                                    >
-                                        Service
-                                    </th>
-                                    <th
-                                        class="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-400 uppercase"
-                                    >
-                                        Amount
-                                    </th>
-                                    <th
-                                        class="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-400 uppercase"
-                                    >
-                                        Status
-                                    </th>
-                                    <th
-                                        class="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-400 uppercase"
-                                    >
-                                        Date
-                                    </th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-gray-700">
-                                <tr
-                                    v-for="transaction in tables?.recent_transactions"
-                                    :key="transaction.id"
-                                    class="transition-colors hover:bg-dark-lighter"
-                                >
-                                    <td
-                                        class="px-6 py-4 text-sm font-medium text-white whitespace-nowrap"
-                                    >
-                                        {{ transaction.id }}
-                                    </td>
-                                    <td
-                                        class="px-6 py-4 text-sm text-gray-300 whitespace-nowrap"
-                                    >
-                                        {{ transaction.user }}
-                                    </td>
-                                    <td
-                                        class="px-6 py-4 text-sm text-gray-300 whitespace-nowrap"
-                                    >
-                                        {{ transaction.game }}
-                                    </td>
-                                    <td
-                                        class="px-6 py-4 text-sm font-medium text-white whitespace-nowrap"
-                                    >
-                                        {{ formatCurrency(transaction.amount) }}
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap">
-                                        <span
-                                            :class="[
-                                                getStatusClass(
-                                                    transaction.status
-                                                ),
-                                                'px-2 py-1 text-xs rounded-full',
-                                            ]"
-                                        >
-                                            {{ transaction.status }}
-                                        </span>
-                                    </td>
-                                    <td
-                                        class="px-6 py-4 text-sm text-gray-300 whitespace-nowrap"
-                                    >
-                                        {{ transaction.date }}
-                                    </td>
-                                </tr>
-                                <tr
-                                    v-if="!tables?.recent_transactions?.length"
-                                    class="hover:bg-dark-lighter"
-                                >
-                                    <td
-                                        colspan="6"
-                                        class="px-6 py-8 text-center text-gray-400"
-                                    >
-                                        No recent transactions found
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <!-- Top Products -->
-                <div
-                    class="overflow-hidden border border-gray-700 rounded-lg shadow-lg bg-dark-card"
-                >
-                    <div
-                        class="flex items-center justify-between p-6 border-b border-gray-700"
-                    >
-                        <h3 class="text-xl font-semibold text-white">
-                            Top Service
-                        </h3>
-                        <Link
-                            :href="route('services.index')"
-                            class="transition-colors text-secondary hover:text-secondary-hover"
-                        >
-                            View All
-                        </Link>
-                    </div>
-                    <div class="overflow-x-auto">
-                        <table class="w-full min-w-full">
-                            <thead>
-                                <tr class="bg-dark-lighter">
-                                    <th
-                                        class="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-400 uppercase"
-                                    >
-                                        Service
-                                    </th>
-                                    <th
-                                        class="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-400 uppercase"
-                                    >
-                                        Sales
-                                    </th>
-                                    <th
-                                        class="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-400 uppercase"
-                                    >
-                                        Revenue
-                                    </th>
-                                    <th
-                                        class="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-400 uppercase"
-                                    >
-                                        Growth
-                                    </th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-gray-700">
-                                <tr
-                                    v-for="product in tables?.top_products"
-                                    :key="product.id"
-                                    class="transition-colors hover:bg-dark-lighter"
-                                >
-                                    <td
-                                        class="px-6 py-4 text-sm font-medium text-white whitespace-nowrap"
-                                    >
-                                        {{ product.name }}
-                                    </td>
-                                    <td
-                                        class="px-6 py-4 text-sm text-gray-300 whitespace-nowrap"
-                                    >
-                                        {{ product.sales.toLocaleString() }}
-                                    </td>
-                                    <td
-                                        class="px-6 py-4 text-sm font-medium text-white whitespace-nowrap"
-                                    >
-                                        {{ formatCurrency(product.revenue) }}
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap">
-                                        <div class="flex items-center">
-                                            <div
-                                                :class="[
-                                                    product.growth >= 0
-                                                        ? 'text-green-400'
-                                                        : 'text-red-400',
-                                                    'flex items-center',
-                                                ]"
-                                            >
-                                                <ArrowUp
-                                                    v-if="product.growth >= 0"
-                                                    class="w-4 h-4 mr-1"
-                                                />
-                                                <ArrowDown
-                                                    v-else
-                                                    class="w-4 h-4 mr-1"
-                                                />
-                                                <span
-                                                    >{{
-                                                        Math.abs(
-                                                            product.growth
-                                                        ).toFixed(1)
-                                                    }}%</span
-                                                >
-                                            </div>
-                                        </div>
-                                    </td>
-                                </tr>
-                                <tr
-                                    v-if="!tables?.top_products?.length"
-                                    class="hover:bg-dark-lighter"
-                                >
-                                    <td
-                                        colspan="4"
-                                        class="px-6 py-8 text-center text-gray-400"
-                                    >
-                                        No top products found
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Quick Actions -->
-            <div class="mt-8">
-                <h3 class="mb-6 text-xl font-semibold text-white">
-                    Quick Actions
-                </h3>
-                <div
-                    class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
-                >
-                    <!-- Add Product -->
-                    <div
-                        class="flex items-center p-6 space-x-4 transition-all duration-300 border border-gray-700 rounded-lg shadow-lg cursor-pointer bg-gradient-to-br from-dark-card to-dark-lighter hover:shadow-glow-primary"
-                        @click="$inertia.visit(route('products.index'))"
-                    >
-                        <div class="p-3 rounded-lg bg-primary/20">
-                            <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                class="w-6 h-6 text-primary"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                            >
-                                <path
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                    stroke-width="2"
-                                    d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-                                />
-                            </svg>
-                        </div>
-                        <div>
-                            <h4 class="font-medium text-white">
-                                Add New Product
-                            </h4>
-                            <p class="mt-1 text-sm text-gray-400">
-                                Create a new product listing
-                            </p>
-                        </div>
-                    </div>
-
-                    <!-- Manage Orders -->
-                    <div
-                        class="flex items-center p-6 space-x-4 transition-all duration-300 border border-gray-700 rounded-lg shadow-lg cursor-pointer bg-gradient-to-br from-dark-card to-dark-lighter hover:shadow-glow-secondary"
-                        @click="$inertia.visit(route('pembelians.index'))"
-                    >
-                        <div class="p-3 rounded-lg bg-secondary/20">
-                            <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                class="w-6 h-6 text-secondary"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                            >
-                                <path
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                    stroke-width="2"
-                                    d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
-                                />
-                            </svg>
-                        </div>
-                        <div>
-                            <h4 class="font-medium text-white">
-                                Manage Orders
-                            </h4>
-                            <p class="mt-1 text-sm text-gray-400">
-                                View and update order status
-                            </p>
-                        </div>
-                    </div>
-
-                    <!-- Add Banner -->
-                    <div
-                        class="flex items-center p-6 space-x-4 transition-all duration-300 border border-gray-700 rounded-lg shadow-lg cursor-pointer bg-gradient-to-br from-dark-card to-dark-lighter hover:shadow-glow-primary"
-                        @click="$inertia.visit(route('banners.index'))"
-                    >
-                        <div class="p-3 rounded-lg bg-purple-500/20">
-                            <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                class="w-6 h-6 text-purple-400"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                            >
-                                <path
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                    stroke-width="2"
-                                    d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-                                />
-                            </svg>
-                        </div>
-                        <div>
-                            <h4 class="font-medium text-white">Add Banner</h4>
-                            <p class="mt-1 text-sm text-gray-400">
-                                Upload a new promotional banner
-                            </p>
-                        </div>
-                    </div>
-
-                    <!-- Website Settings -->
-                    <div
-                        class="flex items-center p-6 space-x-4 transition-all duration-300 border border-gray-700 rounded-lg shadow-lg cursor-pointer bg-gradient-to-br from-dark-card to-dark-lighter hover:shadow-glow-secondary"
-                        @click="$inertia.visit(route('admin.settings'))"
-                    >
-                        <div class="p-3 rounded-lg bg-pink-500/20">
-                            <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                class="w-6 h-6 text-pink-400"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                            >
-                                <path
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                    stroke-width="2"
-                                    d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
-                                />
-                                <path
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                    stroke-width="2"
-                                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                                />
-                            </svg>
-                        </div>
-                        <div>
-                            <h4 class="font-medium text-white">
-                                Website Settings
-                            </h4>
-                            <p class="mt-1 text-sm text-gray-400">
-                                Update site configuration
-                            </p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </AdminLayout>
-</template>
