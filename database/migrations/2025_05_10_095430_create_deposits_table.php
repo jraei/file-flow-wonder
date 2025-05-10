@@ -18,6 +18,10 @@ return new class extends Migration
             $table->string('provider_reference')->unique();
             $table->foreignId('pay_method_id')->constrained('pay_methods');
             $table->bigInteger('amount');
+            $table->integer('fee')->default(0);
+            $table->string('qr_url')->nullable()->comment('Qris Only');
+            $table->string('payment_link')->nullable()->comment('Payment gateway link');
+            $table->string('expired_time')->nullable();
             $table->enum('status', ['pending', 'paid', 'failed', 'cancelled'])->default('pending');
             $table->timestamps();
         });

@@ -3,7 +3,7 @@ import GuestLayout from "@/Layouts/GuestLayout.vue";
 import DashboardSidebar from "@/Components/Dashboard/Sidebar.vue";
 import { Link, useForm } from "@inertiajs/vue3";
 import { computed } from "vue";
-import { Image } from "lucide-vue-next";
+import { Image, Wallet, CreditCard } from "lucide-vue-next";
 
 const props = defineProps({
     balance: { type: Number, required: true },
@@ -19,9 +19,14 @@ const payMethod = computed(() => {
 const feeAmount = computed(() => {
     if (payMethod.value) {
         if (payMethod.value.fee_type === "percent") {
-            return (form.nominal * payMethod.value.fee) / 100;
+            return (form.nominal * payMethod.value.fee_percent) / 100;
+        } else if (payMethod.value.fee_type === "mixed") {
+            return (
+                payMethod.value.fee_fixed +
+                (form.nominal * payMethod.value.fee_percent) / 100
+            );
         } else {
-            return payMethod.value.fee;
+            return payMethod.value.fee_fixed;
         }
     }
 });
@@ -78,6 +83,7 @@ console.log(payMethod.value);
                             <h1
                                 class="mb-4 text-lg font-bold md:text-xl text-primary"
                             >
+                                <Wallet class="inline w-6 h-6 mx-2" />
                                 Top Up Saldo
                             </h1>
                             <div class="gap-3">
@@ -135,6 +141,7 @@ console.log(payMethod.value);
                             <h1
                                 class="mb-4 text-lg font-bold md:text-xl text-primary"
                             >
+                                <CreditCard class="inline w-6 h-6 mx-2" />
                                 Metode Pembayaran
                             </h1>
                             <div
@@ -171,9 +178,16 @@ console.log(payMethod.value);
                                             Fee
                                             {{
                                                 method.fee_type === "percent"
-                                                    ? `${method.fee}%`
+                                                    ? `${method.fee_percent}%`
+                                                    : method.fee_type ===
+                                                      "mixed"
+                                                    ? `${formatCurrency(
+                                                          method.fee_fixed
+                                                      )} + ${
+                                                          method.fee_percent
+                                                      }%`
                                                     : `${formatCurrency(
-                                                          method.fee
+                                                          method.fee_fixed
                                                       )}`
                                             }}
                                         </p>
@@ -297,11 +311,17 @@ console.log(payMethod.value);
                                         >
                                             Fee
                                             {{
-                                                payMethod?.fee_type ===
-                                                "percent"
-                                                    ? `${payMethod?.fee}%`
+                                                payMethod.fee_type === "percent"
+                                                    ? `${payMethod.fee_percent}%`
+                                                    : payMethod.fee_type ===
+                                                      "mixed"
+                                                    ? `${formatCurrency(
+                                                          payMethod.fee_fixed
+                                                      )} + ${
+                                                          payMethod.fee_percent
+                                                      }%`
                                                     : `${formatCurrency(
-                                                          payMethod?.fee
+                                                          payMethod.fee_fixed
                                                       )}`
                                             }}
                                         </p>
