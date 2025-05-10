@@ -1,345 +1,320 @@
-<script>
+
+<script setup>
 import AdminLayout from "@/Layouts/AdminLayout.vue";
-import { defineComponent, ref, onMounted, computed, nextTick } from "vue";
+import { ref, onMounted, computed, nextTick } from "vue";
+import { Head } from "@inertiajs/vue3";
 import { router } from "@inertiajs/vue3";
 import Chart from "chart.js/auto";
-// import flatpickr from "flatpickr";
 
-export default defineComponent({
-    props: {
-        metrics: Object,
-        charts: Object,
-        tables: Object,
-        period: String,
-    },
+const props = defineProps({
+    metrics: Object,
+    charts: Object,
+    tables: Object,
+    period: String,
+});
 
-    setup(props) {
-        // Charts references
-        const revenueChartCanvas = ref(null);
-        const statusChartCanvas = ref(null);
-        let revenueChart = null;
-        let statusChart = null;
+// Charts references
+const revenueChartCanvas = ref(null);
+const statusChartCanvas = ref(null);
+let revenueChart = null;
+let statusChart = null;
 
-        // Period selector
-        const periodOptions = [
-            { label: "Day", value: "day" },
-            { label: "Week", value: "week" },
-            { label: "Month", value: "month" },
-            { label: "Year", value: "year" },
-            { label: "Lifetime", value: "lifetime" },
-        ];
+// Period selector
+const periodOptions = [
+    { label: "Day", value: "day" },
+    { label: "Week", value: "week" },
+    { label: "Month", value: "month" },
+    { label: "Year", value: "year" },
+    { label: "Lifetime", value: "lifetime" },
+];
 
-        // Custom date range
-        const showCustomDatePicker = ref(false);
-        const customDateRange = ref({
-            start: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
-                .toISOString()
-                .split("T")[0],
-            end: new Date().toISOString().split("T")[0],
+// Custom date range
+const showCustomDatePicker = ref(false);
+const customDateRange = ref({
+    start: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+        .toISOString()
+        .split("T")[0],
+    end: new Date().toISOString().split("T")[0],
+});
+
+// Product and service data
+const selectedProductId = ref("");
+const products = ref([]);
+const topServices = ref([]);
+const loading = ref(false);
+
+// Flashsales and vouchers
+const flashsales = ref([]);
+const vouchers = ref([]);
+
+// Format helpers
+const formatCurrency = (value) => {
+    return new Intl.NumberFormat("id-ID", {
+        style: "currency",
+        currency: "IDR",
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0,
+    }).format(value);
+};
+
+const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString("id-ID", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+    });
+};
+
+// Change period and reload dashboard
+const changePeriod = (newPeriod) => {
+    router.visit(route("admin.dashboard", { period: newPeriod }), {
+        preserveState: true,
+        preserveScroll: true,
+    });
+};
+
+// Apply custom date range
+const applyCustomRange = () => {
+    router.visit(
+        route("admin.dashboard", {
+            period: "custom",
+            start_date: customDateRange.value.start,
+            end_date: customDateRange.value.end,
+        }),
+        {
+            preserveState: true,
+            preserveScroll: true,
+        }
+    );
+    showCustomDatePicker.value = false;
+};
+
+// Load product-specific services
+const loadProductServices = async () => {
+    loading.value = true;
+    try {
+        const response = await fetch(
+            `/admin/dashboard/product-services${
+                selectedProductId.value
+                    ? `/${selectedProductId.value}`
+                    : ""
+            }?period=${props.period}`
+        );
+
+        const data = await response.json();
+        topServices.value = data.services;
+    } catch (error) {
+        console.error("Failed to load services:", error);
+        topServices.value = [];
+    } finally {
+        loading.value = false;
+    }
+};
+
+// Calculate flashsale progress percentage
+const calculateFlashsaleProgress = (event) => {
+    const now = new Date();
+    const start = new Date(event.event_start_date);
+    const end = new Date(event.event_end_date);
+
+    const totalDuration = end - start;
+    const elapsed = now - start;
+
+    if (elapsed < 0) return 0;
+    if (elapsed > totalDuration) return 100;
+
+    return (elapsed / totalDuration) * 100;
+};
+
+// Export functions
+const exportTransactions = () => {
+    window.location.href = route("admin.dashboard.export", {
+        type: "transactions",
+        period: props.period,
+    });
+};
+
+const exportTopProducts = () => {
+    window.location.href = route("admin.dashboard.export", {
+        type: "products",
+        period: props.period,
+    });
+};
+
+// Initialize UI components
+const setupCharts = () => {
+    // Revenue trend chart
+    if (revenueChartCanvas.value && props.charts?.revenue_trend) {
+        const ctx = revenueChartCanvas.value.getContext("2d");
+
+        // Destroy previous chart instance if it exists
+        if (revenueChart) revenueChart.destroy();
+
+        revenueChart = new Chart(ctx, {
+            type: "line",
+            data: {
+                labels: props.charts.revenue_trend.labels,
+                datasets: props.charts.revenue_trend.datasets,
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: "top",
+                        labels: {
+                            color: "rgba(255, 255, 255, 0.7)",
+                            font: {
+                                family: "'Inter', sans-serif",
+                            },
+                        },
+                    },
+                    tooltip: {
+                        backgroundColor: "rgba(0, 0, 0, 0.7)",
+                        titleColor: "#fff",
+                        bodyColor: "#fff",
+                        borderColor: "rgba(255, 255, 255, 0.2)",
+                        borderWidth: 1,
+                    },
+                },
+                scales: {
+                    x: {
+                        grid: {
+                            color: "rgba(255, 255, 255, 0.05)",
+                        },
+                        ticks: {
+                            color: "rgba(255, 255, 255, 0.5)",
+                            font: {
+                                family: "'Inter', sans-serif",
+                            },
+                        },
+                    },
+                    y: {
+                        grid: {
+                            color: "rgba(255, 255, 255, 0.05)",
+                        },
+                        ticks: {
+                            color: "rgba(255, 255, 255, 0.5)",
+                            font: {
+                                family: "'Inter', sans-serif",
+                            },
+                            callback: function (value) {
+                                return new Intl.NumberFormat("id-ID", {
+                                    style: "currency",
+                                    currency: "IDR",
+                                    notation: "compact",
+                                    compactDisplay: "short",
+                                }).format(value);
+                            },
+                        },
+                    },
+                },
+                interaction: {
+                    mode: "index",
+                    intersect: false,
+                },
+                animation: {
+                    duration: 1000,
+                },
+                elements: {
+                    point: {
+                        radius: 3,
+                        hoverRadius: 5,
+                    },
+                    line: {
+                        tension: 0.2,
+                    },
+                },
+            },
         });
+    }
 
-        // Product and service data
-        const selectedProductId = ref("");
-        const products = ref([]);
-        const topServices = ref([]);
-        const loading = ref(false);
+    // Order status chart
+    if (statusChartCanvas.value && props.charts?.order_stats) {
+        const ctx = statusChartCanvas.value.getContext("2d");
 
-        // Flashsales and vouchers
-        const flashsales = ref([]);
-        const vouchers = ref([]);
+        // Destroy previous chart instance if it exists
+        if (statusChart) statusChart.destroy();
 
-        // Format helpers
-        const formatCurrency = (value) => {
-            return new Intl.NumberFormat("id-ID", {
-                style: "currency",
-                currency: "IDR",
-                minimumFractionDigits: 0,
-                maximumFractionDigits: 0,
-            }).format(value);
-        };
-
-        const formatDate = (dateString) => {
-            const date = new Date(dateString);
-            return date.toLocaleDateString("id-ID", {
-                year: "numeric",
-                month: "short",
-                day: "numeric",
-            });
-        };
-
-        // Change period and reload dashboard
-        const changePeriod = (newPeriod) => {
-            router.visit(route("admin.dashboard", { period: newPeriod }), {
-                preserveState: true,
-                preserveScroll: true,
-            });
-        };
-
-        // Apply custom date range
-        const applyCustomRange = () => {
-            router.visit(
-                route("admin.dashboard", {
-                    period: "custom",
-                    start_date: customDateRange.value.start,
-                    end_date: customDateRange.value.end,
-                }),
-                {
-                    preserveState: true,
-                    preserveScroll: true,
-                }
-            );
-            showCustomDatePicker.value = false;
-        };
-
-        // Load product-specific services
-        const loadProductServices = async () => {
-            loading.value = true;
-            try {
-                const response = await fetch(
-                    `/admin/dashboard/product-services${
-                        selectedProductId.value
-                            ? `/${selectedProductId.value}`
-                            : ""
-                    }?period=${props.period}`
-                );
-
-                const data = await response.json();
-                topServices.value = data.services;
-            } catch (error) {
-                console.error("Failed to load services:", error);
-                topServices.value = [];
-            } finally {
-                loading.value = false;
-            }
-        };
-
-        // Calculate flashsale progress percentage
-        const calculateFlashsaleProgress = (event) => {
-            const now = new Date();
-            const start = new Date(event.event_start_date);
-            const end = new Date(event.event_end_date);
-
-            const totalDuration = end - start;
-            const elapsed = now - start;
-
-            if (elapsed < 0) return 0;
-            if (elapsed > totalDuration) return 100;
-
-            return (elapsed / totalDuration) * 100;
-        };
-
-        // Export functions
-        const exportTransactions = () => {
-            window.location.href = route("admin.dashboard.export", {
-                type: "transactions",
-                period: props.period,
-            });
-        };
-
-        const exportTopProducts = () => {
-            window.location.href = route("admin.dashboard.export", {
-                type: "products",
-                period: props.period,
-            });
-        };
-
-        // Initialize UI components
-        const setupCharts = () => {
-            // Revenue trend chart
-            if (revenueChartCanvas.value && props.charts?.revenue_trend) {
-                const ctx = revenueChartCanvas.value.getContext("2d");
-
-                // Destroy previous chart instance if it exists
-                if (revenueChart) revenueChart.destroy();
-
-                revenueChart = new Chart(ctx, {
-                    type: "line",
-                    data: {
-                        labels: props.charts.revenue_trend.labels,
-                        datasets: props.charts.revenue_trend.datasets,
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            legend: {
-                                position: "top",
-                                labels: {
-                                    color: "rgba(255, 255, 255, 0.7)",
-                                    font: {
-                                        family: "'Inter', sans-serif",
-                                    },
-                                },
-                            },
-                            tooltip: {
-                                backgroundColor: "rgba(0, 0, 0, 0.7)",
-                                titleColor: "#fff",
-                                bodyColor: "#fff",
-                                borderColor: "rgba(255, 255, 255, 0.2)",
-                                borderWidth: 1,
-                            },
-                        },
-                        scales: {
-                            x: {
-                                grid: {
-                                    color: "rgba(255, 255, 255, 0.05)",
-                                },
-                                ticks: {
-                                    color: "rgba(255, 255, 255, 0.5)",
-                                    font: {
-                                        family: "'Inter', sans-serif",
-                                    },
-                                },
-                            },
-                            y: {
-                                grid: {
-                                    color: "rgba(255, 255, 255, 0.05)",
-                                },
-                                ticks: {
-                                    color: "rgba(255, 255, 255, 0.5)",
-                                    font: {
-                                        family: "'Inter', sans-serif",
-                                    },
-                                    callback: function (value) {
-                                        return new Intl.NumberFormat("id-ID", {
-                                            style: "currency",
-                                            currency: "IDR",
-                                            notation: "compact",
-                                            compactDisplay: "short",
-                                        }).format(value);
-                                    },
-                                },
-                            },
-                        },
-                        interaction: {
-                            mode: "index",
-                            intersect: false,
-                        },
-                        animation: {
-                            duration: 1000,
-                        },
-                        elements: {
-                            point: {
-                                radius: 3,
-                                hoverRadius: 5,
-                            },
-                            line: {
-                                tension: 0.2,
+        statusChart = new Chart(ctx, {
+            type: "doughnut",
+            data: props.charts.order_stats.statusDistribution,
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: "right",
+                        labels: {
+                            color: "rgba(255, 255, 255, 0.7)",
+                            font: {
+                                family: "'Inter', sans-serif",
                             },
                         },
                     },
-                });
-            }
-
-            // Order status chart
-            if (statusChartCanvas.value && props.charts?.order_stats) {
-                const ctx = statusChartCanvas.value.getContext("2d");
-
-                // Destroy previous chart instance if it exists
-                if (statusChart) statusChart.destroy();
-
-                statusChart = new Chart(ctx, {
-                    type: "doughnut",
-                    data: props.charts.order_stats.statusDistribution,
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            legend: {
-                                position: "right",
-                                labels: {
-                                    color: "rgba(255, 255, 255, 0.7)",
-                                    font: {
-                                        family: "'Inter', sans-serif",
-                                    },
-                                },
-                            },
-                            tooltip: {
-                                backgroundColor: "rgba(0, 0, 0, 0.7)",
-                                titleColor: "#fff",
-                                bodyColor: "#fff",
-                            },
-                        },
-                        cutout: "65%",
-                        animation: {
-                            animateRotate: true,
-                            animateScale: true,
-                        },
+                    tooltip: {
+                        backgroundColor: "rgba(0, 0, 0, 0.7)",
+                        titleColor: "#fff",
+                        bodyColor: "#fff",
                     },
-                });
-            }
-        };
-
-        // Load initial data
-        const loadDashboardData = async () => {
-            // Load products for the dropdown
-            try {
-                const response = await fetch("/admin/dashboard/products");
-                const data = await response.json();
-                products.value = data;
-            } catch (error) {
-                console.error("Failed to load products:", error);
-                products.value = [];
-            }
-
-            // Load flashsale events
-            try {
-                const response = await fetch(
-                    `/admin/dashboard/flashsales?period=${props.period}`
-                );
-                const data = await response.json();
-                flashsales.value = data;
-            } catch (error) {
-                console.error("Failed to load flashsales:", error);
-                flashsales.value = [];
-            }
-
-            // Load vouchers
-            try {
-                const response = await fetch(
-                    `/admin/dashboard/vouchers?period=${props.period}`
-                );
-                const data = await response.json();
-                vouchers.value = data;
-            } catch (error) {
-                console.error("Failed to load vouchers:", error);
-                vouchers.value = [];
-            }
-
-            // Load initial services data (all products)
-            loadProductServices();
-        };
-
-        // Set up everything when component mounts
-        onMounted(() => {
-            nextTick(() => {
-                setupCharts();
-                loadDashboardData();
-            });
+                },
+                cutout: "65%",
+                animation: {
+                    animateRotate: true,
+                    animateScale: true,
+                },
+            },
         });
+    }
+};
 
-        return {
-            revenueChartCanvas,
-            statusChartCanvas,
-            periodOptions,
-            showCustomDatePicker,
-            customDateRange,
-            selectedProductId,
-            products,
-            topServices,
-            loading,
-            flashsales,
-            vouchers,
-            formatCurrency,
-            formatDate,
-            changePeriod,
-            applyCustomRange,
-            loadProductServices,
-            calculateFlashsaleProgress,
-            exportTransactions,
-            exportTopProducts,
-        };
-    },
+// Load initial data
+const loadDashboardData = async () => {
+    // Load products for the dropdown
+    try {
+        const response = await fetch("/admin/dashboard/products");
+        const data = await response.json();
+        products.value = data;
+    } catch (error) {
+        console.error("Failed to load products:", error);
+        products.value = [];
+    }
+
+    // Load flashsale events
+    try {
+        const response = await fetch(
+            `/admin/dashboard/flashsales?period=${props.period}`
+        );
+        const data = await response.json();
+        flashsales.value = data;
+    } catch (error) {
+        console.error("Failed to load flashsales:", error);
+        flashsales.value = [];
+    }
+
+    // Load vouchers
+    try {
+        const response = await fetch(
+            `/admin/dashboard/vouchers?period=${props.period}`
+        );
+        const data = await response.json();
+        vouchers.value = data;
+    } catch (error) {
+        console.error("Failed to load vouchers:", error);
+        vouchers.value = [];
+    }
+
+    // Load initial services data (all products)
+    loadProductServices();
+};
+
+// Set up everything when component mounts
+onMounted(() => {
+    nextTick(() => {
+        setupCharts();
+        loadDashboardData();
+    });
 });
 </script>
 
