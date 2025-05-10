@@ -1,4 +1,3 @@
-
 <script setup>
 import AdminLayout from "@/Layouts/AdminLayout.vue";
 import { ref, onMounted, computed, nextTick } from "vue";
@@ -96,9 +95,7 @@ const loadProductServices = async () => {
     try {
         const response = await fetch(
             `/admin/dashboard/product-services${
-                selectedProductId.value
-                    ? `/${selectedProductId.value}`
-                    : ""
+                selectedProductId.value ? `/${selectedProductId.value}` : ""
             }?period=${props.period}`
         );
 

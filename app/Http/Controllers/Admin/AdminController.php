@@ -36,7 +36,7 @@ class AdminController extends Controller
         // Handle custom date range
         $startDate = null;
         $endDate = null;
-        
+
         if ($period === 'custom') {
             $startDate = $request->get('start_date') ? Carbon::parse($request->get('start_date')) : Carbon::now()->subWeek();
             $endDate = $request->get('end_date') ? Carbon::parse($request->get('end_date')) : Carbon::now();
@@ -83,12 +83,12 @@ class AdminController extends Controller
         $startDate = $this->getStartDate($request->get('period', 'week'));
 
         $query = Layanan::select(
-                'layanans.id', 
-                'layanans.nama_layanan as name', 
-                DB::raw('COUNT(pembelians.id) as sales'),
-                DB::raw('SUM(pembelians.total_price) as revenue'),
-                DB::raw('SUM(pembelians.profit) as profit')
-            )
+            'layanans.id',
+            'layanans.nama_layanan as name',
+            DB::raw('COUNT(pembelians.id) as sales'),
+            DB::raw('SUM(pembelians.total_price) as revenue'),
+            DB::raw('SUM(pembelians.profit) as profit')
+        )
             ->leftJoin('pembelians', 'pembelians.layanan_id', '=', 'layanans.id')
             ->where(function ($query) {
                 $query->whereNull('pembelians.id')
@@ -108,7 +108,7 @@ class AdminController extends Controller
                 // Calculate a random growth percentage for demonstration
                 // In a real app, you'd compare to previous period
                 $growth = rand(-20, 30);
-                
+
                 return [
                     'id' => $service->id,
                     'name' => $service->name,
@@ -129,11 +129,11 @@ class AdminController extends Controller
     {
         $period = $request->get('period', 'week');
         $startDate = $this->getStartDate($period);
-        
+
         $flashsaleEvents = FlashsaleEvent::where(function ($query) use ($startDate) {
-                $query->where('event_end_date', '>=', $startDate)
-                    ->orWhere('status', 'active');
-            })
+            $query->where('event_end_date', '>=', $startDate)
+                ->orWhere('status', 'active');
+        })
             ->with(['item' => function ($query) {
                 $query->with(['layanan:id,nama_layanan']);
             }])
@@ -144,14 +144,14 @@ class AdminController extends Controller
             // Calculate total revenue from items in this flashsale
             $totalRevenue = 0;
             $totalProfit = 0;
-            
+
             // Get top performing items
             $topItems = collect($event->item)->map(function ($item) {
                 // In a real app, you would fetch actual sales data
                 // For demonstration, we're using random values
                 $sold = rand(1, 50);
                 $itemRevenue = $sold * $item->harga_flashsale;
-                
+
                 return [
                     'id' => $item->id,
                     'service_name' => $item->layanan->nama_layanan ?? 'Unknown Service',
@@ -159,7 +159,7 @@ class AdminController extends Controller
                     'revenue' => $itemRevenue,
                 ];
             })->sortByDesc('sold')->values();
-            
+
             foreach ($topItems as $item) {
                 $totalRevenue += $item['revenue'];
                 // Assume profit is about 20% of revenue for demonstration
@@ -169,7 +169,7 @@ class AdminController extends Controller
             $event->top_items = $topItems;
             $event->total_revenue = $totalRevenue;
             $event->total_profit = $totalProfit;
-            
+
             return $event;
         });
 
@@ -186,10 +186,10 @@ class AdminController extends Controller
             ->get()
             ->map(function ($voucher) {
                 // Calculate utilization percentage
-                $utilizationPct = $voucher->usage_limit > 0 
-                    ? ($voucher->usage_count / $voucher->usage_limit) * 100 
+                $utilizationPct = $voucher->usage_limit > 0
+                    ? ($voucher->usage_count / $voucher->usage_limit) * 100
                     : 0;
-                
+
                 return [
                     'id' => $voucher->id,
                     'kode_voucher' => $voucher->kode_voucher,
@@ -212,17 +212,17 @@ class AdminController extends Controller
         $type = $request->get('type', 'transactions');
         $period = $request->get('period', 'week');
         $startDate = $this->getStartDate($period);
-        
+
         // Create a CSV download response
         $filename = "dashboard_{$type}_{$period}_" . date('Y-m-d') . ".csv";
-        
+
         return new StreamedResponse(function () use ($type, $startDate) {
             $handle = fopen('php://output', 'w');
-            
+
             if ($type === 'transactions') {
                 // Export recent transactions
                 fputcsv($handle, ['ID', 'User', 'Game', 'Amount', 'Profit', 'Date', 'Status']);
-                
+
                 Pembelian::with(['user', 'layanan'])
                     ->where('created_at', '>=', $startDate)
                     ->orderBy('created_at', 'desc')
@@ -239,11 +239,10 @@ class AdminController extends Controller
                             ]);
                         }
                     });
-            } 
-            else if ($type === 'products') {
+            } else if ($type === 'products') {
                 // Export top products
                 fputcsv($handle, ['Product', 'Sales', 'Revenue', 'Profit', 'Growth']);
-                
+
                 $topProductIds = Pembelian::select('layanan_id', DB::raw('count(*) as sales_count'))
                     ->where('created_at', '>=', $startDate)
                     ->where('status', 'completed')
@@ -253,16 +252,16 @@ class AdminController extends Controller
                     ->get()
                     ->pluck('sales_count', 'layanan_id')
                     ->toArray();
-                
+
                 // Get detailed product information
                 $products = Layanan::whereIn('id', array_keys($topProductIds))->get();
-                
+
                 foreach ($products as $product) {
                     $sales = $topProductIds[$product->id];
                     $revenue = $sales * $product->getHargaLayanan();
                     $profit = rand($revenue * 0.1, $revenue * 0.3); // Placeholder
                     $growth = rand(-15, 25); // Placeholder
-                    
+
                     fputcsv($handle, [
                         $product->nama_layanan,
                         $sales,
@@ -272,7 +271,7 @@ class AdminController extends Controller
                     ]);
                 }
             }
-            
+
             fclose($handle);
         }, 200, [
             'Content-Type' => 'text/csv',
@@ -614,41 +613,41 @@ class AdminController extends Controller
                     'profit' => 0,
                 ];
             }
-            
+
             // Find the sales count for this layanan
             $salesCount = $topLayananIds->firstWhere('layanan_id', $layanan->id);
-            
+
             if ($salesCount) {
                 $sales = $salesCount->sales_count;
                 $productData[$produkId]['sales'] += $sales;
-                
+
                 // Estimate revenue and profit
                 $revenue = $sales * $layanan->getHargaLayanan();
                 $productData[$produkId]['revenue'] += $revenue;
-                
+
                 // For profit, we can get the actual profit from pembelians
                 // But we'll use the count-based estimate for this example
                 $profit = Pembelian::where('layanan_id', $layanan->id)
                     ->where('created_at', '>=', $startDate)
                     ->where('status', 'completed')
                     ->sum('profit');
-                    
+
                 $productData[$produkId]['profit'] += $profit;
             }
         }
-        
+
         // Sort by sales count and take top 5
         usort($productData, function ($a, $b) {
             return $b['sales'] - $a['sales'];
         });
-        
+
         $productData = array_slice($productData, 0, 5);
-        
+
         // Add growth metrics (in real app, this would compare to previous period)
         foreach ($productData as &$product) {
             $product['growth'] = rand(-15, 25); // Random for demonstration
         }
-        
+
         return $productData;
     }
 
