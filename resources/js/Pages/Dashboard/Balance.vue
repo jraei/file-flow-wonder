@@ -4,7 +4,7 @@ import DashboardSidebar from "@/Components/Dashboard/Sidebar.vue";
 import CosmicBalanceCard from "@/Components/Dashboard/CosmicBalanceCard.vue";
 import DepositTableFilters from "@/Components/Dashboard/DepositTableFilters.vue";
 import DataTable from "@/Components/DataTable.vue";
-import { router, usePage } from "@inertiajs/vue3";
+import { router, usePage, Link } from "@inertiajs/vue3";
 import { ref, computed } from "vue";
 
 const page = usePage();
@@ -52,7 +52,12 @@ function reloadTable() {
 
 // TABLE DEFINITION
 const columns = [
-    { key: "deposit_id", label: "ID Invoice" },
+    {
+        key: "deposit_id",
+        label: "ID Invoice",
+        format: (val) =>
+            `<Link :href="route('invoice.topup', ${val})">${val}</Link>`,
+    },
     { key: "created_at", label: "Tanggal" },
     { key: "amount", label: "Nominal", format: (val) => formatCurrency(val) },
     { key: "status", label: "Status", format: statusBadge },
@@ -159,6 +164,7 @@ const showVoucherModal = ref(false);
                     <DataTable
                         :data="deposits.data"
                         :columns="columns"
+                        class="text-primary-text"
                         :pagination="{
                             current_page: deposits.current_page,
                             per_page: deposits.per_page,
@@ -216,6 +222,14 @@ const showVoucherModal = ref(false);
                                     />
                                 </svg>
                             </div>
+                        </template>
+                        <template #cell(deposit_id)="{ item }">
+                            <Link
+                                :href="route('invoice.topup', item.deposit_id)"
+                                class="text-primary hover:underline"
+                            >
+                                {{ item.deposit_id }}
+                            </Link>
                         </template>
                     </DataTable>
                 </div>

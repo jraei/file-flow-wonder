@@ -13,7 +13,7 @@ const props = defineProps({
     errors: Object,
     filters: Object,
     payMethods: Array,
-    users: Array,
+    user: Array,
 });
 
 const { proxy } = getCurrentInstance();
@@ -22,10 +22,23 @@ const { proxy } = getCurrentInstance();
 const deposits = computed(() => props.deposits.data || []);
 
 // Column definitions for the table
+console.log(deposits);
 const columns = [
     { key: "deposit_id", label: "Deposit ID" },
-    { key: "user.username", label: "Username" },
-    { key: "pay_method.nama", label: "Payment Method" },
+    {
+        key: "user",
+        label: "Username",
+        format: (value, item) => {
+            return value.username;
+        },
+    },
+    {
+        key: "pay_method",
+        label: "Payment Method",
+        format: (value, item) => {
+            return value.nama;
+        },
+    },
     {
         key: "amount",
         label: "Amount",
@@ -124,17 +137,6 @@ const handleDelete = (item) => {
 const showForm = ref(false);
 const currentDeposit = ref(null);
 
-const openAddForm = () => {
-    currentDeposit.value = {
-        user_id: "",
-        pay_method_id: "",
-        amount: "",
-        status: "pending",
-        provider_reference: "",
-    };
-    showForm.value = true;
-};
-
 const closeForm = () => {
     showForm.value = false;
 };
@@ -142,16 +144,6 @@ const closeForm = () => {
 const closeViewModal = () => {
     showViewModal.value = false;
     selectedDeposit.value = null;
-};
-
-const saveDeposit = () => {
-    // Save deposit logic
-    router.post(route("deposits.store"), currentDeposit.value, {
-        preserveScroll: true,
-        onSuccess: () => {
-            closeForm();
-        },
-    });
 };
 </script>
 
@@ -244,177 +236,6 @@ const saveDeposit = () => {
             </DataTable>
             <!-- Pagination component -->
             <Pagination :links="props.deposits.links" />
-        </div>
-
-        <!-- Add Deposit Modal -->
-        <div
-            v-if="showForm"
-            class="fixed inset-0 z-50 flex items-center justify-center overflow-auto bg-black bg-opacity-50"
-            @click.self="closeForm"
-        >
-            <div
-                class="relative w-full max-w-md mx-4 p-3 border border-gray-700 rounded-lg shadow-lg sm:p-4 md:p-6 md:max-w-xl lg:max-w-2xl bg-dark-card max-h-[90vh] overflow-y-auto"
-                @click.stop
-            >
-                <div class="flex items-center justify-between mb-4">
-                    <h3 class="text-xl font-bold text-white">
-                        Add New Deposit
-                    </h3>
-                    <button
-                        @click="closeForm"
-                        class="text-gray-400 hover:text-white"
-                    >
-                        <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            class="w-6 h-6"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                        >
-                            <path
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                stroke-width="2"
-                                d="M6 18L18 6M6 6l12 12"
-                            />
-                        </svg>
-                    </button>
-                </div>
-
-                <form @submit.prevent="saveDeposit" class="overflow-visible">
-                    <div class="space-y-3 sm:space-y-4">
-                        <div
-                            class="grid grid-cols-1 gap-3 sm:gap-4 sm:grid-cols-2"
-                        >
-                            <!-- User Field -->
-                            <div>
-                                <label
-                                    for="user_id"
-                                    class="block mb-1 text-sm font-medium text-gray-300"
-                                    >User</label
-                                >
-                                <select
-                                    id="user_id"
-                                    v-model="currentDeposit.user_id"
-                                    class="w-full px-3 py-2 text-white border border-gray-700 rounded-lg bg-dark-sidebar focus:ring-2 focus:ring-primary focus:border-transparent"
-                                    required
-                                >
-                                    <option value="" disabled selected>
-                                        Select User
-                                    </option>
-                                    <option
-                                        v-for="user in users"
-                                        :key="user.id"
-                                        :value="user.id"
-                                    >
-                                        {{ user.username }}
-                                    </option>
-                                </select>
-                            </div>
-
-                            <!-- Payment Method Field -->
-                            <div>
-                                <label
-                                    for="pay_method_id"
-                                    class="block mb-1 text-sm font-medium text-gray-300"
-                                    >Payment Method</label
-                                >
-                                <select
-                                    id="pay_method_id"
-                                    v-model="currentDeposit.pay_method_id"
-                                    class="w-full px-3 py-2 text-white border border-gray-700 rounded-lg bg-dark-sidebar focus:ring-2 focus:ring-primary focus:border-transparent"
-                                    required
-                                >
-                                    <option value="" disabled selected>
-                                        Select Payment Method
-                                    </option>
-                                    <option
-                                        v-for="method in payMethods"
-                                        :key="method.id"
-                                        :value="method.id"
-                                    >
-                                        {{ method.nama }} ({{ method.kode }})
-                                    </option>
-                                </select>
-                            </div>
-
-                            <!-- Amount Field -->
-                            <div>
-                                <label
-                                    for="amount"
-                                    class="block mb-1 text-sm font-medium text-gray-300"
-                                    >Amount</label
-                                >
-                                <input
-                                    id="amount"
-                                    v-model="currentDeposit.amount"
-                                    type="number"
-                                    min="0"
-                                    class="w-full px-3 py-2 text-white border border-gray-700 rounded-lg bg-dark-sidebar focus:ring-2 focus:ring-primary focus:border-transparent"
-                                    placeholder="Enter Amount"
-                                    name="amount"
-                                    required
-                                />
-                            </div>
-
-                            <!-- Provider Reference Field -->
-                            <div>
-                                <label
-                                    for="provider_reference"
-                                    class="block mb-1 text-sm font-medium text-gray-300"
-                                    >Provider Reference</label
-                                >
-                                <input
-                                    id="provider_reference"
-                                    v-model="currentDeposit.provider_reference"
-                                    type="text"
-                                    class="w-full px-3 py-2 text-white border border-gray-700 rounded-lg bg-dark-sidebar focus:ring-2 focus:ring-primary focus:border-transparent"
-                                    placeholder="Enter Provider Reference"
-                                    name="provider_reference"
-                                    required
-                                />
-                            </div>
-
-                            <!-- Status Field -->
-                            <div>
-                                <label
-                                    for="status"
-                                    class="block mb-1 text-sm font-medium text-gray-300"
-                                    >Status</label
-                                >
-                                <select
-                                    id="status"
-                                    name="status"
-                                    v-model="currentDeposit.status"
-                                    class="w-full px-3 py-2 text-white border border-gray-700 rounded-lg bg-dark-sidebar focus:ring-2 focus:ring-primary focus:border-transparent"
-                                >
-                                    <option value="pending">Pending</option>
-                                    <option value="paid">Paid</option>
-                                    <option value="failed">Failed</option>
-                                    <option value="cancelled">Cancelled</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div
-                            class="flex flex-col justify-end pt-3 space-y-2 sm:flex-row sm:pt-4 sm:space-y-0 sm:space-x-3"
-                        >
-                            <button
-                                type="button"
-                                @click="closeForm"
-                                class="w-full px-4 py-2 text-gray-300 rounded-lg bg-dark-lighter hover:text-white sm:w-auto"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                type="submit"
-                                class="w-full px-4 py-2 text-white transition-all duration-200 rounded-lg shadow-lg bg-primary hover:bg-primary-hover hover:shadow-glow-primary sm:w-auto"
-                            >
-                                Create Deposit
-                            </button>
-                        </div>
-                    </div>
-                </form>
-            </div>
         </div>
 
         <!-- View Deposit Modal -->

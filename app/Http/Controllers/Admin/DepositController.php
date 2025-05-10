@@ -55,6 +55,7 @@ class DepositController extends Controller
 
         // Get payment methods for the create form
         $payMethods = PayMethod::where('status', 'active')->get();
+
         $users = User::all();
 
         return Inertia::render('Admin/Deposits', [

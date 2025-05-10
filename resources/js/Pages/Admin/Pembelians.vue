@@ -26,14 +26,7 @@ const columns = [
         key: "user",
         label: "Username",
         format: (value, item) => {
-            return value
-                ? `<a href="${route(
-                      "users.show",
-                      value.id
-                  )}" class="text-primary hover:underline">${
-                      value.username
-                  }</a>`
-                : "N/A";
+            return value.username;
         },
     },
     {

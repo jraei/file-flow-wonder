@@ -1,4 +1,3 @@
-
 <?php
 
 namespace App\Http\Controllers;
@@ -55,43 +54,43 @@ class DashboardController extends Controller
                 ->exists(),
         ]);
     }
-    
+
     /**
      * Process top-up payment request
      */
     public function processTopup(Request $request)
     {
         $user = Auth::user();
-        
+
         // Validate the request
         $validated = Validator::make($request->all(), [
             'nominal' => 'required|numeric|min:10000',
             'methodName' => 'required|string',
         ])->validate();
-        
+
         // Check for existing pending deposits
         $hasPendingDeposit = Deposit::forUser($user->id)
             ->pendingAndActive()
             ->exists();
-            
+
         if ($hasPendingDeposit) {
             return redirect()->route('dashboard.topup')
                 ->with('error', 'You have a pending deposit. Please complete or wait for it to expire.');
         }
-        
+
         // Get the payment method
         $payMethod = PayMethod::where('nama', $validated['methodName'])->first();
         if (!$payMethod) {
             return redirect()->back()->with('error', 'Invalid payment method');
         }
-        
+
         // Create merchant reference
         $merchantRef = 'DEPO' . Carbon::now()->format('mdHis');
-        
+
         // Create transaction with Tripay
         $tripay = new TripayController();
         $itemName = 'Deposit saldo Rp ' . number_format($validated['nominal'], 0, ',', '.');
-        
+
         $response = $tripay->createTransaction([
             'item' => $itemName,
             'price' => $validated['nominal'],
@@ -102,13 +101,13 @@ class DashboardController extends Controller
             'customer_email' => $user->email ?? 'guest@example.com',
             'customer_phone' => $user->phone_number ?? '08000000000'
         ]);
-        
+
         if (!isset($response['data']) || !isset($response['data']['reference'])) {
             return redirect()->back()->with('error', 'Payment gateway error. Please try again later.');
         }
-        
+
         $responseData = $response['data'];
-        
+
         // Create deposit record
         $deposit = Deposit::create([
             'user_id' => $user->id,
@@ -122,10 +121,10 @@ class DashboardController extends Controller
             'expired_time' => Carbon::createFromTimestamp($responseData['expired_time']),
             'status' => 'pending'
         ]);
-        
-        return redirect()->route('invoice.topup', $deposit->id);
+
+        return redirect()->route('invoice.topup', $deposit->deposit_id);
     }
-    
+
     /**
      * Show invoice for a specific deposit
      */
@@ -135,10 +134,10 @@ class DashboardController extends Controller
         if ($deposit->user_id !== Auth::id()) {
             abort(403, 'Unauthorized action.');
         }
-        
+
         // Load relationships
         $deposit->load('pay_method');
-        
+
         return Inertia::render('Dashboard/InvoiceTopup', [
             'deposit' => $deposit,
             'balance' => Auth::user()->saldo,

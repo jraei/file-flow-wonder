@@ -14,7 +14,7 @@ class Deposit extends Model
     use HasFactory;
 
     protected $guarded = ['id'];
-    
+
     protected $casts = [
         'expired_time' => 'datetime',
     ];
@@ -28,7 +28,7 @@ class Deposit extends Model
     {
         return $this->belongsTo(PayMethod::class);
     }
-    
+
     /**
      * Check if this deposit is expired
      */
@@ -36,7 +36,7 @@ class Deposit extends Model
     {
         return $this->expired_time && Carbon::now()->isAfter($this->expired_time);
     }
-    
+
     /**
      * Get formatted deposit ID with leading zeros
      */
@@ -44,7 +44,7 @@ class Deposit extends Model
     {
         return str_pad($this->deposit_id, 8, '0', STR_PAD_LEFT);
     }
-    
+
     /**
      * Get remaining time before expiry in seconds
      */
@@ -53,7 +53,7 @@ class Deposit extends Model
         if (!$this->expired_time) {
             return 0;
         }
-        
+
         $remaining = $this->expired_time->diffInSeconds(Carbon::now(), false);
         return $remaining > 0 ? 0 : abs($remaining);
     }
@@ -65,15 +65,16 @@ class Deposit extends Model
     {
         return $query->where('user_id', $userId);
     }
-    
+
     /**
      * Scope for active pending deposits
      */
     public function scopePendingAndActive($query)
     {
         return $query->where('status', 'pending')
-                    ->where('expired_time', '>', Carbon::now());
+            ->where('expired_time', '>', now());
     }
+
 
     /**
      * Add server-side filter/search/sort/pagination for data table.

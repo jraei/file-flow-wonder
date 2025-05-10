@@ -52,40 +52,40 @@ const form = useForm({
 const submit = () => {
     if (!form.nominal || !form.methodName) {
         window.$swal.fire({
-            icon: 'error',
-            title: 'Oops...',
-            text: 'Please select both amount and payment method',
+            icon: "error",
+            title: "Oops...",
+            text: "Please select both amount and payment method",
         });
         return;
     }
-    
+
     if (form.nominal < 10000) {
         window.$swal.fire({
-            icon: 'error',
-            title: 'Minimum Deposit',
-            text: 'Minimum deposit amount is Rp 10,000',
+            icon: "error",
+            title: "Minimum Deposit",
+            text: "Minimum deposit amount is Rp 10,000",
         });
         return;
     }
-    
+
     if (props.hasPendingDeposit) {
         window.$swal.fire({
-            icon: 'warning',
-            title: 'Pending Deposit',
-            text: 'You have a pending deposit. Please complete it or wait for it to expire before creating a new one.',
+            icon: "warning",
+            title: "Pending Deposit",
+            text: "You have a pending deposit. Please complete it or wait for it to expire before creating a new one.",
         });
         return;
     }
-    
+
     isLoading.value = true;
-    form.post(route('dashboard.process.topup'), {
+    form.post(route("dashboard.process.topup"), {
         preserveScroll: true,
         onSuccess: () => {
             isLoading.value = false;
         },
         onError: () => {
             isLoading.value = false;
-        }
+        },
     });
 };
 
@@ -422,16 +422,28 @@ console.log(payMethod.value);
                                     <button
                                         @click="submit"
                                         type="submit"
-                                        class="w-full px-4 py-2 text-white transition-all duration-200 rounded-lg shadow bg-primary/70 hover:bg-primary-hover hover:shadow-glow-primary disabled:opacity-50 disabled:cursor-not-allowed relative"
-                                        :disabled="isLoading || props.hasPendingDeposit"
+                                        class="relative w-full px-4 py-2 text-white transition-all duration-200 rounded-lg shadow bg-primary/70 hover:bg-primary-hover hover:shadow-glow-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                                        :disabled="
+                                            isLoading || props.hasPendingDeposit
+                                        "
                                     >
                                         <span v-if="!isLoading">Bayar</span>
-                                        <span v-else class="flex items-center justify-center">
-                                            <Loader class="w-5 h-5 mr-2 animate-spin" /> Processing...
+                                        <span
+                                            v-else
+                                            class="flex items-center justify-center"
+                                        >
+                                            <Loader
+                                                class="w-5 h-5 mr-2 animate-spin"
+                                            />
+                                            Processing...
                                         </span>
                                     </button>
-                                    <p v-if="props.hasPendingDeposit" class="mt-2 text-xs text-center text-secondary">
-                                        You have a pending deposit. Please complete it or wait for it to expire.
+                                    <p
+                                        v-if="props.hasPendingDeposit"
+                                        class="mt-2 text-xs text-center text-secondary"
+                                    >
+                                        You have a pending deposit. Please
+                                        complete it or wait for it to expire.
                                     </p>
                                 </div>
                             </div>
