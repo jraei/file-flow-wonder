@@ -35,22 +35,22 @@ const galaxyRotation = ref(Math.floor(Math.random() * 360));
 const planetType = ref(Math.floor(Math.random() * 4));
 
 // Generate stars
-const stars = ref([]);
+// const stars = ref([]);
 
-const generateStars = () => {
-    stars.value = [];
-    const count = prefersReducedMotion.value ? 3 : starCount.value;
+// const generateStars = () => {
+//     stars.value = [];
+//     const count = prefersReducedMotion.value ? 3 : starCount.value;
 
-    for (let i = 0; i < count; i++) {
-        stars.value.push({
-            size: Math.random() * 1.5 + 0.5,
-            left: `${Math.random() * 100}%`,
-            top: `${Math.random() * 100}%`,
-            delay: Math.random() * 3,
-            opacity: Math.random() * 0.5 + 0.5,
-        });
-    }
-};
+//     for (let i = 0; i < count; i++) {
+//         stars.value.push({
+//             size: Math.random() * 1.5 + 0.5,
+//             left: `${Math.random() * 100}%`,
+//             top: `${Math.random() * 100}%`,
+//             delay: Math.random() * 3,
+//             opacity: Math.random() * 0.5 + 0.5,
+//         });
+//     }
+// };
 
 // Detect device capabilities
 const checkDevicePreferences = () => {
@@ -75,15 +75,15 @@ onMounted(() => {
 });
 
 // Style computations for cosmic elements
-const nebulaGradient = computed(() => {
-    const gradients = [
-        "radial-gradient(circle at 70% 30%, rgba(155, 135, 245, 0.2) 0%, transparent 60%)",
-        "radial-gradient(circle at 30% 60%, rgba(51, 195, 240, 0.2) 0%, transparent 65%)",
-        "radial-gradient(ellipse at 20% 20%, rgba(155, 135, 245, 0.3) 0%, transparent 70%)",
-        "radial-gradient(circle at 80% 30%, rgba(51, 195, 240, 0.3) 0%, transparent 75%)",
-    ];
-    return gradients[cardVariant.value % gradients.length];
-});
+// const nebulaGradient = computed(() => {
+//     const gradients = [
+//         "radial-gradient(circle at 70% 30%, rgba(155, 135, 245, 0.2) 0%, transparent 60%)",
+//         "radial-gradient(circle at 30% 60%, rgba(51, 195, 240, 0.2) 0%, transparent 65%)",
+//         "radial-gradient(ellipse at 20% 20%, rgba(155, 135, 245, 0.3) 0%, transparent 70%)",
+//         "radial-gradient(circle at 80% 30%, rgba(51, 195, 240, 0.3) 0%, transparent 75%)",
+//     ];
+//     return gradients[cardVariant.value % gradients.length];
+// });
 
 const planetStyle = computed(() => {
     const variants = [
@@ -109,12 +109,12 @@ const hasRing = computed(() => {
         :class="{ 'reduced-motion': prefersReducedMotion }"
     >
         <!-- Nebula Background -->
-        <div
+        <!-- <div
             class="absolute inset-0 nebula-background"
             :style="{ backgroundImage: nebulaGradient }"
-        ></div>
+        ></div> -->
 
-        <!-- Starfield Pattern -->
+        <!-- Starfield Pattern
         <div class="absolute inset-0 overflow-hidden stars-layer">
             <div
                 v-for="(star, i) in stars"
@@ -129,7 +129,7 @@ const hasRing = computed(() => {
                     animationDelay: `${star.delay}s`,
                 }"
             ></div>
-        </div>
+        </div> -->
 
         <!-- Card Body -->
         <div class="flex p-1 h-[90%] relative z-10">

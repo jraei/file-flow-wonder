@@ -124,7 +124,10 @@ onMounted(() => {
 </script>
 
 <template>
-    <div ref="cardRef" class="flashsale-card group">
+    <div
+        ref="cardRef"
+        class="border flashsale-card group bg-primary/20 border-secondary/20"
+    >
         <!-- User Limit Badge -->
         <div v-if="flashItem.batas_user" class="absolute z-20 top-2 right-2">
             <div
@@ -153,15 +156,6 @@ onMounted(() => {
             <!-- Left Section -->
             <div class="left-section">
                 <!-- Product Image -->
-                <div class="product-image">
-                    <img
-                        v-if="thumbnailImage"
-                        :src="'/storage/' + thumbnailImage"
-                        alt=""
-                        loading="lazy"
-                    />
-                    <div class="image-glow"></div>
-                </div>
 
                 <!-- Product Info -->
                 <div class="product-info">
@@ -173,6 +167,15 @@ onMounted(() => {
 
                 <!-- Price Section -->
                 <div class="price-section">
+                    <!-- <div class="product-image">
+                        <img
+                            v-if="thumbnailImage"
+                            :src="'/storage/' + thumbnailImage"
+                            alt=""
+                            loading="lazy"
+                        />
+                        <div class="image-glow"></div>
+                    </div> -->
                     <div class="flash-price">
                         <svg
                             xmlns="http://www.w3.org/2000/svg"
@@ -220,7 +223,7 @@ onMounted(() => {
         </div>
 
         <!-- Enhanced Card Footer - Progress Bar -->
-        <div class="card-footer">
+        <div class="card-footer bg-content_background/20">
             <!-- Progress Container with Integrated Text -->
             <div class="relative progress-container-wrapper">
                 <!-- Stock text moved above progress bar -->
@@ -241,10 +244,10 @@ onMounted(() => {
                         :style="{ width: `${stockPercentage}%` }"
                     >
                         <!-- CSS-based sparks -->
-                        <div class="spark-container" v-if="!isLowPowerDevice">
+                        <!-- <div class="spark-container" v-if="!isLowPowerDevice">
                             <div class="spark"></div>
                             <div class="spark"></div>
-                        </div>
+                        </div> -->
                     </div>
                 </div>
             </div>
@@ -258,10 +261,10 @@ onMounted(() => {
     overflow: hidden;
     transition: all 0.3s ease;
     border-radius: 1rem;
-    border: 1px solid rgba(51, 195, 240, 0.2);
-    background: rgba(28, 41, 83, 1);
+    /* border: 1px solid rgba(51, 195, 240, 0.2);
+    background: rgba(28, 41, 83, 1); */
     aspect-ratio: 5/3;
-    height: 240px;
+    height: 200px;
     max-width: 100%;
     transform-origin: center bottom;
 }
@@ -406,17 +409,17 @@ onMounted(() => {
         transparent
     );
     box-shadow: inset -2px -2px 4px rgba(0, 0, 0, 0.5);
-    animation: planet-rotate 20s linear infinite;
+    /* animation: planet-rotate 20s linear infinite; */
 }
 
-@keyframes planet-rotate {
+/* @keyframes planet-rotate {
     0% {
         transform: rotate(0deg);
     }
     100% {
         transform: rotate(360deg);
     }
-}
+} */
 
 .planet-ring {
     position: absolute;
@@ -465,8 +468,8 @@ onMounted(() => {
 .card-footer {
     height: 20%;
     padding: 0.75rem;
-    border-top: 1px solid rgba(155, 135, 245, 0.1);
-    background-color: rgba(26, 40, 78, 1);
+    /* border-top: 1px solid rgba(155, 135, 245, 0.1);
+    background-color: rgba(26, 40, 78, 1); */
     display: flex;
     flex-direction: column;
     justify-content: flex-end;
@@ -514,7 +517,7 @@ onMounted(() => {
 }
 
 /* CSS-based spark effect */
-.spark-container {
+/* .spark-container {
     position: absolute;
     right: 0;
     top: 0;
@@ -556,7 +559,7 @@ onMounted(() => {
         transform: translateY(-10px) scale(1.2);
         opacity: 0;
     }
-}
+} */
 
 /* Hexagonal grid pattern overlay - lightweight version */
 .flashsale-card::before {

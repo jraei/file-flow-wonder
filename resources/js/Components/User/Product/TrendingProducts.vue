@@ -1,7 +1,6 @@
 <script setup>
 import { router } from "@inertiajs/vue3";
 import ProductCard from "./ProductCard.vue";
-import CosmicParticles from "../Flashsale/CosmicParticles.vue";
 import { Flame } from "lucide-vue-next";
 
 const props = defineProps({
@@ -14,9 +13,9 @@ const props = defineProps({
 
 <template>
     <section class="relative w-full py-8 overflow-hidden bg-content_background">
-        <div class="absolute inset-0 z-0">
-            <CosmicParticles />
-        </div>
+        <!-- <div class="absolute inset-0 z-0"> -->
+        <!-- <CosmicParticles /> -->
+        <!-- </div> -->
 
         <div class="relative z-10 px-4 mx-auto max-w-7xl">
             <!-- Section Header -->
@@ -81,7 +80,6 @@ const props = defineProps({
     height: 40px;
     background: rgba(155, 135, 245, 0.15);
     border-radius: 50%;
-    animation: pulse-glow 2s infinite alternate;
     border: 1px solid rgba(155, 135, 245, 0.3);
 }
 
@@ -89,14 +87,5 @@ const props = defineProps({
     width: 24px;
     height: 24px;
     filter: drop-shadow(0 0 5px rgba(51, 195, 240, 0.7));
-}
-
-@keyframes pulse-glow {
-    0% {
-        box-shadow: 0 0 5px rgba(155, 135, 245, 0.3);
-    }
-    100% {
-        box-shadow: 0 0 15px rgba(155, 135, 245, 0.7);
-    }
 }
 </style>

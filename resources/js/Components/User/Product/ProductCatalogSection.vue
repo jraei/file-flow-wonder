@@ -58,17 +58,16 @@ watch(
         class="relative w-full pt-12 pb-48 overflow-hidden bg-content_background"
     >
         <!-- Cosmic Background -->
-        <div class="absolute inset-0 z-0">
+        <!-- <div class="absolute inset-0 z-0">
             <CosmicParticles />
 
-            <!-- Interstellar Dust Clouds -->
             <div
                 class="absolute inset-x-0 top-32 h-96 opacity-20 -rotate-12 bg-gradient-radial from-primary/20 via-transparent to-transparent"
             ></div>
             <div
                 class="absolute inset-x-0 bottom-48 h-96 opacity-20 rotate-12 bg-gradient-radial from-secondary/20 via-transparent to-transparent"
             ></div>
-        </div>
+        </div> -->
 
         <div class="relative z-10 px-4 mx-auto max-w-7xl">
             <!-- Section Header -->
@@ -129,7 +128,7 @@ watch(
 </template>
 
 <style scoped>
-.drop-shadow-glow {
+/* .drop-shadow-glow {
     filter: drop-shadow(0 0 6px rgba(155, 135, 245, 0.6));
 }
 
@@ -144,5 +143,5 @@ watch(
     100% {
         box-shadow: 0 0 15px rgba(155, 135, 245, 0.7);
     }
-}
+} */
 </style>

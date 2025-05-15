@@ -179,7 +179,6 @@ const formatNumber = (num) => {
     height: 40px;
     background: rgba(155, 135, 245, 0.15);
     border-radius: 50%;
-    animation: pulse-glow 2s infinite alternate;
     border: 1px solid rgba(155, 135, 245, 0.3);
 }
 
@@ -188,35 +187,6 @@ const formatNumber = (num) => {
     height: 24px;
     color: #33c3f0; /* secondary color */
     filter: drop-shadow(0 0 5px rgba(51, 195, 240, 0.7));
-}
-
-@keyframes pulse-glow {
-    0% {
-        box-shadow: 0 0 5px rgba(155, 135, 245, 0.3);
-    }
-    100% {
-        box-shadow: 0 0 15px rgba(155, 135, 245, 0.7);
-    }
-}
-
-@keyframes alert-pulse {
-    0% {
-        box-shadow: 0 0 5px rgba(239, 68, 68, 0.3);
-    }
-    100% {
-        box-shadow: 0 0 15px rgba(239, 68, 68, 0.7);
-    }
-}
-
-@keyframes text-pulse {
-    0%,
-    100% {
-        opacity: 0.8;
-    }
-    50% {
-        opacity: 1;
-        transform: scale(1.03);
-    }
 }
 
 .timer-card {
@@ -247,30 +217,6 @@ const formatNumber = (num) => {
         rgba(155, 135, 245, 0.2),
         transparent
     );
-    animation: shimmer 2s infinite;
     z-index: 1;
-}
-
-@keyframes shimmer {
-    0% {
-        left: -100%;
-    }
-    100% {
-        left: 100%;
-    }
-}
-
-@keyframes pulse {
-    0%,
-    100% {
-        opacity: 1;
-    }
-    50% {
-        opacity: 0.7;
-    }
-}
-
-.animate-pulse-slow {
-    animation: pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 </style>

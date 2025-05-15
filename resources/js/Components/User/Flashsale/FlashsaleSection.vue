@@ -2,7 +2,7 @@
 import { ref, computed, onMounted, onUnmounted, watch } from "vue";
 import FlashsaleCard from "./FlashsaleCard.vue";
 import FlashsaleHeader from "./FlashsaleHeader.vue";
-import CssCosmicParticles from "./CssCosmicParticles.vue";
+// import CssCosmicParticles from "./CssCosmicParticles.vue";
 
 const props = defineProps({
     event: {
@@ -111,9 +111,9 @@ onUnmounted(() => {
 <template>
     <section class="relative p-4 py-8 overflow-hidden bg-content_background">
         <!-- CSS-based cosmic particles overlay -->
-        <div class="absolute inset-0 z-0">
+        <!-- <div class="absolute inset-0 z-0">
             <CssCosmicParticles />
-        </div>
+        </div> -->
 
         <div
             class="relative z-10 p-4 mx-auto max-w-7xl backdrop-blur rounded-2xl"

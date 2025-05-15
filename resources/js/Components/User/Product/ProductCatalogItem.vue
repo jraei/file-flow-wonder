@@ -31,23 +31,23 @@ const thumbnail = computed(() => {
 
 // Cosmic visual elements
 const planetType = ref(Math.floor(Math.random() * 8));
-const meteorCount = ref(Math.floor(Math.random() * 3) + 2);
-const meteors = ref([]);
+// const meteorCount = ref(Math.floor(Math.random() * 3) + 2);
+// const meteors = ref([]);
 
 // Generate random meteors
-const generateMeteors = () => {
-    meteors.value = [];
-    for (let i = 0; i < meteorCount.value; i++) {
-        meteors.value.push({
-            size: Math.random() * 2 + 1,
-            duration: Math.random() * 2 + 2,
-            delay: Math.random() * 4,
-            x: Math.random() * 100,
-            y: Math.random() * 100,
-            angle: Math.random() * 45 + 20,
-        });
-    }
-};
+// const generateMeteors = () => {
+//     meteors.value = [];
+//     for (let i = 0; i < meteorCount.value; i++) {
+//         meteors.value.push({
+//             size: Math.random() * 2 + 1,
+//             duration: Math.random() * 2 + 2,
+//             delay: Math.random() * 4,
+//             x: Math.random() * 100,
+//             y: Math.random() * 100,
+//             angle: Math.random() * 45 + 20,
+//         });
+//     }
+// };
 
 // Generate planet properties
 const planetProperties = computed(() => {
@@ -105,9 +105,9 @@ const planetProperties = computed(() => {
     return planets[planetType.value];
 });
 
-onMounted(() => {
-    generateMeteors();
-});
+// onMounted(() => {
+//     generateMeteors();
+// });
 
 // Check for reduced motion preference
 const prefersReducedMotion = ref(false);
@@ -168,11 +168,11 @@ onMounted(() => {
             ></div>
 
             <!-- Planet Ring (Saturn) -->
-            <div
+            <!-- <div
                 v-if="planetProperties.hasRing"
                 class="absolute border-2 rounded-full inset-2 -rotate-12"
                 :class="[planetProperties.ringColor]"
-            ></div>
+            ></div> -->
 
             <!-- Planet Surface Details -->
             <div
@@ -186,7 +186,7 @@ onMounted(() => {
         </div>
 
         <!-- Meteors -->
-        <div
+        <!-- <div
             v-if="!prefersReducedMotion"
             v-for="(meteor, i) in meteors"
             :key="i"
@@ -198,7 +198,7 @@ onMounted(() => {
                 animationDuration: `${meteor.duration}s`,
                 animationDelay: `${meteor.delay}s`,
             }"
-        ></div>
+        ></div> -->
 
         <!-- Border Highlight -->
         <div
@@ -208,26 +208,6 @@ onMounted(() => {
 </template>
 
 <style scoped>
-.meteor {
-    animation: meteor-fly 3s linear infinite;
-    opacity: 0;
-}
-
-@keyframes meteor-fly {
-    0% {
-        opacity: 0;
-        transform: translateX(-100%) translateY(-100%) rotate(45deg);
-    }
-    10%,
-    90% {
-        opacity: 1;
-    }
-    100% {
-        opacity: 0;
-        transform: translateX(100%) translateY(100%) rotate(45deg);
-    }
-}
-
 .reduced-motion .meteor {
     animation: none !important;
 }
