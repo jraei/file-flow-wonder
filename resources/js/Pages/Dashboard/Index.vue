@@ -177,7 +177,7 @@ function toggleSidebar() {
                 <!-- Transaction Overview -->
                 <div>
                     <div class="mb-3 text-lg font-bold text-white">
-                        Transaksi Bulan Ini
+                        Transaksi Minggu Ini
                     </div>
                     <div class="grid grid-cols-2 gap-4 md:grid-cols-5">
                         <div
@@ -220,7 +220,7 @@ function toggleSidebar() {
                 <!-- Latest Transaction Table -->
                 <div class="mt-8">
                     <div class="mb-3 text-lg font-semibold text-white">
-                        Riwayat Transaksi Terbaru Bulan Ini
+                        Riwayat Transaksi Terbaru Minggu Ini
                     </div>
                     <div class="overflow-x-auto rounded-lg shadow">
                         <table
