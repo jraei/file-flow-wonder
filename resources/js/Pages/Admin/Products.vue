@@ -1,3 +1,4 @@
+
 <script setup>
 import { ref, computed, getCurrentInstance, watch } from "vue";
 import { Head, router } from "@inertiajs/vue3";
@@ -21,6 +22,12 @@ const { proxy } = getCurrentInstance();
 const products = computed(() => props.products.data || []);
 
 const columns = [
+    { 
+        key: "select", 
+        label: "",
+        sortable: false, 
+        class: "w-10" 
+    },
     { key: "id", label: "ID" },
     { key: "nama", label: "Produk" },
     {
@@ -62,6 +69,29 @@ const columns = [
 
 // Provider selection
 const selectedProvider = ref(props.filters?.provider_id || "");
+// Category filter
+const selectedCategories = ref([]);
+// Selected products for bulk actions
+const selectedProducts = ref([]);
+const selectAll = ref(false);
+
+// Game validation options
+const validationGames = [
+    '8 Ball Pool', 'AOV', 'Apex Legends', 'Call Of Duty', 'Dragon City',
+    'Dragon Raja', 'Free Fire', 'Genshin Impact', 'Higgs Domino',
+    'Honkai Impact', 'Lords Mobile', 'Marvel Super War', 'Mobile Legends',
+    'Mobile Legends Adventure', 'Point Blank', 'Ragnarok M', 
+    'Tom Jerry Chase', 'Top Eleven', 'Valorant'
+];
+
+// Search term for game validation
+const gameSearchTerm = ref('');
+const filteredGames = computed(() => {
+    if (!gameSearchTerm.value) return validationGames;
+    return validationGames.filter(game => 
+        game.toLowerCase().includes(gameSearchTerm.value.toLowerCase())
+    );
+});
 
 watch(
     () => selectedProvider.value,
@@ -81,6 +111,70 @@ watch(
         );
     }
 );
+
+watch(
+    () => selectedCategories.value,
+    (newValue) => {
+        // Implement category filter
+        if (newValue && newValue.length > 0) {
+            router.get(
+                route("products.index"),
+                {
+                    provider_id: selectedProvider.value,
+                    kategori_ids: newValue,
+                    search: props.filters?.search,
+                    sort: props.filters?.sort,
+                    direction: props.filters?.direction,
+                },
+                {
+                    preserveState: true,
+                    replace: true,
+                }
+            );
+        } else {
+            router.get(
+                route("products.index"),
+                {
+                    provider_id: selectedProvider.value,
+                    search: props.filters?.search,
+                    sort: props.filters?.sort,
+                    direction: props.filters?.direction,
+                },
+                {
+                    preserveState: true,
+                    replace: true,
+                }
+            );
+        }
+    }
+);
+
+// Watch for selectAll changes
+watch(
+    () => selectAll.value,
+    (newValue) => {
+        if (newValue) {
+            // Select all products
+            selectedProducts.value = products.value.map(product => product.id);
+        } else {
+            // Deselect all products
+            selectedProducts.value = [];
+        }
+    }
+);
+
+// Method to toggle product selection
+const toggleProductSelection = (productId) => {
+    const index = selectedProducts.value.indexOf(productId);
+    if (index === -1) {
+        selectedProducts.value.push(productId);
+    } else {
+        selectedProducts.value.splice(index, 1);
+    }
+    
+    // Update selectAll state
+    selectAll.value = selectedProducts.value.length === products.value.length;
+};
 
 const getServicesFromAPI = () => {
     if (!selectedProvider.value) {
@@ -129,9 +223,49 @@ const deleteServicesByProvider = () => {
     });
 };
 
+// Bulk actions
+const performBulkAction = (action) => {
+    if (selectedProducts.value.length === 0) {
+        proxy.$showSwalConfirm({
+            title: "Error",
+            text: "Please select at least one product",
+            icon: "error",
+        });
+        return;
+    }
+
+    if (action === 'delete') {
+        proxy.$showSwalConfirm({
+            title: "Warning",
+            text: `Are you sure you want to delete ${selectedProducts.value.length} selected products?`,
+            icon: "warning",
+            confirmButtonText: "Yes, delete them",
+            onConfirm: () => {
+                router.post(route("products.bulk-action"), {
+                    product_ids: selectedProducts.value,
+                    action: 'delete'
+                }, {
+                    preserveScroll: true,
+                    onSuccess: () => {
+                        selectedProducts.value = [];
+                        selectAll.value = false;
+                    }
+                });
+            },
+        });
+    } else if (action === 'profit') {
+        showProfitModal.value = true;
+    }
+};
+
 const showViewModal = ref(false);
+const showValidationModal = ref(false);
+const showProfitModal = ref(false);
 const selectedData = ref(null);
 const isLoading = ref(false);
+const currentValidationId = ref('');
+const bulkProfitValue = ref(0);
+const profitType = ref('percent'); // percent or fixed
 
 const handleView = async (item) => {
     isLoading.value = true;
@@ -151,6 +285,39 @@ const handleView = async (item) => {
     } finally {
         isLoading.value = false;
     }
+};
+
+const openValidationModal = (item) => {
+    selectedData.value = item;
+    currentValidationId.value = item.validasi_id;
+    showValidationModal.value = true;
+    gameSearchTerm.value = '';
+};
+
+const saveValidationID = () => {
+    router.post(route("products.update-validation", selectedData.value.id), {
+        validasi_id: currentValidationId.value
+    }, {
+        preserveScroll: true,
+        onSuccess: () => {
+            showValidationModal.value = false;
+        }
+    });
+};
+
+const saveBulkProfit = () => {
+    router.post(route("profit-produks.bulk-update"), {
+        product_ids: selectedProducts.value,
+        value: bulkProfitValue.value,
+        type: profitType.value
+    }, {
+        preserveScroll: true,
+        onSuccess: () => {
+            showProfitModal.value = false;
+            selectedProducts.value = [];
+            selectAll.value = false;
+        }
+    });
 };
 
 const handleEdit = (item) => {
@@ -213,6 +380,15 @@ const closeForm = () => {
 const closeViewModal = () => {
     showViewModal.value = false;
     selectedData.value = null;
+};
+
+const closeValidationModal = () => {
+    showValidationModal.value = false;
+    currentValidationId.value = '';
+};
+
+const closeProfitModal = () => {
+    showProfitModal.value = false;
 };
 
 const saveDataForm = () => {
@@ -281,6 +457,15 @@ const handleFileUpload = (event, field) => {
         imagePreviews.value[field] = URL.createObjectURL(file);
     }
 };
+
+// Format percentage for slider display
+const formattedProfitValue = computed(() => {
+    if (profitType.value === 'percent') {
+        return bulkProfitValue.value + '%';
+    } else {
+        return 'x' + bulkProfitValue.value;
+    }
+});
 </script>
 
 <template>
@@ -299,26 +484,51 @@ const handleFileUpload = (event, field) => {
         <!-- Provider selection and action buttons -->
         <div class="p-4 mb-4 rounded-lg bg-dark-card">
             <div class="flex flex-wrap items-center justify-between gap-3">
-                <div class="flex-grow max-w-xs">
-                    <label
-                        for="provider_filter"
-                        class="block mb-1 text-sm font-medium text-gray-300"
-                        >Select Provider</label
-                    >
-                    <select
-                        id="provider_filter"
-                        v-model="selectedProvider"
-                        class="w-full px-3 py-2 text-white border border-gray-700 rounded-lg bg-dark-sidebar focus:ring-2 focus:ring-primary focus:border-transparent"
-                    >
-                        <option value="">All Providers</option>
-                        <option
-                            v-for="provider in provider_list"
-                            :key="provider.id"
-                            :value="provider.id"
+                <div class="flex flex-wrap items-center gap-3">
+                    <div class="flex-grow max-w-xs">
+                        <label
+                            for="provider_filter"
+                            class="block mb-1 text-sm font-medium text-gray-300"
+                            >Select Provider</label
                         >
-                            {{ provider.provider_name }}
-                        </option>
-                    </select>
+                        <select
+                            id="provider_filter"
+                            v-model="selectedProvider"
+                            class="w-full px-3 py-2 text-white border border-gray-700 rounded-lg bg-dark-sidebar focus:ring-2 focus:ring-primary focus:border-transparent"
+                        >
+                            <option value="">All Providers</option>
+                            <option
+                                v-for="provider in provider_list"
+                                :key="provider.id"
+                                :value="provider.id"
+                            >
+                                {{ provider.provider_name }}
+                            </option>
+                        </select>
+                    </div>
+
+                    <!-- Category filter - NEW -->
+                    <div class="flex-grow max-w-xs">
+                        <label
+                            for="category_filter"
+                            class="block mb-1 text-sm font-medium text-gray-300"
+                            >Filter by Category</label
+                        >
+                        <select
+                            id="category_filter"
+                            v-model="selectedCategories"
+                            class="w-full px-3 py-2 text-white border border-gray-700 rounded-lg bg-dark-sidebar focus:ring-2 focus:ring-primary focus:border-transparent"
+                            multiple
+                        >
+                            <option
+                                v-for="category in kategori_list"
+                                :key="category.id"
+                                :value="category.id"
+                            >
+                                {{ category.kategori_name }}
+                            </option>
+                        </select>
+                    </div>
                 </div>
 
                 <div class="flex flex-wrap items-center gap-2 mt-2 sm:mt-0">
@@ -390,6 +600,31 @@ const handleFileUpload = (event, field) => {
                     </button>
                 </div>
             </div>
+
+            <!-- Bulk Actions - NEW -->
+            <div v-if="selectedProducts.length > 0" class="flex flex-wrap items-center gap-2 mt-3 border-t border-gray-700 pt-3">
+                <span class="text-sm text-gray-300">{{ selectedProducts.length }} products selected</span>
+                <div class="flex flex-wrap gap-2">
+                    <button 
+                        @click="performBulkAction('profit')"
+                        class="flex items-center px-3 py-1 space-x-2 text-sm text-white transition-all duration-200 rounded-lg shadow-lg bg-secondary hover:bg-secondary/80"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span>Set Profit</span>
+                    </button>
+                    <button 
+                        @click="performBulkAction('delete')"
+                        class="flex items-center px-3 py-1 space-x-2 text-sm text-white transition-all duration-200 rounded-lg shadow-lg bg-red-600 hover:bg-red-700"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                        <span>Delete Selected</span>
+                    </button>
+                </div>
+            </div>
         </div>
 
         <div
@@ -429,6 +664,29 @@ const handleFileUpload = (event, field) => {
                         </button>
                     </template>
 
+                    <!-- Custom cell rendering for checkbox column -->
+                    <template #cell(select)="{ item }">
+                        <div class="flex items-center justify-center">
+                            <input 
+                                type="checkbox" 
+                                :checked="selectedProducts.includes(item.id)" 
+                                @change="toggleProductSelection(item.id)"
+                                class="w-4 h-4 rounded text-primary bg-dark-sidebar border-gray-700 focus:ring-2 focus:ring-primary"
+                            />
+                        </div>
+                    </template>
+
+                    <!-- Custom header for checkbox column -->
+                    <template #header(select)>
+                        <div class="flex items-center justify-center">
+                            <input 
+                                type="checkbox" 
+                                v-model="selectAll"
+                                class="w-4 h-4 rounded text-primary bg-dark-sidebar border-gray-700 focus:ring-2 focus:ring-primary"
+                            />
+                        </div>
+                    </template>
+
                     <template #actions="{ item }">
                         <Dropdown align="right" width="48">
                             <template #trigger>
@@ -463,6 +721,12 @@ const handleFileUpload = (event, field) => {
                                         class="block w-full px-4 py-2 text-sm text-left text-gray-300 hover:bg-dark-lighter hover:text-primary"
                                     >
                                         Edit
+                                    </button>
+                                    <button
+                                        @click="openValidationModal(item)"
+                                        class="block w-full px-4 py-2 text-sm text-left text-gray-300 hover:bg-dark-lighter hover:text-blue-400"
+                                    >
+                                        Set Validation
                                     </button>
                                     <button
                                         @click="handleDelete(item)"
@@ -1048,6 +1312,232 @@ const handleFileUpload = (event, field) => {
                             Close
                         </button>
                     </div>
+                </div>
+            </div>
+        </Modal>
+
+        <!-- Game Validation ID Modal - NEW -->
+        <Modal :show="showValidationModal" @close="closeValidationModal" max-width="lg">
+            <div class="p-3 sm:p-4 md:p-6 border border-gray-700 rounded-lg bg-dark-card max-h-[80vh] overflow-y-auto">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-bold text-white sm:text-xl">
+                        Set Game Validation
+                    </h3>
+                    <button
+                        @click="closeValidationModal"
+                        class="text-gray-400 hover:text-white"
+                    >
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            class="w-5 h-5 sm:w-6 sm:h-6"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M6 18L18 6M6 6l12 12"
+                            />
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="mb-4">
+                    <label for="game_search" class="block mb-1 text-sm font-medium text-gray-300">
+                        Search Games
+                    </label>
+                    <input
+                        id="game_search"
+                        v-model="gameSearchTerm"
+                        type="text"
+                        class="w-full px-3 py-2 text-white border border-gray-700 rounded-lg bg-dark-sidebar focus:ring-2 focus:ring-primary focus:border-transparent"
+                        placeholder="Search for a game..."
+                    />
+                </div>
+
+                <!-- Galaxy map interface -->
+                <div class="grid grid-cols-2 gap-2 mb-4 sm:grid-cols-3 md:grid-cols-4">
+                    <div 
+                        v-for="game in filteredGames" 
+                        :key="game"
+                        @click="currentValidationId = game"
+                        :class="[
+                            'p-3 text-center rounded-lg cursor-pointer transition-all duration-200 hover:transform hover:scale-105',
+                            currentValidationId === game 
+                                ? 'bg-primary/40 border-2 border-primary shadow-glow-primary' 
+                                : 'bg-dark-lighter border border-gray-700 hover:border-primary/60'
+                        ]"
+                    >
+                        <!-- Pulsing effect for selected game -->
+                        <div class="relative">
+                            <div 
+                                v-if="currentValidationId === game"
+                                class="absolute inset-0 rounded-full bg-primary/20 animate-ping"
+                            ></div>
+                            <div class="flex items-center justify-center w-10 h-10 mx-auto mb-2 text-white rounded-full bg-primary/30">
+                                {{ game.charAt(0) }}
+                            </div>
+                        </div>
+                        <p class="text-xs font-medium text-white sm:text-sm">{{ game }}</p>
+                    </div>
+                </div>
+
+                <div class="flex flex-col justify-end pt-3 space-y-2 sm:flex-row sm:pt-4 sm:space-y-0 sm:space-x-3">
+                    <button
+                        type="button"
+                        @click="closeValidationModal"
+                        class="w-full px-4 py-2 text-gray-300 rounded-lg bg-dark-lighter hover:text-white sm:w-auto"
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        @click="saveValidationID"
+                        class="w-full px-4 py-2 text-white transition-all duration-200 rounded-lg shadow-lg bg-primary hover:bg-primary-hover hover:shadow-glow-primary sm:w-auto"
+                    >
+                        Save Validation
+                    </button>
+                </div>
+            </div>
+        </Modal>
+
+        <!-- Bulk Profit Modal - NEW -->
+        <Modal :show="showProfitModal" @close="closeProfitModal" max-width="md">
+            <div class="p-3 sm:p-4 md:p-6 border border-gray-700 rounded-lg bg-dark-card max-h-[80vh] overflow-y-auto">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-bold text-white sm:text-xl">
+                        Set Bulk Profit
+                    </h3>
+                    <button
+                        @click="closeProfitModal"
+                        class="text-gray-400 hover:text-white"
+                    >
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            class="w-5 h-5 sm:w-6 sm:h-6"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M6 18L18 6M6 6l12 12"
+                            />
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="space-y-4">
+                    <!-- Profit Type Selection -->
+                    <div class="mb-4">
+                        <label class="block mb-2 text-sm font-medium text-gray-300">
+                            Profit Type
+                        </label>
+                        <div class="flex space-x-4">
+                            <label class="inline-flex items-center">
+                                <input 
+                                    type="radio" 
+                                    v-model="profitType" 
+                                    value="percent" 
+                                    class="text-primary focus:ring-primary"
+                                />
+                                <span class="ml-2 text-white">Percentage</span>
+                            </label>
+                            <label class="inline-flex items-center">
+                                <input 
+                                    type="radio" 
+                                    v-model="profitType" 
+                                    value="multiplier" 
+                                    class="text-primary focus:ring-primary"
+                                />
+                                <span class="ml-2 text-white">Multiplier</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Cosmic slider with stars -->
+                    <div class="mb-4">
+                        <label for="profit_value" class="block mb-1 text-sm font-medium text-gray-300">
+                            Profit Value: <span class="text-primary font-bold">{{ formattedProfitValue }}</span>
+                        </label>
+                        <div class="relative">
+                            <!-- Cosmic stars background -->
+                            <div class="absolute inset-0 overflow-hidden rounded-lg">
+                                <div class="absolute inset-0 opacity-20 bg-dark-sidebar">
+                                    <div v-for="i in 20" :key="i"
+                                        :style="{
+                                            position: 'absolute',
+                                            top: `${Math.random() * 100}%`,
+                                            left: `${Math.random() * 100}%`,
+                                            width: `${Math.random() * 3 + 1}px`,
+                                            height: `${Math.random() * 3 + 1}px`,
+                                            borderRadius: '50%',
+                                            backgroundColor: 'white'
+                                        }"
+                                    ></div>
+                                </div>
+                            </div>
+                            
+                            <input
+                                id="profit_value"
+                                v-model="bulkProfitValue"
+                                :min="profitType === 'percent' ? 0 : 1"
+                                :max="profitType === 'percent' ? 100 : 5"
+                                :step="profitType === 'percent' ? 1 : 0.1"
+                                type="range"
+                                class="w-full h-2 rounded-lg appearance-none cursor-pointer bg-primary/30"
+                            />
+                        </div>
+                        <div class="flex justify-between mt-1 text-xs text-gray-400">
+                            <span>{{ profitType === 'percent' ? '0%' : 'x1' }}</span>
+                            <span>{{ profitType === 'percent' ? '100%' : 'x5' }}</span>
+                        </div>
+                    </div>
+
+                    <div class="mt-2">
+                        <label for="profit_input" class="block mb-1 text-sm font-medium text-gray-300">
+                            Manual Input
+                        </label>
+                        <input
+                            id="profit_input"
+                            v-model.number="bulkProfitValue"
+                            type="number"
+                            :min="profitType === 'percent' ? 0 : 1"
+                            :max="profitType === 'percent' ? 100 : 5"
+                            :step="profitType === 'percent' ? 1 : 0.1"
+                            class="w-full px-3 py-2 text-white border border-gray-700 rounded-lg bg-dark-sidebar focus:ring-2 focus:ring-primary focus:border-transparent"
+                        />
+                    </div>
+
+                    <div class="mt-3 p-3 bg-dark-sidebar/50 rounded-lg">
+                        <p class="text-sm text-gray-300">
+                            This will set <span class="text-primary font-medium">{{ formattedProfitValue }}</span> profit for 
+                            <span class="text-primary font-medium">{{ selectedProducts.length }}</span> selected products.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="flex flex-col justify-end pt-3 space-y-2 sm:flex-row sm:pt-4 sm:space-y-0 sm:space-x-3">
+                    <button
+                        type="button"
+                        @click="closeProfitModal"
+                        class="w-full px-4 py-2 text-gray-300 rounded-lg bg-dark-lighter hover:text-white sm:w-auto"
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        @click="saveBulkProfit"
+                        class="w-full px-4 py-2 text-white transition-all duration-200 rounded-lg shadow-lg bg-primary hover:bg-primary-hover hover:shadow-glow-primary sm:w-auto group"
+                    >
+                        <span class="relative inline-block">
+                            <!-- Supernova animation triggered on hover -->
+                            <span class="absolute inset-0 transform scale-0 rounded-full bg-primary opacity-0 group-hover:opacity-100 group-hover:scale-[3] group-hover:animate-ping"></span>
+                            <span class="relative">Apply Profit</span>
+                        </span>
+                    </button>
                 </div>
             </div>
         </Modal>

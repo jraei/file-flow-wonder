@@ -31,7 +31,6 @@ use App\Http\Controllers\Admin\PaymentProviderController;
 use App\Http\Controllers\Admin\ProdukInputFieldController;
 use App\Http\Controllers\Admin\ProdukInputOptionController;
 
-
 /*
 |--------------------------------------------------------------------------
 | Web Routes
@@ -129,6 +128,8 @@ Route::prefix('admin')->middleware(['auth', 'admin'])->group(function () {
     // Placeholder routes for all other admin pages
     Route::resource('/products', ProdukController::class);
     Route::post('/services/getService/{provider}', [ProdukController::class, 'getProductsByProvider'])->name('products.getProductsByProvider');
+    Route::post('/products/{id}/update-validation', [ProdukController::class, 'updateValidation'])->name('products.update-validation');
+    Route::post('/products/bulk-action', [ProdukController::class, 'bulkAction'])->name('products.bulk-action');
 
     // Service Management
     Route::resource('/services', LayananController::class);
@@ -143,6 +144,7 @@ Route::prefix('admin')->middleware(['auth', 'admin'])->group(function () {
     // Profit Produk routes
     Route::resource('profit-produks', ProfitProdukController::class);
     Route::get('/profit-preview', [ProfitProdukController::class, 'preview'])->name('profit-produks.preview');
+    Route::post('/profit-produks/bulk-update', [ProfitProdukController::class, 'bulkUpdate'])->name('profit-produks.bulk-update');
 
     // Product Input Field Management
     Route::resource('produk-input-fields', ProdukInputFieldController::class)->names('admin.produk-input-fields');

@@ -9,6 +9,7 @@ use App\Models\UserRole;
 use App\Models\ProfitProduk;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
+use Illuminate\Support\Facades\DB;
 
 class ProfitProdukController extends Controller
 {
@@ -289,5 +290,62 @@ class ProfitProdukController extends Controller
             ],
             'pricing' => $pricing,
         ]);
+    }
+
+    /**
+     * Update profit for multiple products
+     */
+    public function bulkUpdate(Request $request)
+    {
+        $request->validate([
+            'product_ids' => 'required|array',
+            'value' => 'required|numeric',
+            'type' => 'required|in:percent,multiplier',
+        ]);
+
+        $productIds = $request->product_ids;
+        $value = $request->value;
+        $type = $request->type;
+
+        // Get all user roles to create profit entries for each role
+        $userRoles = UserRole::all();
+        $count = 0;
+
+        try {
+            DB::transaction(function () use ($productIds, $value, $type, $userRoles, &$count) {
+                foreach ($productIds as $productId) {
+                    $produk = Produk::find($productId);
+                    
+                    if (!$produk) continue;
+                    
+                    // Delete existing profit entries for this product
+                    ProfitProduk::where('produk_id', $productId)->delete();
+                    
+                    // Create new profit entries for each role
+                    foreach ($userRoles as $role) {
+                        ProfitProduk::create([
+                            'produk_id' => $productId,
+                            'user_roles_id' => $role->id,
+                            'type' => $type,
+                            'value' => $value,
+                        ]);
+                    }
+                    
+                    $count++;
+                }
+            });
+
+            return back()->with('status', [
+                'type' => 'success', 
+                'action' => 'Success',
+                'text' => "Profit settings updated for {$count} products!"
+            ]);
+        } catch (\Exception $e) {
+            return back()->with('status', [
+                'type' => 'error',
+                'action' => 'Error',
+                'text' => 'Failed to update profit settings: ' . $e->getMessage()
+            ]);
+        }
     }
 }
