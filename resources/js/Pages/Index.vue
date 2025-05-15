@@ -39,6 +39,8 @@ const props = defineProps({
     },
 });
 
+// console.log(props.flashsaleEvent.item);
+
 // Detect if device is low-powered
 const isLowPowerDevice = navigator.hardwareConcurrency
     ? navigator.hardwareConcurrency < 4

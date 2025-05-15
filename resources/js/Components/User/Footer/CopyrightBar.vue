@@ -4,6 +4,10 @@ import { ref } from "vue";
 import CosmicStarfield from "../Navigation/CosmicStarfield.vue";
 
 // For the satellite beacon effect
+const { judulWeb } = defineProps({
+    judulWeb: String,
+});
+
 const beaconPulse = ref(true);
 
 // Toggle the beacon state every 2 seconds
@@ -99,7 +103,10 @@ const currentYear = new Date().getFullYear();
             <div class="flex items-center mb-4 sm:mb-0">
                 <span class="mr-2 text-primary-text">&#x1F7BC;</span>
                 <!-- Unicode symbol for cosmic copyright -->
-                <span>{{ currentYear }} NaelStore - Across the Universe</span>
+                <span
+                    >{{ currentYear }} {{ judulWeb }} - Across the
+                    Universe</span
+                >
             </div>
 
             <!-- Satellite beacon -->

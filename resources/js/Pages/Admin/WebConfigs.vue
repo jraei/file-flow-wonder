@@ -561,10 +561,10 @@ const deleteLogo = (field) => {
                         class="p-6 border border-gray-700 rounded-lg shadow-lg bg-gray-800/70 backdrop-blur-sm"
                     >
                         <h3 class="mb-4 text-lg font-medium text-white">
-                            Color Management
+                            Appearance Management
                         </h3>
                         <form @submit.prevent="submitAppearanceSettings">
-                            <div class="grid grid-cols-1 gap-6 md:grid-cols-3">
+                            <!-- <div class="grid grid-cols-1 gap-6 md:grid-cols-3">
                                 <div class="space-y-2">
                                     <InputLabel
                                         for="primary_color"
@@ -832,10 +832,10 @@ const deleteLogo = (field) => {
                                         class="mt-1"
                                     />
                                 </div>
-                            </div>
+                            </div> -->
 
                             <!-- Color Preview Panel -->
-                            <div
+                            <!-- <div
                                 class="p-6 mt-8 border border-gray-700 rounded-lg bg-gray-800/70"
                             >
                                 <h4 class="mb-4 font-medium text-white text-md">
@@ -903,7 +903,7 @@ const deleteLogo = (field) => {
                                         </div>
                                     </div>
                                 </div>
-                            </div>
+                            </div> -->
 
                             <div
                                 class="p-6 mt-8 border border-gray-700 rounded-lg bg-gray-800/70"

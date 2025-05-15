@@ -1,8 +1,8 @@
-
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch } from "vue";
 import FlashsaleCard from "./FlashsaleCard.vue";
 import FlashsaleHeader from "./FlashsaleHeader.vue";
+import throttle from "lodash/throttle";
 
 const props = defineProps({
     event: {
@@ -23,6 +23,7 @@ const scrollTimeoutId = ref(null);
 const isVisible = ref(false);
 const observerRef = ref(null);
 const containerRef = ref(null);
+let cachedCardWidthScroll = null;
 
 // Calculate remaining time based on server time sync
 const endTime = computed(() => {
@@ -70,29 +71,32 @@ const handleScroll = () => {
         const carousel = carouselRef.value;
         const scrollWidth = carousel.scrollWidth;
         const containerWidth = carousel.clientWidth;
-        
+
         // If near end, jump to start
         if (carousel.scrollLeft > scrollWidth - containerWidth - 50) {
             // Add small delay before jumping to make transition smoother
             setTimeout(() => {
                 carousel.scrollTo({
                     left: 1, // Small offset to prevent jump
-                    behavior: 'auto'
+                    behavior: "auto",
                 });
             }, 50);
         }
-        
+
         // If near start (after a backward scroll), jump to end
         else if (carousel.scrollLeft < 50) {
             const originalItems = props.event.item.length;
-            const cardWidth = carousel.querySelector('.flex-none')?.clientWidth || 0;
+            const cardWidth = cachedCardWidthScroll || 300;
+
             const spaceBetweenCards = 16; // This is the space-x-4 = 1rem = 16px
-            
+
             // Jump to position just before cloned items
             setTimeout(() => {
                 carousel.scrollTo({
-                    left: (cardWidth + spaceBetweenCards) * originalItems - containerWidth,
-                    behavior: 'auto'
+                    left:
+                        (cardWidth + spaceBetweenCards) * originalItems -
+                        containerWidth,
+                    behavior: "auto",
                 });
             }, 50);
         }
@@ -109,18 +113,26 @@ const handleScroll = () => {
     }, 1000); // Longer delay for better UX
 };
 
+const throttledHandleScroll = throttle(handleScroll, 500);
+
 // Check viewport size
 const handleResize = () => {
     isMobile.value = window.innerWidth < 768;
-    
+
     // Reset any auto-scroll related settings when view changes
     if (carouselRef.value && !isMobile.value) {
         // Re-center carousel after resize
-        const firstCard = carouselRef.value.querySelector('.flex-none');
+        const firstCard = carouselRef.value.querySelector(".flex-none");
         if (firstCard) {
             carouselRef.value.scrollLeft = 0;
         }
     }
+};
+
+const handleTouchEnd = () => {
+    setTimeout(() => {
+        isHovering.value = false;
+    }, 1000);
 };
 
 // Clean up all timeouts
@@ -149,25 +161,25 @@ const setupVisibilityObserver = () => {
 // Scroll controls for button navigation
 const scrollCarousel = (direction) => {
     if (!carouselRef.value) return;
-    
+
     const carousel = carouselRef.value;
-    const cardWidth = carousel.querySelector('.flex-none')?.clientWidth || 0;
+    const cardWidth = carousel.querySelector(".flex-none")?.clientWidth || 0;
     const spaceBetweenCards = 16; // space-x-4 = 1rem = 16px
-    
+
     // Calculate distance to scroll (one full card width + margin)
     const scrollDistance = cardWidth + spaceBetweenCards;
-    
+
     carousel.scrollBy({
-        left: direction === 'left' ? -scrollDistance : scrollDistance,
-        behavior: 'smooth'
+        left: direction === "left" ? -scrollDistance : scrollDistance,
+        behavior: "smooth",
     });
-    
+
     // Mark as user scrolling to pause auto-scroll
     isUserScrolling.value = true;
     if (scrollTimeoutId.value) {
         window.clearTimeout(scrollTimeoutId.value);
     }
-    
+
     // Reset after animation completes
     scrollTimeoutId.value = window.setTimeout(() => {
         isUserScrolling.value = false;
@@ -179,20 +191,63 @@ onMounted(() => {
     window.addEventListener("resize", handleResize);
     setupVisibilityObserver();
 
-    // Handle tab visibility
+    if (shouldAutoScroll.value) {
+        startAutoScroll();
+    }
+
+    const card = carouselRef.value?.querySelector(".flex-none");
+    if (card) cachedCardWidthScroll = card.clientWidth;
+
     document.addEventListener("visibilitychange", () => {
-        isVisible.value = !document.hidden && isVisible.value;
+        isVisible.value = !document.hidden;
     });
 });
 
 onUnmounted(() => {
     cleanupTimeouts();
     window.removeEventListener("resize", handleResize);
+    stopAutoScroll();
 
-    // Clean up observer
     if (observerRef.value && carouselRef.value) {
         observerRef.value.unobserve(carouselRef.value);
         observerRef.value = null;
+    }
+});
+
+const autoScrollInterval = ref(null);
+
+const startAutoScroll = () => {
+    stopAutoScroll(); // tambahkan ini untuk jaga-jaga
+    if (!shouldAutoScroll.value || !carouselRef.value) return;
+
+    autoScrollInterval.value = setInterval(() => {
+        if (!shouldAutoScroll.value || !carouselRef.value) return;
+
+        const carousel = carouselRef.value;
+        const cardWidth =
+            carousel.querySelector(".flex-none")?.clientWidth || 0;
+        const spaceBetweenCards = 16;
+        const scrollDistance = cardWidth + spaceBetweenCards;
+
+        carousel.scrollBy({
+            left: scrollDistance,
+            behavior: "smooth",
+        });
+    }, 3000); // Scroll tiap 3 detik
+};
+
+const stopAutoScroll = () => {
+    if (autoScrollInterval.value) {
+        clearInterval(autoScrollInterval.value);
+        autoScrollInterval.value = null;
+    }
+};
+
+watch(shouldAutoScroll, (val) => {
+    if (val) {
+        startAutoScroll();
+    } else {
+        stopAutoScroll();
     }
 });
 </script>
@@ -213,21 +268,43 @@ onUnmounted(() => {
             <!-- Enhanced Cards Carousel with Navigation -->
             <div class="relative flashsale-carousel">
                 <!-- Navigation buttons for larger screens -->
-                <button 
-                    @click="scrollCarousel('left')" 
-                    class="hidden md:flex absolute top-1/2 left-2 -translate-y-1/2 z-20 bg-primary/10 hover:bg-primary/20 text-white w-8 h-8 rounded-full items-center justify-center"
+                <button
+                    @click="scrollCarousel('left')"
+                    class="absolute z-20 items-center justify-center hidden w-8 h-8 text-white -translate-y-1/2 rounded-full md:flex top-1/2 left-2 bg-primary/10 hover:bg-primary/20"
                 >
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        class="w-5 h-5"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                    >
+                        <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M15 19l-7-7 7-7"
+                        />
                     </svg>
                 </button>
-                
-                <button 
-                    @click="scrollCarousel('right')" 
-                    class="hidden md:flex absolute top-1/2 right-2 -translate-y-1/2 z-20 bg-primary/10 hover:bg-primary/20 text-white w-8 h-8 rounded-full items-center justify-center"
+
+                <button
+                    @click="scrollCarousel('right')"
+                    class="absolute z-20 items-center justify-center hidden w-8 h-8 text-white -translate-y-1/2 rounded-full md:flex top-1/2 right-2 bg-primary/10 hover:bg-primary/20"
                 >
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        class="w-5 h-5"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                    >
+                        <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M9 5l7 7-7 7"
+                        />
                     </svg>
                 </button>
 
@@ -238,31 +315,29 @@ onUnmounted(() => {
                 <!-- Main carousel container with optimized scrolling -->
                 <div
                     ref="carouselRef"
-                    @scroll="handleScroll"
+                    @scroll="throttledHandleScroll"
                     @mouseenter="isHovering = true"
                     @mouseleave="isHovering = false"
                     @touchstart="isHovering = true"
-                    @touchend="
-                        () => {
-                            window.setTimeout(() => (isHovering = false), 1000);
-                        }
-                    "
+                    @touchend="handleTouchEnd"
                     class="flex pt-2 pb-4 space-x-4 overflow-x-auto snap-x scrollbar-none"
                     :class="{ 'auto-scroll': shouldAutoScroll }"
                 >
                     <!-- Clone items at the beginning for seamless loop (lg screens) -->
                     <template v-if="hasClonedItems">
                         <FlashsaleCard
-                            v-for="(item, index) in event.item.slice(-cloneCount)"
+                            v-for="(item, index) in event.item.slice(
+                                -cloneCount
+                            )"
                             :key="`pre-clone-${item.id}-${index}`"
                             :flash-item="item"
                             class="flex-none snap-start pre-clone-card"
                             :style="{
-                                width: isMobile 
-                                    ? 'calc(100% - 2rem)' 
-                                    : isLargeScreen 
-                                        ? 'calc((100% - 3rem) / 4)'
-                                        : 'calc((100% - 1rem) / 2)',
+                                width: isMobile
+                                    ? 'calc(100% - 2rem)'
+                                    : isLargeScreen
+                                    ? 'calc((100% - 3rem) / 4)'
+                                    : 'calc((100% - 1rem) / 2)',
                                 minWidth: '290px',
                             }"
                         />
@@ -275,11 +350,11 @@ onUnmounted(() => {
                         :flash-item="item"
                         class="flex-none snap-start"
                         :style="{
-                            width: isMobile 
-                                ? 'calc(100% - 2rem)' 
-                                : isLargeScreen 
-                                    ? 'calc((100% - 3rem) / 4)'
-                                    : 'calc((100% - 1rem) / 2)',
+                            width: isMobile
+                                ? 'calc(100% - 2rem)'
+                                : isLargeScreen
+                                ? 'calc((100% - 3rem) / 4)'
+                                : 'calc((100% - 1rem) / 2)',
                             minWidth: '290px',
                         }"
                     />
@@ -287,16 +362,19 @@ onUnmounted(() => {
                     <!-- Clone items at the end for seamless loop (lg screens) -->
                     <template v-if="hasClonedItems">
                         <FlashsaleCard
-                            v-for="(item, index) in event.item.slice(0, cloneCount)"
+                            v-for="(item, index) in event.item.slice(
+                                0,
+                                cloneCount
+                            )"
                             :key="`post-clone-${item.id}-${index}`"
                             :flash-item="item"
                             class="flex-none snap-start post-clone-card"
                             :style="{
-                                width: isMobile 
-                                    ? 'calc(100% - 2rem)' 
-                                    : isLargeScreen 
-                                        ? 'calc((100% - 3rem) / 4)'
-                                        : 'calc((100% - 1rem) / 2)',
+                                width: isMobile
+                                    ? 'calc(100% - 2rem)'
+                                    : isLargeScreen
+                                    ? 'calc((100% - 3rem) / 4)'
+                                    : 'calc((100% - 1rem) / 2)',
                                 minWidth: '290px',
                             }"
                         />
@@ -366,33 +444,6 @@ section::after {
 .scroll-fade-right {
     right: 0;
     background: linear-gradient(to left, rgba(31, 41, 55, 0.8), transparent);
-}
-
-/* Optimized automatic CSS-based scrolling animation */
-@keyframes autoScroll {
-    0% {
-        transform: translateX(0);
-    }
-    100% {
-        transform: translateX(calc(-100% / 2));
-    }
-}
-
-/* Only apply auto-scroll on large screens */
-@media (min-width: 1024px) {
-    .auto-scroll {
-        animation: autoScroll 30s linear infinite;
-        animation-play-state: running;
-    }
-
-    .auto-scroll:hover {
-        animation-play-state: paused;
-    }
-
-    /* Prepare cloned cards for smooth transitions */
-    .pre-clone-card, .post-clone-card {
-        opacity: 1;
-    }
 }
 
 /* Snap points for mobile scrolling */

@@ -200,7 +200,7 @@ class ProfitProdukController extends Controller
                 $existingProfit = ProfitProduk::where('produk_id', $productId)
                     ->where('user_roles_id', $validated['user_roles_id'])
                     ->first();
-                
+
                 if ($existingProfit) {
                     // Update existing
                     $existingProfit->update([
@@ -219,9 +219,9 @@ class ProfitProdukController extends Controller
                     $created++;
                 }
             }
-            
+
             DB::commit();
-            
+
             $message = "Successfully processed profit settings: {$created} created, {$updated} updated";
             return response()->json(['success' => true, 'message' => $message]);
         } catch (\Exception $e) {
@@ -260,33 +260,11 @@ class ProfitProdukController extends Controller
             ->get()
             ->keyBy('user_roles_id');
 
-        // Get services for this product
-        // For now, we're using mock data, but in a real application you would fetch services related to this product
-        $services = [
-            [
-                'id' => 1,
-                'layanan' => '60 Diamonds',
-                'kode_produk' => 'ML60',
-                'harga_beli' => 12000,
-            ],
-            [
-                'id' => 2,
-                'layanan' => '120 Diamonds',
-                'kode_produk' => 'ML120',
-                'harga_beli' => 24000,
-            ],
-            [
-                'id' => 3,
-                'layanan' => '240 Diamonds',
-                'kode_produk' => 'ML240',
-                'harga_beli' => 46000,
-            ],
-        ];
 
         // In a real application, you would fetch actual services instead:
-        // $services = Layanan::where('produk_id', $product->id)
-        //                    ->where('status', 'active')
-        //                    ->get();
+        $services = Layanan::where('produk_id', $product->id)
+            ->where('status', 'active')
+            ->get();
 
         // Calculate prices for each service and role
         $pricing = [];
@@ -294,8 +272,8 @@ class ProfitProdukController extends Controller
         foreach ($services as $service) {
             $priceInfo = [
                 'id' => $service['id'],
-                'name' => $service['layanan'],
-                'code' => $service['kode_produk'],
+                'name' => $service['nama_layanan'],
+                'code' => $service['kode_layanan'],
                 'base_price' => $service['harga_beli'],
                 'role_prices' => []
             ];

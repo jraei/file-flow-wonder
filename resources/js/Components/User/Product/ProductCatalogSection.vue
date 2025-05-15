@@ -2,7 +2,6 @@
 import { ref, computed, watch } from "vue";
 import CategoryFilter from "./CategoryFilter.vue";
 import ProductCatalogItem from "./ProductCatalogItem.vue";
-import CosmicParticles from "../Flashsale/CosmicParticles.vue";
 import { debounce } from "lodash";
 import { router } from "@inertiajs/vue3";
 import { Rocket } from "lucide-vue-next";
@@ -35,6 +34,20 @@ const selectCategory = debounce((categoryId) => {
     activeCategory.value = categoryId;
 }, 150);
 
+const visibleCount = ref(12);
+
+const limitedProducts = computed(() => {
+    return filteredProducts.value.slice(0, visibleCount.value);
+});
+
+const showMore = () => {
+    visibleCount.value += 12;
+};
+
+watch(filteredProducts, () => {
+    visibleCount.value = 12;
+});
+
 // Reset category when categories or products change
 watch(
     () => props.categories,
@@ -57,18 +70,6 @@ watch(
     <section
         class="relative w-full pt-12 pb-48 overflow-hidden bg-content_background"
     >
-        <!-- Cosmic Background -->
-        <!-- <div class="absolute inset-0 z-0">
-            <CosmicParticles />
-
-            <div
-                class="absolute inset-x-0 top-32 h-96 opacity-20 -rotate-12 bg-gradient-radial from-primary/20 via-transparent to-transparent"
-            ></div>
-            <div
-                class="absolute inset-x-0 bottom-48 h-96 opacity-20 rotate-12 bg-gradient-radial from-secondary/20 via-transparent to-transparent"
-            ></div>
-        </div> -->
-
         <div class="relative z-10 px-4 mx-auto max-w-7xl">
             <!-- Section Header -->
             <div class="mb-8">
@@ -100,13 +101,24 @@ watch(
                 class="grid grid-cols-3 gap-6 mt-8 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6"
             >
                 <ProductCatalogItem
-                    v-for="(product, index) in filteredProducts"
+                    v-for="(product, index) in limitedProducts"
                     :key="product.id"
                     :product="product"
                     :index="index"
                     class="hover:cursor-pointer"
                     @click="router.visit(route('order.index', product.slug))"
                 />
+            </div>
+            <div
+                v-if="limitedProducts.length < filteredProducts.length"
+                class="mt-8 text-center"
+            >
+                <button
+                    @click="showMore"
+                    class="transition tw-px-6 tw-py-2 tw-bg-primary tw-text-white tw-rounded-lg tw-shadow hover:tw-bg-primary/90"
+                >
+                    Show More
+                </button>
             </div>
 
             <!-- Empty State -->
@@ -126,22 +138,3 @@ watch(
         </div>
     </section>
 </template>
-
-<style scoped>
-/* .drop-shadow-glow {
-    filter: drop-shadow(0 0 6px rgba(155, 135, 245, 0.6));
-}
-
-.rocket-container {
-    animation: pulse-glow 2s infinite alternate;
-}
-
-@keyframes pulse-glow {
-    0% {
-        box-shadow: 0 0 5px rgba(155, 135, 245, 0.3);
-    }
-    100% {
-        box-shadow: 0 0 15px rgba(155, 135, 245, 0.7);
-    }
-} */
-</style>

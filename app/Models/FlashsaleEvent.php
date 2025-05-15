@@ -29,7 +29,7 @@ class FlashsaleEvent extends Model
     public function layanan(): BelongsToMany
     {
         return $this->belongsToMany(Layanan::class, 'flashsale_items')
-            ->withPivot('harga_flashsale', 'stok', 'batas_user', 'status')
+            ->withPivot('harga_flashsale', 'stok_terjual', 'stok_tersedia', 'batas_user', 'status')
             ->withTimestamps();
     }
 

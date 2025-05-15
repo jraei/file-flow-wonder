@@ -71,7 +71,7 @@ const checkDevicePreferences = () => {
 
 onMounted(() => {
     checkDevicePreferences();
-    generateStars();
+    // generateStars();
 });
 
 // Style computations for cosmic elements

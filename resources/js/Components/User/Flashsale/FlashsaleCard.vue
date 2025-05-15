@@ -1,4 +1,3 @@
-
 <script setup>
 import { computed, ref, onMounted } from "vue";
 import { Link } from "@inertiajs/vue3";
@@ -67,12 +66,8 @@ const stockPercentage = computed(() => {
 
 // Get thumbnail image
 const thumbnailImage = computed(() => {
-    if (
-        layanan.value &&
-        layanan.value.gambar &&
-        layanan.value.gambar.length > 0
-    ) {
-        return layanan.value.gambar;
+    if (layanan.value && layanan.value.thumbnail) {
+        return layanan.value.thumbnail;
     }
     return null;
 });
@@ -91,11 +86,11 @@ const particleDensity = computed(() => {
 // Create URL params for order page
 const orderPageParams = computed(() => {
     if (!layanan.value || !produk.value) return {};
-    
+
     return {
         productId: produk.value.id,
         flashsaleId: props.flashItem.id,
-        layananId: layanan.value.id
+        layananId: layanan.value.id,
     };
 });
 
@@ -113,7 +108,7 @@ onMounted(() => {
             const centerY = rect.height / 2;
 
             // Reduced movement and optimized for performance
-            const moveX = (x - centerX) / 40; 
+            const moveX = (x - centerX) / 40;
             const moveY = (y - centerY) / 40;
 
             const cosmicLayer = cardRef.value.querySelector(".cosmic-layer");
@@ -145,10 +140,13 @@ onMounted(() => {
     >
         <div
             ref="cardRef"
-            class="border flashsale-card group bg-primary/20 border-secondary/20 transition-transform hover:-translate-y-1"
+            class="transition-transform border flashsale-card group bg-primary/20 border-secondary/20 hover:-translate-y-1"
         >
             <!-- User Limit Badge -->
-            <div v-if="flashItem.batas_user" class="absolute z-20 top-2 right-2">
+            <div
+                v-if="flashItem.batas_user"
+                class="absolute z-20 top-2 right-2"
+            >
                 <div
                     class="px-2 py-1 text-xs text-white border rounded-full bg-primary/10 border-primary/50"
                 >
@@ -163,7 +161,9 @@ onMounted(() => {
                             stroke-linecap="round"
                             stroke-linejoin="round"
                         >
-                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                            <path
+                                d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"
+                            />
                         </svg>
                         Max. {{ flashItem.batas_user }}/user
                     </span>
@@ -174,23 +174,6 @@ onMounted(() => {
             <div class="card-content">
                 <!-- Left Section -->
                 <div class="left-section">
-                    <!-- Product Image - Added -->
-                    <div v-if="thumbnailImage" class="product-image">
-                        <img
-                            :src="'/storage/' + thumbnailImage"
-                            alt="Product"
-                            loading="lazy"
-                            class="w-full h-full object-cover rounded-md"
-                        />
-                    </div>
-                    <div v-else class="product-image bg-gray-800 flex items-center justify-center">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                            <circle cx="8.5" cy="8.5" r="1.5"></circle>
-                            <polyline points="21 15 16 10 5 21"></polyline>
-                        </svg>
-                    </div>
-
                     <!-- Product Info -->
                     <div class="product-info">
                         <h3 class="product-name">
@@ -200,30 +183,70 @@ onMounted(() => {
                     </div>
 
                     <!-- Price Section -->
-                    <div class="price-section">
-                        <div class="flash-price">
+                    <div class="flex items-center mt-1 space-x-2">
+                        <!-- Thumbnail image -->
+                        <div
+                            v-if="thumbnailImage"
+                            class="flex-shrink-0 w-10 h-10 overflow-hidden rounded"
+                        >
+                            <img
+                                :src="'/storage/' + thumbnailImage"
+                                alt="Product"
+                                class="object-cover w-full h-full"
+                            />
+                        </div>
+                        <div
+                            v-else
+                            class="flex items-center justify-center flex-shrink-0 w-10 h-10 bg-gray-800 rounded"
+                        >
                             <svg
                                 xmlns="http://www.w3.org/2000/svg"
-                                class="flash-icon"
-                                viewBox="0 0 24 24"
+                                class="w-5 h-5 text-gray-500"
                                 fill="none"
                                 stroke="currentColor"
                                 stroke-width="2"
                                 stroke-linecap="round"
                                 stroke-linejoin="round"
                             >
-                                <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+                                <rect
+                                    x="3"
+                                    y="3"
+                                    width="18"
+                                    height="18"
+                                    rx="2"
+                                    ry="2"
+                                ></rect>
+                                <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                                <polyline points="21 15 16 10 5 21"></polyline>
                             </svg>
-                            {{ formatPrice(flashItem.harga_flashsale) }}
                         </div>
-                        <div class="regular-price">
-                            <span>{{ formatPrice(layanan.harga_jual) }}</span>
-                            <span
-                                v-if="discountPercentage > 0"
-                                class="discount-badge"
-                            >
-                                -{{ discountPercentage }}%
-                            </span>
+                        <div>
+                            <div class="flash-price">
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    class="flash-icon"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="2"
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                >
+                                    <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+                                </svg>
+                                {{ formatPrice(flashItem.harga_flashsale) }}
+                            </div>
+                            <div class="regular-price">
+                                <span>{{
+                                    formatPrice(layanan.harga_jual)
+                                }}</span>
+                                <span
+                                    v-if="discountPercentage > 0"
+                                    class="discount-badge"
+                                >
+                                    -{{ discountPercentage }}%
+                                </span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -298,8 +321,8 @@ onMounted(() => {
 
 /* Left section - Product info and pricing */
 .left-section {
-    width: 50%;
-    padding: 0.75rem;
+    width: 70%;
+    padding: 1rem;
     display: flex;
     flex-direction: column;
     z-index: 10;
@@ -330,9 +353,9 @@ onMounted(() => {
 }
 
 /* Price section */
-.price-section {
+/* .price-section {
     margin-top: auto;
-}
+} */
 
 .flash-price {
     display: flex;
@@ -373,7 +396,7 @@ onMounted(() => {
 
 /* Right section - CSS-based Cosmic elements */
 .right-section {
-    width: 50%;
+    width: 30%;
     position: relative;
     overflow: hidden;
 }
@@ -387,9 +410,9 @@ onMounted(() => {
 /* CSS-based planet - simplified */
 .cosmic-planet {
     position: absolute;
-    width: 60px;
-    height: 60px;
-    right: 40px;
+    width: 40px;
+    height: 40px;
+    right: 30px;
     top: 60px;
     border-radius: 50%;
     background: radial-gradient(
@@ -403,10 +426,10 @@ onMounted(() => {
 
 .planet-ring {
     position: absolute;
-    width: 90px;
-    height: 25px;
-    right: 25px;
-    top: 77px;
+    width: 70px;
+    height: 15px;
+    right: 15px;
+    top: 70px;
     border-radius: 50%;
     border: 1px solid rgba(155, 135, 245, 0.3);
     transform: rotate(-30deg);

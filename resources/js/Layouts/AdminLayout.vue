@@ -4,7 +4,6 @@ import { Link, usePage } from "@inertiajs/vue3";
 import NavLink from "@/Components/NavLink.vue";
 import DropdownLink from "@/Components/DropdownLink.vue";
 import Dropdown from "@/Components/Dropdown.vue";
-import ApplicationLogo from "@/Components/ApplicationLogo.vue";
 import ResponsiveNavLink from "@/Components/ResponsiveNavLink.vue";
 import Swal from "../Components/Swal.vue";
 
@@ -27,7 +26,9 @@ const props = defineProps({
 });
 
 const page = usePage();
+const judulWeb = computed(() => page.props.web_details.judul_web);
 const user = computed(() => page.props.auth.user);
+const logoHeader = page.props.web_details.logo_header;
 
 const toggleSidebar = () => {
     isSidebarCollapsed.value = !isSidebarCollapsed.value;
@@ -58,15 +59,13 @@ const toggleDropdown = (dropdown) => {
                 <!-- Logo section -->
                 <div class="flex items-center justify-center px-4 mb-8">
                     <Link :href="route('index')">
-                        <ApplicationLogo
-                            class="w-12 h-12 fill-current text-primary"
-                        />
+                        <img :src="logoHeader" alt="logo" class="w-12 h-12" />
                     </Link>
                     <span
                         v-if="!isSidebarCollapsed"
                         class="ml-3 text-xl font-bold text-transparent bg-gradient-to-r from-primary to-secondary bg-clip-text"
                     >
-                        VeinStore
+                        {{ judulWeb }}
                     </span>
                 </div>
 
@@ -698,13 +697,12 @@ const toggleDropdown = (dropdown) => {
                     :href="route('admin.dashboard')"
                     class="flex items-center"
                 >
-                    <ApplicationLogo
-                        class="w-10 h-10 fill-current text-primary"
-                    />
+                    <img :src="logoHeader" alt="logo" class="w-10 h-10" />
+
                     <span
                         class="ml-3 text-xl font-bold text-transparent bg-gradient-to-r from-primary to-secondary bg-clip-text"
                     >
-                        VeinStore
+                        {{ judulWeb }}
                     </span>
                 </Link>
                 <button

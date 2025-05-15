@@ -1,26 +1,25 @@
 <script setup>
 import { ref, onMounted, computed } from "vue";
-import { Link } from "@inertiajs/vue3";
-import CosmicIcon from "@/Components/User/Navigation/CosmicIcon.vue";
-import FooterRocket from "./FooterRocket.vue";
-import Earth3D from "./Earth3D.vue";
-import CosmicDust from "./CosmicDust.vue";
+import { usePage } from "@inertiajs/vue3";
 import SocialLinks from "./SocialLinks.vue";
 import NavLinks from "./NavLinks.vue";
 import CopyrightBar from "./CopyrightBar.vue";
 import PromoFooterBanner from "./PromoFooterBanner.vue";
-import CosmicStarfield from "../Navigation/CosmicStarfield.vue";
+import CosmicStarfield from "@/Components/User/Navigation/CosmicStarfield.vue";
 
 // We'll simulate getting this from the backend in a real implementation
 // In a production app, this would come from props passed from the layout
+const page = usePage();
+const judulWeb = computed(() => page.props.web_details.judul_web);
+
 const footerData = {
-    meta_description:
-        "The best place to buy game credits and top-ups at affordable prices with cosmic delivery speed.",
-    support_instagram: "https://instagram.com/yourgame",
-    support_whatsapp: "6281234567890",
-    support_email: "support@yourgame.com",
-    support_youtube: "https://youtube.com/yourgame",
-    support_facebook: "https://facebook.com/yourgame",
+    logo_footer: page.props.web_details.logo_footer,
+    meta_description: page.props.web_details.meta_description,
+    support_instagram: page.props.web_details.support_instagram,
+    support_whatsapp: page.props.web_details.support_whatsapp,
+    support_email: page.props.web_details.support_email,
+    support_youtube: page.props.web_details.support_youtube,
+    support_facebook: page.props.web_details.support_facebook,
 };
 
 const isPreludeVisible = ref(false);
@@ -53,14 +52,14 @@ const legalLinks = [
 ];
 
 // Compute classes based on visibility for smooth transitions
-const preludeClasses = computed(() => {
-    return {
-        "opacity-100": isPreludeVisible.value,
-        "opacity-0": !isPreludeVisible.value,
-        "transform translate-y-0": isPreludeVisible.value,
-        "transform translate-y-10": !isPreludeVisible.value,
-    };
-});
+// const preludeClasses = computed(() => {
+//     return {
+//         "opacity-100": isPreludeVisible.value,
+//         "opacity-0": !isPreludeVisible.value,
+//         "transform translate-y-0": isPreludeVisible.value,
+//         "transform translate-y-10": !isPreludeVisible.value,
+//     };
+// });
 </script>
 
 <template>
@@ -110,13 +109,13 @@ const preludeClasses = computed(() => {
                     <div class="space-y-4">
                         <div class="flex items-center space-x-2">
                             <img
-                                src="/favicon.ico"
+                                :src="footerData.logo_footer"
                                 alt="Logo"
                                 class="w-8 h-8"
                             />
-                            <span class="text-xl font-bold text-primary-text"
-                                >NaelStore</span
-                            >
+                            <span class="text-xl font-bold text-primary-text">{{
+                                judulWeb
+                            }}</span>
                         </div>
 
                         <p class="text-sm text-primary-text/70">
@@ -151,6 +150,6 @@ const preludeClasses = computed(() => {
         </div>
 
         <!-- Copyright Bar -->
-        <CopyrightBar />
+        <CopyrightBar :judulWeb="judulWeb" />
     </footer>
 </template>

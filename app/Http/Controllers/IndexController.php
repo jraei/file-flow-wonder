@@ -2,14 +2,15 @@
 
 namespace App\Http\Controllers;
 
+use Carbon\Carbon;
+use Inertia\Inertia;
 use App\Models\Banner;
-use App\Models\FlashsaleEvent;
 use App\Models\Produk;
 use App\Models\Kategori;
 use App\Models\Pembelian;
-use Carbon\Carbon;
 use Illuminate\Http\Request;
-use Inertia\Inertia;
+use App\Models\ItemThumbnail;
+use App\Models\FlashsaleEvent;
 use Illuminate\Support\Facades\RateLimiter;
 
 class IndexController extends Controller
@@ -40,6 +41,40 @@ class IndexController extends Controller
             }])
             ->first();
 
+        // $activeEvents->item->load('layanan.produk'); // pastikan relasi sudah diload
+
+        $activeEvents->item = $activeEvents->item->map(function ($item) {
+            // Modifikasi langsung objek layanan
+            $layanan = $item->layanan;
+
+            preg_match('/(\d+)/', $layanan->nama_layanan, $matches);
+            $quantity = isset($matches[1]) ? (int) $matches[1] : null;
+
+            $thumbnail = null;
+            if ($quantity !== null) {
+                $thumbnail = ItemThumbnail::findThumbnailForQuantity($layanan->produk_id, $quantity);
+            }
+
+            if (!$thumbnail) {
+                $thumbnail = ItemThumbnail::where('produk_id', $layanan->produk_id)
+                    ->default()
+                    ->first();
+            }
+
+            // Tambahkan thumbnail langsung ke layanan
+            $item->layanan = array_merge($layanan->toArray(), [
+                'thumbnail' => $thumbnail->image_path ?? null,
+            ]);
+
+            return $item->toArray();
+        });
+        // dd($activeEvents->item[0]->layanan);
+        // Force seluruh objek jadi array
+        $activeEvents = $activeEvents->toArray();
+        // dd($activeEvents['item'][0]['layanan']);
+
+
+
         // Fetch popular products
         $popularProducts = Produk::whereHas('kategori', function ($query) {
             $query->where('kategori_name', 'Populer Sekarang');
@@ -69,6 +104,10 @@ class IndexController extends Controller
             ->with(['kategori'])
             ->get(['id', 'nama', 'slug', 'developer', 'thumbnail', 'kategori_id']);
 
+
+        // dd($activeEvents->item[0]->layanan['thumbnail']);
+
+        // dd($activeEvents->item[0]);
         return Inertia::render('Index', [
             'banners' => $banners,
             'flashsaleEvent' => $activeEvents,

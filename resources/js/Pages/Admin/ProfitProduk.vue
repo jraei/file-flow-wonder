@@ -189,26 +189,24 @@ const loadServicesForProduct = async (productId) => {
     try {
         // In a real app, you would make an API call to fetch services
         // For now, we'll simulate with mock data
-        services.value = [
+        response = await axios.post(
+            route("profit-produks.preview"),
             {
-                id: 1,
-                layanan: "60 Diamonds",
-                kode_produk: "ML60",
-                harga_beli: 12000,
+                produk_id: productId,
             },
             {
-                id: 2,
-                layanan: "120 Diamonds",
-                kode_produk: "ML120",
-                harga_beli: 24000,
-            },
-            {
-                id: 3,
-                layanan: "240 Diamonds",
-                kode_produk: "ML240",
-                harga_beli: 46000,
-            },
-        ];
+                headers: {
+                    "Content-Type": "application/json",
+                    Accept: "application/json",
+                },
+            }
+        );
+
+        if (response.data.success) {
+            services.value = response.data;
+        } else {
+            console.error("Error loading price preview:", response.data);
+        }
     } catch (error) {
         console.error("Error loading services:", error);
         services.value = [];

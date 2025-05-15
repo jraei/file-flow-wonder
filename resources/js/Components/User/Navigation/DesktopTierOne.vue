@@ -1,6 +1,6 @@
 <script setup>
 import { ref } from "vue";
-import { Link } from "@inertiajs/vue3";
+import { Link, usePage } from "@inertiajs/vue3";
 import ApplicationLogo from "@/Components/ApplicationLogo.vue";
 import ProductSearch from "./ProductSearch.vue";
 import CosmicIcon from "./CosmicIcon.vue";
@@ -11,6 +11,9 @@ defineProps({
         default: false,
     },
 });
+
+const page = usePage();
+const logoHeader = page.props.web_details.logo_header;
 
 const isSearchFocused = ref(false);
 </script>
@@ -25,7 +28,7 @@ const isSearchFocused = ref(false);
                         <div
                             class="absolute inset-0 transition-all duration-300 rounded-full opacity-0 bg-primary/10 group-hover:opacity-100 filter blur-md group-hover:scale-110"
                         ></div>
-                        <ApplicationLogo class="w-auto h-12 text-primary" />
+                        <img :src="logoHeader" alt="logo" class="w-12 h-12" />
                     </Link>
                 </div>
 
