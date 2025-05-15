@@ -1,4 +1,3 @@
-
 <?php
 
 namespace App\Models;
@@ -46,27 +45,6 @@ class Produk extends Model
     public function inputFields(): HasMany
     {
         return $this->hasMany(ProdukInputField::class);
-    }
-
-    /**
-     * Get profit for a specific role
-     * 
-     * @param int $roleId
-     * @return ProfitProduk|null
-     */
-    public function getProfitForRole($roleId)
-    {
-        return $this->ProfitProduk()->where('user_roles_id', $roleId)->first();
-    }
-
-    /**
-     * Get default profit
-     * 
-     * @return ProfitProduk|null
-     */
-    public function getDefaultProfit()
-    {
-        return $this->ProfitProduk()->first();
     }
 
 

@@ -1,4 +1,3 @@
-
 <?php
 
 namespace App\Http\Controllers\Admin;
@@ -24,7 +23,6 @@ class ProdukController extends Controller
         $sort = $request->input('sort', 'id');
         $direction = $request->input('direction', 'asc');
         $provider_filter = $request->input('provider_id');
-        $kategori_filter = $request->input('kategori_ids');
 
         // Validate the sort field to prevent SQL injection
         $allowedSortFields = ['nama', 'reference', 'kategori_id', 'provider_id', 'validasi_id', 'status'];
@@ -38,11 +36,6 @@ class ProdukController extends Controller
         // Apply provider filter if provided
         if ($provider_filter) {
             $query->where('provider_id', $provider_filter);
-        }
-
-        // Apply category filter if provided
-        if ($kategori_filter && is_array($kategori_filter)) {
-            $query->whereIn('kategori_id', $kategori_filter);
         }
 
         // Apply search if provided
@@ -76,8 +69,7 @@ class ProdukController extends Controller
                 'search' => $search,
                 'sort' => $sort,
                 'direction' => $direction,
-                'provider_id' => $provider_filter,
-                'kategori_ids' => $kategori_filter
+                'provider_id' => $provider_filter
             ]
         ]);
     }
