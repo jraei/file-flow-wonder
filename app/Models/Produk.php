@@ -17,6 +17,34 @@ class Produk extends Model
 
     protected $guarded = ['id'];
 
+    /**
+     * List of available validation games
+     */
+    public static function getValidationGamesList()
+    {
+        return [
+            '8 Ball Pool',
+            'AOV',
+            'Apex Legends',
+            'Call Of Duty',
+            'Dragon City',
+            'Dragon Raja',
+            'Free Fire',
+            'Genshin Impact',
+            'Higgs Domino',
+            'Honkai Impact',
+            'Lords Mobile',
+            'Marvel Super War',
+            'Mobile Legends',
+            'Mobile Legends Adventure',
+            'Point Blank',
+            'Ragnarok M',
+            'Tom Jerry Chase',
+            'Top Eleven',
+            'Valorant',
+        ];
+    }
+
     public function Kategori(): BelongsTo
     {
         return $this->belongsTo(Kategori::class, 'kategori_id');
@@ -50,10 +78,8 @@ class Produk extends Model
 
     public function parsedItemCount($nama_layanan = null): ?int
     {
-        // Ambil nama layanan dan convert ke lowercase dulu
         $name = strtolower($nama_layanan);
 
-        // Cari angka + angka (kayak 10+1) → hitung total
         if (preg_match_all('/(\d+)(?:\s*\+\s*(\d+))?/', $name, $matches, PREG_SET_ORDER)) {
             $total = 0;
 
@@ -66,7 +92,6 @@ class Produk extends Model
             return $total;
         }
 
-        // Kalo ga nemu angka, return null
         return null;
     }
 
@@ -77,25 +102,21 @@ class Produk extends Model
     public function getThumbnailForQuantity($quantity = null)
     {
         if ($quantity === null) {
-            // Return the default thumbnail
             return $this->thumbnails()->where('default_for_produk', true)->first();
         }
 
-        // First try to find a range-based thumbnail
         $thumbnail = $this->thumbnails()
             ->where('is_static', false)
             ->where('min_item', '<=', $quantity)
             ->where('max_item', '>=', $quantity)
             ->first();
 
-        // If no range-based thumbnail, try static
         if (!$thumbnail) {
             $thumbnail = $this->thumbnails()
                 ->where('is_static', true)
                 ->first();
         }
 
-        // If still no thumbnail, use default
         if (!$thumbnail) {
             $thumbnail = $this->thumbnails()
                 ->where('default_for_produk', true)

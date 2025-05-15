@@ -23,6 +23,7 @@ class ProdukController extends Controller
         $sort = $request->input('sort', 'id');
         $direction = $request->input('direction', 'asc');
         $provider_filter = $request->input('provider_id');
+        $kategori_filter = $request->input('kategori_id', []);
 
         // Validate the sort field to prevent SQL injection
         $allowedSortFields = ['nama', 'reference', 'kategori_id', 'provider_id', 'validasi_id', 'status'];
@@ -36,6 +37,11 @@ class ProdukController extends Controller
         // Apply provider filter if provided
         if ($provider_filter) {
             $query->where('provider_id', $provider_filter);
+        }
+
+        // Apply category filter if provided
+        if (!empty($kategori_filter)) {
+            $query->whereIn('kategori_id', $kategori_filter);
         }
 
         // Apply search if provided
@@ -69,12 +75,12 @@ class ProdukController extends Controller
                 'search' => $search,
                 'sort' => $sort,
                 'direction' => $direction,
-                'provider_id' => $provider_filter
-            ]
+                'provider_id' => $provider_filter,
+                'kategori_id' => $kategori_filter
+            ],
+            'validationGames' => Produk::getValidationGamesList(),
         ]);
     }
-
-
 
     /**
      * Store a newly created resource in storage.
@@ -108,7 +114,6 @@ class ProdukController extends Controller
 
         Produk::create($product);
 
-        // return to_route('categories.index')->with('success', 'New Category has been added!');
         return to_route('products.index')->with('status', ['type' => 'success', 'action' => 'Success', 'text' => 'New Product has been added!']);
     }
 
@@ -122,8 +127,6 @@ class ProdukController extends Controller
             'product' => $product
         ]);
     }
-
-
 
     /**
      * Update the specified resource in storage.
@@ -196,9 +199,6 @@ class ProdukController extends Controller
      */
     public function destroy($id)
     {
-        // hapus data berdasarkan id
-        // dd($product->id);
-
         $product = Produk::find($id);
         if ($product->petunjuk_field) {
             Storage::disk('public')->delete($product->petunjuk_field);
@@ -214,6 +214,25 @@ class ProdukController extends Controller
         return to_route('products.index')->with('status', ['type' => 'success', 'action' => 'Success', 'text' => 'Product has been deleted!']);
     }
 
+    /**
+     * Update the validation ID for a product
+     */
+    public function updateValidation(Request $request, $id)
+    {
+        $validatedData = $request->validate([
+            'validasi_id' => 'required|string',
+        ]);
+
+        $produk = Produk::findOrFail($id);
+        $validGames = Produk::getValidationGamesList();
+        
+        if(in_array($validatedData['validasi_id'], $validGames)) {
+            $produk->update(['validasi_id' => $validatedData['validasi_id']]);
+            return response()->json(['success' => true]);
+        }
+        
+        return response()->json(['success' => false, 'message' => 'Invalid game selected'], 422);
+    }
 
     public function getProductsByProvider(Provider $provider)
     {
