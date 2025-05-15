@@ -26,7 +26,7 @@ const props = defineProps({
     inputFields: Array,
     waNumber: String,
     flashsaleEvents: Array,
-    staticMethods: Array,
+    saldoMethod: Array,
     dynamicMethods: Array,
     activeVouchers: Array,
     faqs: Array,
@@ -325,7 +325,7 @@ const initPriceAnimations = () => {
                     </div>
 
                     <PaymentSelector
-                        :static-methods="staticMethods"
+                        :saldo-method="saldoMethod"
                         :dynamic-methods="dynamicMethods"
                         :selected-service="selectedService"
                         :selected-payment="selectedPayment"

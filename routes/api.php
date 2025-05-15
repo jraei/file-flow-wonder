@@ -1,10 +1,10 @@
-
 <?php
 
+use App\Models\Produk;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use App\Models\Produk;
 use App\Http\Controllers\Admin\CheckUsernameController;
+use App\Http\Controllers\Admin\TripayCallbackController;
 
 /*
 |--------------------------------------------------------------------------
@@ -36,6 +36,12 @@ Route::get('/search/products', function (Request $request) {
 
     return response()->json($products);
 })->name('api.search.products');
+
+// payment gateway callback handle
+Route::prefix('callback')->group(function () {
+    Route::post('/tripay', [TripayCallbackController::class, 'handle']);
+});
+
 
 // We no longer need a separate validate-account endpoint as validation
 // is now integrated with the order/confirm endpoint

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Inertia\Inertia;
 use App\Models\Produk;
+use App\Models\Layanan;
 use App\Models\Voucher;
 use App\Models\PayMethod;
 use App\Models\Pembelian;
@@ -17,6 +18,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
 use App\Http\Controllers\MoogoldController;
 use App\Http\Controllers\Admin\TripayController;
+use App\Http\Controllers\Admin\DigiflazzController;
 use App\Http\Controllers\Admin\CheckUsernameController;
 
 class OrderController extends Controller
@@ -111,25 +113,17 @@ class OrderController extends Controller
                 return $serviceWithThumbnail;
             });
 
-        // Payment Method Data Assembly ---
-        // Static methods (saldo, qris)
-        $staticMethods = [
-            'saldo' => PayMethod::where('tipe', 'Saldo Akun')->first(),
-            'qris' => [
-                'nama' => 'QRIS (Semua Pembayaran)',
-                'gambar' => PayMethod::where('tipe', 'QRIS')->first()?->gambar,
-                'fee_fixed' => PayMethod::where('tipe', 'QRIS')->first()?->fee_fixed,
-                'fee_percent' => PayMethod::where('tipe', 'QRIS')->first()?->fee_percent,
-                'fee_type' => PayMethod::where('tipe', 'QRIS')->first()?->fee_type,
-                'min_amount' => PayMethod::where('tipe', 'QRIS')->first()?->min_amount,
-                'max_amount' => PayMethod::where('tipe', 'QRIS')->first()?->max_amount
-            ]
-        ];
+
         // Dynamic methods (grouped by tipe)
-        $dynamicMethods = PayMethod::whereNotIn('tipe', ['saldo', 'QRIS'])
-            ->where('status', 'active')
+        $methods = PayMethod::where('status', 'active')
             ->with('paymentProvider')
-            ->get()
+            ->get();
+
+        // Ambil satu metode saldo
+        $saldoMethod = $methods->firstWhere('tipe', 'Saldo Akun');
+
+        $dynamicMethods = $methods
+            ->where('tipe', '!=', 'Saldo Akun')
             ->groupBy('tipe')
             ->map(function ($group) {
                 return $group->map(function ($method) {
@@ -204,8 +198,8 @@ class OrderController extends Controller
             'inputFields' => $inputFields,
             'waNumber' => $waNumber,
             'flashsaleEvents' => $flashsaleEvents,
-            'staticMethods' => $staticMethods,
             'dynamicMethods' => $dynamicMethods,
+            'saldoMethod' => $saldoMethod,
             'activeVouchers' => $activeVouchers,
             'faqs' => $faqs,
         ]);
@@ -294,29 +288,33 @@ class OrderController extends Controller
 
         // Check if it's a flashsale item
         $flashsaleItem = null;
-        if ($request->has('flashsale_item_id')) {
-            $flashsaleItem = FlashsaleItem::where('id', $request->flashsale_item_id)
-                ->whereHas('flashsaleEvent', function ($q) {
-                    $q->where('status', 'active')
-                        ->where('event_start_date', '<=', now())
-                        ->where('event_end_date', '>=', now());
-                })
-                ->where('status', 'active')
-                ->where('layanan_id', $request->layanan_id)
-                ->first();
+
+        if ($request->flashsale_item_id && $request->layanan_id) {
+            $flashsaleData = $this->validateFlashsale($request->flashsale_item_id, $request->layanan_id, $request->quantity);
+
+            if ($flashsaleData['status'] !== 'success') {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => $flashsaleData['message'],
+                ], 422);
+            }
+
+            $flashsaleItem = $flashsaleData['data'];
         }
 
         // calculate base price
         $basePrice = $flashsaleItem ? $flashsaleItem->harga_flashsale : $layanan->harga_jual;
-        $basePrice = ceil($basePrice * $request->quantity);
+        $price = $basePrice * $request->quantity;
+
 
         // Process voucher if provided
         $voucherDiscount = 0;
         if ($request->voucher_code) {
 
-            $voucher = $this->validateVoucher($request->voucher_code, $basePrice);
+            $voucher = $this->validateVoucher($request->voucher_code, $price);
             $voucherDiscount = $voucher['calculated_discount'];
         }
+
 
         // Get username if validation is required
         $username = null;
@@ -349,7 +347,8 @@ class OrderController extends Controller
         }
 
         // Calculate total price
-        $totalPrice = $basePrice - $voucherDiscount;
+        $totalPrice = $price - $voucherDiscount;
+        $totalPrice = ceil($totalPrice);
 
         // Calculate fees based on payment method
         $paymentInfo = $this->calculatePaymentFees($request->payment_method, $totalPrice);
@@ -377,7 +376,7 @@ class OrderController extends Controller
                 'dynamic_fields' => $dynamicFields,
                 'layanan' => $layanan->nama_layanan,
                 'quantity' => $request->quantity,
-                'basePrice' => $basePrice,
+                'basePrice' => $price,
                 'discount' => $voucherDiscount,
                 'payment_method' => $paymentInfo['methodName'],
                 'payment_fee' => $paymentInfo['fee'],
@@ -396,7 +395,7 @@ class OrderController extends Controller
     public function processOrder(Request $request)
     {
         // Validate user is authenticated if using balance
-        if ($request->payment_method['type'] === 'saldo' && !Auth::check()) {
+        if ($request->payment_method['type'] === 'Saldo Akun' && !Auth::check()) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'Authentication required for balance payment',
@@ -421,8 +420,13 @@ class OrderController extends Controller
         }
 
         $user = Auth::user();
-        $layanan = \App\Models\Layanan::with('produk')->findOrFail($request->layanan_id);
+
+        $layanan = Layanan::with('produk')->findOrFail($request->layanan_id);
         $produk = $layanan->produk;
+        $kategori = $produk->Kategori;
+
+
+        $paymentMethodDynamic = PayMethod::where('id', $request->payment_method['channel'])->first();
 
         // Extract input ID and zone from dynamically named fields
         $inputId = null;
@@ -452,40 +456,30 @@ class OrderController extends Controller
             }
         }
 
+
         // Check if it's a flashsale item
         $flashsaleItem = null;
-        $flashsaleDiscount = 0;
-        if ($request->has('flashsale_item_id')) {
-            $flashsaleItem = FlashsaleItem::where('id', $request->flashsale_item_id)
-                ->whereHas('flashsaleEvent', function ($q) {
-                    $q->where('status', 'active')
-                        ->where('event_start_date', '<=', now())
-                        ->where('event_end_date', '>=', now());
-                })
-                ->where('status', 'active')
-                ->where('layanan_id', $request->layanan_id)
-                ->first();
+        if ($request->flashsale_item_id && $request->layanan_id) {
+            $flashsaleData = $this->validateFlashsale($request->flashsale_item_id, $request->layanan_id, $request->quantity);
 
-            if ($flashsaleItem) {
-                if ($flashsaleItem->stok_tersedia !== null && $flashsaleItem->stok_tersedia <= 0) {
-                    return response()->json([
-                        'status' => 'error',
-                        'message' => 'Flash sale item out of stock',
-                    ], 400);
-                }
-
-                $flashsaleDiscount = $layanan->harga_jual - $flashsaleItem->harga_flashsale;
+            if ($flashsaleData['status'] !== 'success') {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => $flashsaleData['message'],
+                ], 422);
             }
-        }
 
+            $flashsaleItem = $flashsaleData['data'];
+        }
         // calculate basePrice
 
         $basePrice = $flashsaleItem ? $flashsaleItem->harga_flashsale : $layanan->harga_jual;
-        $basePrice = ceil($basePrice);
+        $basePrice = $basePrice;
         $quantity = $request->quantity;
         $price = $basePrice * $quantity;
 
         // Process voucher if provided
+        $voucher = null;
         $voucherDiscount = 0;
         if ($request->voucher_code) {
             $voucher = $this->validateVoucher($request->voucher_code, $price);
@@ -494,6 +488,7 @@ class OrderController extends Controller
 
         // Calculate total price
         $totalPrice = $price - $voucherDiscount;
+        $totalPrice = ceil($totalPrice);
 
         // Calculate fees based on payment method
         $paymentInfo = $this->calculatePaymentFees($request->payment_method, $totalPrice);
@@ -508,6 +503,7 @@ class OrderController extends Controller
             ], 400);
         }
 
+
         // Generate unique order ID
         $orderId = $this->generateUniqueOrderId();
 
@@ -517,33 +513,13 @@ class OrderController extends Controller
             $additionalData[$key] = $value;
         }
 
-        // Create the pembelian record
-        $pembelian = new Pembelian();
-        $pembelian->order_id = $orderId;
-        $pembelian->order_type = 'game';
-        $pembelian->user_id = Auth::id();
-        $pembelian->layanan_id = $layanan->id;
-        $pembelian->nickname = $request->nickname;
-        $pembelian->input_id = $inputId;
-        $pembelian->input_zone = $inputZone;
-        $pembelian->price = $price;
-        $pembelian->quantity = $quantity;
-        $pembelian->discount = $voucherDiscount;
-        $pembelian->total_price = $totalPrice;
-        $pembelian->profit = $totalPrice - $hargaBeli;
-        $pembelian->status = 'pending';
-        $pembelian->phone = $request->phone;
-        $pembelian->email = $request->email;
 
-        // Store additional fields as JSON
-        if (!empty($additionalData)) {
-            $pembelian->callback_data = $additionalData;
-        }
 
-        $pembelian->save();
+        $status = null;
+        $reference = null;
 
         // Process payment based on method
-        if ($request->payment_method['type'] === 'saldo') {
+        if ($request->payment_method['type'] === 'Saldo Akun') {
             // Check if user has enough balance
             if ($user->saldo < $finalPrice) {
                 return response()->json([
@@ -556,84 +532,174 @@ class OrderController extends Controller
             $user->saldo -= $finalPrice;
             $user->save();
 
+
             Pembayaran::create([
                 'order_id' => $orderId,
                 'price' => $finalPrice,
+                'fee' => $paymentInfo['fee'],
                 'total_price' => $finalPrice,
                 'payment_method' => 'Saldo Akun',
-                'status' => 'success',
+                'payment_provider' => 'Saldo Akun',
+                'status' => 'paid',
             ]);
 
-            // Process order through API
-            $moogold = new MoogoldController();
+            if ($produk->provider->provider_name == 'moogold') {
 
-            try {
+                $moogoldOrderCategory = $produk->moogold_order_category;
+                // Process order through API
+                $moogold = new MoogoldController();
+
+
                 $apiResult = $moogold->createTransaction([
-                    'category_id' => $produk->kategori_id,
+                    'category_id' => $moogoldOrderCategory,
                     'order_id' => $orderId,
-                    'service_id' => $layanan->api_service_id,
+                    'service_id' => $layanan->kode_layanan,
                     'quantity' => $request->quantity,
-                    'user_id' => $request->input_id,
-                    'server' => $request->input_zone
+                    'user_id' => $inputId,
+                    'server' => $inputZone
                 ]);
-            } catch (\Exception $e) {
+
+
+                if (!$apiResult['data']['status']) {
+                    return response()->json([
+                        'status' => 'error',
+                        'message' => $apiResult['data']['raw']['err_message'] ?? $apiResult['data']['message']
+                    ]);
+                }
+
+                $data = $apiResult['data'];
+
+                // Update order status
+                if ($data['response']['status'] == "pending" || $data['response']['status'] == "processing") {
+                    $status = "completed";
+                    $reference = $data['order_id'];
+                } else {
+                    $status = "failed";
+                }
+            } else if ($produk->provider->provider_name == 'digiflazz') {
+                $digiflazz = new DigiflazzController();
+
+                $target = $inputId . $inputZone;
+
+                $apiResult = $digiflazz->createTransaction([
+                    'kode_layanan' => $layanan->kode_layanan,
+                    'target' => $target,
+                    'ref_id' => $orderId,
+                    'testing' => true
+                ]);
+
+                if (!$apiResult->status) {
+                    return response()->json([
+                        'status' => 'error',
+                        'message' =>  $apiResult->message ?? "DF | Create transaction error"
+                    ]);
+                }
+
+
+                // Update order status
+                if ($apiResult->status == "Pending" || $apiResult->status == "Sukses") {
+                    $status = "completed";
+                    $reference = $apiResult->ref_id;
+                } else {
+                    $status = "failed";
+                }
+            } else {
                 return response()->json([
                     'status' => 'error',
-                    'message' => 'Failed to process order',
+                    'message' => 'Provider name issue, please contact admin',
                 ], 500);
             }
-
-
-            // Update order status
-            $pembelian->reference_id = $apiResult['data']['order_id'];
-            $pembelian->status = 'processing';
-            $pembelian->save();
-
-
-            return response()->json([
-                'status' => 'success',
-                'message' => 'Order processed successfully',
-                'order_id' => $orderId,
-            ]);
         } else {
+
 
             // Payment gateway integration
             $item = $produk->nama . ' - ' . $layanan->nama_layanan;
-            $tripay = new TripayController();
-            $response = $tripay->createTransaction([
-                'item' => $item,
-                'price' => $totalPrice,
-                'quantity' => $request->quantity,
-                'method' => $paymentInfo['methodCode'],
-                'merchant_ref' => $orderId,
-                'customer_name' => $user->username ?? 'Guest',
-                'customer_email' => $request->email ?? 'guest@gmail.com',
-                'customer_phone' => $request->phone
-            ]);
 
-            if (!$response) {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => $response['message'],
+            $paymentData = [];
+
+            // process tripay payment gateway if payment method provider is tripay
+
+            if ($paymentMethodDynamic->payment_provider === 'Tripay') {
+
+                $tripay = new TripayController();
+                $response = $tripay->createTransaction([
+                    'item' => $item,
+                    'price' => $totalPrice,
+                    'quantity' => 1,
+                    'method' => $paymentInfo['methodCode'],
+                    'merchant_ref' => $orderId,
+                    'customer_name' => $user->username ?? 'Guest',
+                    'customer_email' => $request->email ?? 'guest@gmail.com',
+                    'customer_phone' => $request->phone
                 ]);
+
+                if (!$response || $response['data']['success'] !== true) {
+                    return response()->json([
+                        'status' => 'error',
+                        'message' => $response['data']['message'],
+                    ]);
+                }
+
+                // Create invoice for payment
+                $paymentData = $response['data']['data'];
             }
 
-            // Create invoice for payment
-            $tripayData = $response['data'];
             Pembayaran::create([
                 'order_id' => $orderId,
-                'price' => $tripayData['amount_received'],
-                'fee' => $tripayData['total_fee'],
-                'total_price' => $tripayData['amount'],
+                'price' => $paymentData['amount_received'],
+                'fee' => $paymentData['total_fee'],
+                'total_price' => $paymentData['amount'],
                 'payment_provider' => 'Tripay',
                 'payment_method' => $paymentInfo['methodCode'],
-                'payment_reference' => $tripayData['reference'],
+                'payment_reference' => $paymentData['reference'],
                 'status' => 'pending',
-                'instruksi' => $tripayData['instructions'] ?? null,
-                'qr_url' => $tripayData['qr_url'] ?? null,
-                'payment_link' => $tripayData['checkout_url'] ?? null,
-                'expired_time' => $tripayData['expired_time'] ?? null,
+                'instruksi' => $paymentData['instructions'] ?? null,
+                'qr_url' => $paymentData['qr_url'] ?? null,
+                'payment_link' => $paymentData['checkout_url'] ?? null,
+                'expired_time' => $paymentData['expired_time'] ?? null,
             ]);
+
+            $status = 'pending';
+        }
+
+        if ($status) {
+
+            // reduce voucher & flashsales
+            if ($flashsaleItem) {
+                $this->reduceFlashsaleStock($request->flashsale_item_id, $quantity);
+            }
+            if ($voucher) {
+                $this->reduceVoucherStock($request->voucher_code);
+            }
+
+            // Create the pembelian record
+            $pembelian = new Pembelian();
+            $pembelian->order_id = $orderId;
+            $pembelian->order_type = 'game';
+            $pembelian->user_id = Auth::id();
+            $pembelian->layanan_id = $layanan->id;
+            $pembelian->nickname = $request->nickname;
+            $pembelian->input_id = $inputId;
+            $pembelian->input_zone = $inputZone;
+            $pembelian->price = $basePrice;
+            $pembelian->quantity = $quantity;
+            $pembelian->discount = $voucherDiscount;
+            $pembelian->total_price = $totalPrice;
+            $pembelian->profit = $totalPrice - $hargaBeli;
+            $pembelian->status = $status;
+            $pembelian->reference_id = $reference;
+            $pembelian->phone = $request->phone;
+            $pembelian->email = $request->email;
+            $pembelian->voucher_id = $voucher ? $voucher['id'] : null;
+            $pembelian->flashsale_item_id = $flashsaleItem ? $flashsaleItem->id : null;
+
+            // Store additional fields as JSON
+            if (!empty($additionalData)) {
+                $pembelian->callback_data = $additionalData;
+            }
+
+            $pembelian->save();
+
 
             return response()->json([
                 'status' => 'success',
@@ -654,7 +720,7 @@ class OrderController extends Controller
         $methodName = '';
         $methodType = '';
 
-        if ($paymentMethod['type'] === 'saldo') {
+        if ($paymentMethod['type'] === 'Saldo Akun') {
             $saldo = PayMethod::where('tipe', 'Saldo Akun')->first();
             $methodName = $saldo->nama;
             $methodType = $saldo->tipe;
@@ -722,7 +788,7 @@ class OrderController extends Controller
         if ($validator->fails()) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Validation failed',
+                'message' => 'Voucher validation failed',
                 'errors' => $validator->errors(),
             ], 422);
         }
@@ -775,6 +841,7 @@ class OrderController extends Controller
         $discount = min($discount, $amount);
 
         return  [
+            'id' => $voucher->id,
             'code' => $voucher->code,
             'discount_type' => $voucher->discount_type,
             'discount_value' => $voucher->discount_value,
@@ -784,8 +851,106 @@ class OrderController extends Controller
         ];
     }
 
+    public function reduceVoucherStock($code)
+    {
+        $voucher = Voucher::where('code', $code)->first();
+        $voucher->usage_count += 1;
+        $voucher->save();
+    }
+
     // validate flashsale
-    public function validateFlashsale(Request $request) {}
+    public function validateFlashsale($flashsale_item_id, $layanan_id, $quantity)
+    {
+        $flashsaleItem = FlashsaleItem::where('id', $flashsale_item_id)
+            ->whereHas('flashsaleEvent', function ($q) {
+                $q->where('status', 'active')
+                    ->where('event_start_date', '<=', now())
+                    ->where('event_end_date', '>=', now());
+            })
+            ->where('status', 'active')
+            ->where('layanan_id', $layanan_id)
+            ->first();
+
+        if (!$flashsaleItem) {
+            return [
+                'status' => 'error',
+                'message' => 'Flash sale item tidak ditemukan atau tidak aktif',
+            ];
+        }
+
+        // Cek stok tersedia
+        if ($flashsaleItem->stok_tersedia !== null) {
+            if ($flashsaleItem->stok_tersedia <= 0) {
+                return [
+                    'status' => 'error',
+                    'message' => 'Stok flash sale habis',
+                ];
+            }
+
+            if ($flashsaleItem->stok_tersedia < $quantity) {
+                return [
+                    'status' => 'error',
+                    'message' => 'Jumlah melebihi stok tersedia',
+                ];
+            }
+        }
+
+        // Cek batas pembelian user
+        if ($flashsaleItem->batas_user !== null) {
+            if (auth()->check()) {
+
+                $userTotalBought = Pembelian::where('user_id', auth()->id())
+                    ->where('flashsale_item_id', $flashsaleItem->id)
+                    ->whereIn('status', ['processing', 'completed'])
+                    ->count();
+
+                if (($userTotalBought + 1) > $flashsaleItem->batas_user) {
+                    return [
+                        'status' => 'error',
+                        'message' => 'Kamu telah mencapai batas pembelian flash sale untuk layanan ini',
+                    ];
+                }
+            } else {
+                $sessionKey = 'flashsale_limit_' . $flashsale_item_id;
+                $guestPurchaseCount = session()->get($sessionKey, 0);
+
+                if (($guestPurchaseCount + 1) > $flashsaleItem->batas_user) {
+                    return [
+                        'status' => 'error',
+                        'message' => 'Batas pembelian flash sale telah tercapai untuk pengguna ini.',
+                    ];
+                }
+
+                // Simpan kembali ke session
+                session()->put($sessionKey, $guestPurchaseCount + 1);
+            }
+        }
+
+        return [
+            'status' => 'success',
+            'data' => $flashsaleItem,
+        ];
+    }
+
+
+
+    public function reduceFlashsaleStock($flashsale_item_id, $quantity)
+    {
+        $flashsaleItem = FlashsaleItem::find($flashsale_item_id);
+
+        if (!$flashsaleItem) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Flash sale item not found',
+            ], 404);
+        }
+
+        if ($flashsaleItem->stok_tersedia != null && $flashsaleItem->stok_tersedia > 0) {
+            $flashsaleItem->stok_tersedia -= $quantity;
+        }
+        $flashsaleItem->stok_terjual += $quantity;
+        $flashsaleItem->save();
+    }
 
 
     /**

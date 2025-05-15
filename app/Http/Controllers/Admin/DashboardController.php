@@ -80,15 +80,13 @@ class DashboardController extends Controller
             $userGrowthPercent = $previousNewUsers > 0 ? round((($newUsers - $previousNewUsers) / $previousNewUsers) * 100, 1) : 0;
 
             // Revenue metrics
-            $currentRevenue = Pembayaran::join('pembelians', 'pembayarans.order_id', '=', 'pembelians.order_id')
-                ->whereBetween('pembelians.created_at', [$startDate, $endDate])
-                ->where('pembelians.status', 'completed')
-                ->sum('amount');
+            $currentRevenue = Pembelian::whereBetween('created_at', [$startDate, $endDate])
+                ->where('status', 'completed')
+                ->sum('total_price');
 
-            $previousRevenue = Pembayaran::join('pembelians', 'pembayarans.order_id', '=', 'pembelians.order_id')
-                ->whereBetween('pembelians.created_at', [$previousStartDate, $previousEndDate])
-                ->where('pembelians.status', 'completed')
-                ->sum('amount');
+            $previousRevenue = Pembelian::whereBetween('created_at', [$previousStartDate, $previousEndDate])
+                ->where('status', 'completed')
+                ->sum('total_price');
 
             $revenueGrowthPercent = $previousRevenue > 0 ? round((($currentRevenue - $previousRevenue) / $previousRevenue) * 100, 1) : 0;
 
@@ -111,9 +109,7 @@ class DashboardController extends Controller
             $productGrowthPercent = 0;
 
             // Get total revenue for all time
-            $currentRevenue = Pembayaran::join('pembelians', 'pembayarans.order_id', '=', 'pembelians.order_id')
-                ->where('pembelians.status', 'completed')
-                ->sum('amount');
+            $currentRevenue = Pembelian::where('status', 'completed')->sum('total_price');
 
             $currentOrders = Pembelian::count();
             $activeProducts = Produk::where('status', 'active')->count();
@@ -186,14 +182,14 @@ class DashboardController extends Controller
             $nextPoint = (clone $current)->add(1, $interval);
 
             // Get revenue and profit for this time period
-            $periodRevenue = Pembayaran::join('pembelians', 'pembayarans.order_id', '=', 'pembelians.order_id')
-                ->whereBetween('pembelians.created_at', [$current, $nextPoint])
-                ->where('pembelians.status', 'completed')
-                ->sum('amount');
+            $periodRevenue = Pembelian::whereBetween('created_at', [$current, $nextPoint])
+                ->where('status', 'completed')
+                ->sum('total_price');
 
             $periodProfit = Pembelian::whereBetween('created_at', [$current, $nextPoint])
                 ->where('status', 'completed')
                 ->sum('profit');
+
 
             $revenueData[] = $periodRevenue;
             $profitData[] = $periodProfit;
@@ -290,6 +286,7 @@ class DashboardController extends Controller
                 return $query->whereBetween('created_at', [$startDate, $endDate]);
             })
             ->latest()
+            ->where('status', 'completed')
             ->take(10)
             ->get()
             ->map(function ($transaction) {

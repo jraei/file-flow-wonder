@@ -1,7 +1,6 @@
-
 <script setup>
-import { ref, computed } from 'vue';
-import { router, usePage, Link } from '@inertiajs/vue3';
+import { ref } from "vue";
+import { router, usePage, Link } from "@inertiajs/vue3";
 import GuestLayout from "@/Layouts/GuestLayout.vue";
 import DashboardSidebar from "@/Components/Dashboard/Sidebar.vue";
 import TransactionTableFilters from "@/Components/Dashboard/TransactionTableFilters.vue";
@@ -15,12 +14,12 @@ const props = defineProps({
 
 // Local table filter state (to sync with backend queries)
 const filters = ref({
-    status: props.filters.status || '',
-    date_start: props.filters.date_start || '',
-    date_end: props.filters.date_end || '',
-    search: props.filters.search || '',
-    sort_by: props.filters.sort_by || 'created_at',
-    sort_order: props.filters.sort_order || 'desc',
+    status: props.filters.status || "",
+    date_start: props.filters.date_start || "",
+    date_end: props.filters.date_end || "",
+    search: props.filters.search || "",
+    sort_by: props.filters.sort_by || "created_at",
+    sort_order: props.filters.sort_order || "desc",
     page: 1,
     per_page: props.transactions.per_page || 10,
 });
@@ -53,38 +52,40 @@ function reloadTable() {
 // TABLE DEFINITION
 const columns = [
     { key: "order_id", label: "Invoice" },
-    { 
-        key: "layanan.nama_layanan", 
-        label: "Item", 
+    {
+        key: "layanan",
+        label: "Item",
         format: (val) => {
-            if (!val) return 'Unknown';
-            return val.length > 50 ? val.substring(0, 47) + '...' : val;
-        }
+            if (!val) return "Unknown";
+            return val.length > 50
+                ? val.nama_layanan.substring(0, 47) + "..."
+                : val.nama_layanan;
+        },
     },
-    { 
-        key: "input_details", 
-        label: "User Input", 
+    {
+        key: "input_details",
+        label: "User Input",
         format: (_, item) => {
             if (item.input_zone) {
-                return `${item.input_id} (Zone ${item.input_zone})`;
+                return `${item.input_id} (${item.input_zone})`;
             }
-            return item.input_id || 'N/A';
-        }
+            return item.input_id || "N/A";
+        },
     },
-    { 
-        key: "price", 
-        label: "Price", 
-        format: (val) => formatCurrency(val) 
+    {
+        key: "price",
+        label: "Price",
+        format: (val) => formatCurrency(val),
     },
-    { 
-        key: "created_at", 
-        label: "Date", 
-        format: (val) => formatDate(val) 
+    {
+        key: "created_at",
+        label: "Date",
+        format: (val) => formatDate(val),
     },
-    { 
-        key: "status", 
-        label: "Status", 
-        format: statusBadge 
+    {
+        key: "status",
+        label: "Status",
+        format: statusBadge,
     },
 ];
 
@@ -94,7 +95,7 @@ function statusBadge(status) {
         pending: "bg-yellow-500/60 text-yellow-900 shadow-glow-yellow",
         processing: "bg-blue-500/60 text-blue-100 shadow-glow-blue",
         failed: "bg-red-500/60 text-red-100 shadow-glow-red",
-        cancelled: "bg-gray-400/80 text-gray-900"
+        cancelled: "bg-gray-400/80 text-gray-900",
     };
     const label = {
         completed: "Berhasil",
@@ -117,15 +118,17 @@ function formatCurrency(amount) {
 }
 
 function formatDate(dateString) {
-    if (!dateString) return '';
+    if (!dateString) return "";
     const date = new Date(dateString);
-    return date.toLocaleDateString('id-ID', {
-        day: '2-digit',
-        month: '2-digit', 
-        year: 'numeric',
-        hour: '2-digit', 
-        minute: '2-digit'
-    }).replace(/\./g, ':');
+    return date
+        .toLocaleDateString("id-ID", {
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+        })
+        .replace(/\./g, ":");
 }
 </script>
 
@@ -134,8 +137,10 @@ function formatDate(dateString) {
         <div class="flex min-h-screen mx-auto bg-transparent max-w-7xl">
             <DashboardSidebar />
             <div class="flex-1 p-2 sm:p-6">
-                <h1 class="mb-6 text-2xl font-bold text-white">Riwayat Transaksi</h1>
-                
+                <h1 class="mb-6 text-2xl font-bold text-white">
+                    Riwayat Transaksi
+                </h1>
+
                 <!-- Transaction Filters -->
                 <TransactionTableFilters
                     :filters="filters"
@@ -144,7 +149,9 @@ function formatDate(dateString) {
                 />
 
                 <!-- Transaction History DataTable -->
-                <div class="relative overflow-hidden shadow-lg rounded-2xl animate-fade-in cosmic-table-gradient">
+                <div
+                    class="relative overflow-hidden shadow-lg rounded-2xl animate-fade-in cosmic-table-gradient"
+                >
                     <DataTable
                         :data="transactions.data"
                         :columns="columns"
@@ -182,18 +189,37 @@ function formatDate(dateString) {
                                 class="absolute top-0 left-0 w-full h-full pointer-events-none -z-1 opacity-10"
                             >
                                 <svg viewBox="0 0 100 1" class="w-full h-4">
-                                    <circle cx="10" cy="0.5" r="0.5" fill="#9b87f5" />
-                                    <circle cx="33" cy="0.7" r="0.3" fill="#33C3F0" />
-                                    <circle cx="82" cy="0.3" r="0.7" fill="#9b87f5" />
+                                    <circle
+                                        cx="10"
+                                        cy="0.5"
+                                        r="0.5"
+                                        fill="#9b87f5"
+                                    />
+                                    <circle
+                                        cx="33"
+                                        cy="0.7"
+                                        r="0.3"
+                                        fill="#33C3F0"
+                                    />
+                                    <circle
+                                        cx="82"
+                                        cy="0.3"
+                                        r="0.7"
+                                        fill="#9b87f5"
+                                    />
                                 </svg>
                             </div>
                         </template>
                         <template #cell(status)="{ item }">
-                            <div class="cosmic-badge" :class="`status-${item.status}`" v-html="statusBadge(item.status)"></div>
+                            <div
+                                class="cosmic-badge"
+                                :class="`status-${item.status}`"
+                                v-html="statusBadge(item.status)"
+                            ></div>
                         </template>
                         <template #cell(order_id)="{ item }">
                             <Link
-                                :href="route('invoice', item.order_id)"
+                                :href="route('order.invoice', item.order_id)"
                                 class="text-primary hover:underline"
                             >
                                 {{ item.order_id }}
@@ -203,32 +229,59 @@ function formatDate(dateString) {
                         <template #responsive-row="{ item }">
                             <div class="px-4 py-2 space-y-2">
                                 <div class="flex justify-between">
-                                    <span class="font-semibold text-gray-400">Invoice:</span>
-                                    <Link :href="route('invoice', item.order_id)" class="text-primary hover:underline">
+                                    <span class="font-semibold text-gray-400"
+                                        >Invoice:</span
+                                    >
+                                    <Link
+                                        :href="route('invoice', item.order_id)"
+                                        class="text-primary hover:underline"
+                                    >
                                         {{ item.order_id }}
                                     </Link>
                                 </div>
                                 <div class="flex justify-between">
-                                    <span class="font-semibold text-gray-400">Item:</span>
-                                    <span>{{ item.layanan?.nama_layanan || 'Unknown' }}</span>
+                                    <span class="font-semibold text-gray-400"
+                                        >Item:</span
+                                    >
+                                    <span>{{
+                                        item.layanan?.nama_layanan || "Unknown"
+                                    }}</span>
                                 </div>
                                 <div class="flex justify-between">
-                                    <span class="font-semibold text-gray-400">User Input:</span>
+                                    <span class="font-semibold text-gray-400"
+                                        >User Input:</span
+                                    >
                                     <span>
-                                        {{ item.input_zone ? `${item.input_id} (Zone ${item.input_zone})` : item.input_id }}
+                                        {{
+                                            item.input_zone
+                                                ? `${item.input_id} (${item.input_zone})`
+                                                : item.input_id
+                                        }}
                                     </span>
                                 </div>
                                 <div class="flex justify-between">
-                                    <span class="font-semibold text-gray-400">Price:</span>
-                                    <span>{{ formatCurrency(item.price) }}</span>
+                                    <span class="font-semibold text-gray-400"
+                                        >Price:</span
+                                    >
+                                    <span>{{
+                                        formatCurrency(item.price)
+                                    }}</span>
                                 </div>
                                 <div class="flex justify-between">
-                                    <span class="font-semibold text-gray-400">Date:</span>
-                                    <span>{{ formatDate(item.created_at) }}</span>
+                                    <span class="font-semibold text-gray-400"
+                                        >Date:</span
+                                    >
+                                    <span>{{
+                                        formatDate(item.created_at)
+                                    }}</span>
                                 </div>
                                 <div class="flex justify-between">
-                                    <span class="font-semibold text-gray-400">Status:</span>
-                                    <div v-html="statusBadge(item.status)"></div>
+                                    <span class="font-semibold text-gray-400"
+                                        >Status:</span
+                                    >
+                                    <div
+                                        v-html="statusBadge(item.status)"
+                                    ></div>
                                 </div>
                             </div>
                         </template>

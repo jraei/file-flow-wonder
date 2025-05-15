@@ -29,6 +29,8 @@ return new class extends Migration
             $table->enum('status', ['pending', 'processing', 'completed', 'failed', 'cancelled'])->default('pending');
             $table->string('phone')->nullable();
             $table->string('email')->nullable();
+            $table->foreignId('voucher_id')->nullable()->constrained('vouchers');
+            $table->foreignId('flashsale_item_id')->nullable()->constrained('flashsale_items');
             $table->json('callback_data')->nullable();
             $table->timestamps();
         });

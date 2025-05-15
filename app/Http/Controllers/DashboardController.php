@@ -206,7 +206,7 @@ class DashboardController extends Controller
     public function exportTransactions(Request $request)
     {
         $user = $request->user();
-        
+
         $transactions = Pembelian::with(['layanan', 'layanan.produk'])
             ->where('user_id', $user->id)
             ->when($request->input('status'), function ($query, $status) {
@@ -244,8 +244,8 @@ class DashboardController extends Controller
         ];
 
         $columns = ['Invoice', 'Item', 'User Input', 'Price', 'Date', 'Status'];
-        
-        $callback = function() use ($transactions, $columns) {
+
+        $callback = function () use ($transactions, $columns) {
             $file = fopen('php://output', 'w');
             fputcsv($file, $columns);
 
@@ -253,8 +253,8 @@ class DashboardController extends Controller
                 $row = [
                     $transaction->order_id,
                     $transaction->layanan->nama_layanan ?? 'Unknown Service',
-                    $transaction->input_zone ? 
-                        "{$transaction->input_id} (Zone {$transaction->input_zone})" : 
+                    $transaction->input_zone ?
+                        "{$transaction->input_id} (Zone {$transaction->input_zone})" :
                         $transaction->input_id,
                     'Rp ' . number_format($transaction->price, 0, ',', '.'),
                     $transaction->created_at->format('d-m-Y H:i'),
@@ -262,7 +262,7 @@ class DashboardController extends Controller
                 ];
                 fputcsv($file, $row);
             }
-            
+
             fclose($file);
         };
 

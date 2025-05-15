@@ -47,8 +47,7 @@ class CheckUsernameController extends Controller
 
             $response = $client->request('POST', '', [
                 'form_params' => $params,
-                'timeout' => 10, // Add timeout to prevent long requests
-                'connect_timeout' => 5 // Connection timeout
+
             ]);
 
             $responseData = json_decode($response->getBody()->getContents(), true);

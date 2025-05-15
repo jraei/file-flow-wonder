@@ -1,3 +1,114 @@
+<script setup>
+import { ref, computed, watch } from "vue";
+import { useToast } from "@/Composables/useToast";
+import axios from "axios";
+import { router } from "@inertiajs/vue3";
+
+const props = defineProps({
+    showModal: Boolean,
+    orderData: Object,
+});
+
+const emit = defineEmits(["close", "confirmed"]);
+
+const { toast } = useToast();
+const loading = ref(true);
+const error = ref(null);
+const orderSummary = ref(null);
+const processingOrder = ref(false);
+
+watch(
+    () => props.showModal,
+    (show) => {
+        if (show) {
+            error.value = null;
+            loading.value = true;
+            orderSummary.value = null;
+            validateOrder();
+        }
+    }
+);
+
+const validateOrder = async () => {
+    try {
+        console.log("Validating order:", props.orderData);
+
+        const response = await axios.post(
+            route("order.confirm"),
+            props.orderData
+        );
+
+        if (response.data.status === "success") {
+            // masukkan data username ke orderData jika username ada
+            if (response.data.orderSummary.nickname) {
+                props.orderData.nickname = response.data.orderSummary.nickname;
+            }
+            orderSummary.value = response.data.orderSummary;
+
+            // cek apakah nickname ada, jika tidak tampilkan error
+            if (
+                !orderSummary.value.nickname &&
+                orderSummary.value.validasi_id !== "tidak" &&
+                orderSummary.value.validasi_id !== null
+            ) {
+                error.value = "Account not found: ";
+                console.error("Account not found:", response.data);
+            }
+        } else {
+            error.value = response.data.message || "An unknown error occurred";
+        }
+    } catch (err) {
+        console.error("Order validation error:", err);
+        error.value = err.response?.data?.message || "Failed to validate order";
+    } finally {
+        loading.value = false;
+    }
+};
+
+const formatPrice = (price) => {
+    let priceRounded = Math.ceil(price);
+    return priceRounded.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+};
+
+const cancelOrder = () => {
+    emit("close");
+};
+
+const confirmOrder = async () => {
+    if (processingOrder.value) return;
+
+    processingOrder.value = true;
+    try {
+        const response = await axios.post(
+            route("order.process"),
+            props.orderData
+        );
+
+        if (response.data.status === "success") {
+            toast.success("Order processed successfully!");
+            emit("confirmed", response.data);
+
+            // Handle redirect if needed
+            if (response.data.redirect && response.data.order_id) {
+                router.visit(
+                    route("order.invoice", { order_id: response.data.order_id })
+                );
+                // window.location.href = response.data.payment_url;
+            }
+        } else {
+            toast.error(response.data.message || "An unknown error occurred");
+            console.log("Order status not success:", response.data);
+        }
+    } catch (err) {
+        console.error("Order processing error:", err.response.data.message);
+        toast.error(err.response?.data?.message || "Failed to process order");
+    } finally {
+        processingOrder.value = false;
+        emit("close");
+    }
+};
+</script>
+
 <template>
     <div>
         <div
@@ -395,115 +506,6 @@
         </div>
     </div>
 </template>
-
-<script setup>
-import { ref, computed, watch } from "vue";
-import { useToast } from "@/Composables/useToast";
-import axios from "axios";
-import { router } from "@inertiajs/vue3";
-
-const props = defineProps({
-    showModal: Boolean,
-    orderData: Object,
-});
-
-const emit = defineEmits(["close", "confirmed"]);
-
-const { toast } = useToast();
-const loading = ref(true);
-const error = ref(null);
-const orderSummary = ref(null);
-const processingOrder = ref(false);
-
-watch(
-    () => props.showModal,
-    (show) => {
-        if (show) {
-            error.value = null;
-            loading.value = true;
-            orderSummary.value = null;
-            validateOrder();
-        }
-    }
-);
-
-const validateOrder = async () => {
-    try {
-        console.log("Validating order:", props.orderData);
-
-        const response = await axios.post(
-            route("order.confirm"),
-            props.orderData
-        );
-
-        if (response.data.status === "success") {
-            // masukkan data username ke orderData jika username ada
-            if (response.data.orderSummary.nickname) {
-                props.orderData.nickname = response.data.orderSummary.nickname;
-            }
-            orderSummary.value = response.data.orderSummary;
-
-            // cek apakah nickname ada, jika tidak tampilkan error
-            if (
-                !orderSummary.value.nickname &&
-                orderSummary.value.validasi_id !== "tidak" &&
-                orderSummary.value.validasi_id !== null
-            ) {
-                error.value = "Account not found: ";
-                console.error("Account not found:", response.data);
-            }
-        } else {
-            error.value = response.data.message || "An unknown error occurred";
-        }
-    } catch (err) {
-        console.error("Order validation error:", err);
-        error.value = err.response?.data?.message || "Failed to validate order";
-    } finally {
-        loading.value = false;
-    }
-};
-
-const formatPrice = (price) => {
-    return price.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-};
-
-const cancelOrder = () => {
-    emit("close");
-};
-
-const confirmOrder = async () => {
-    if (processingOrder.value) return;
-
-    processingOrder.value = true;
-    try {
-        const response = await axios.post(
-            route("order.process"),
-            props.orderData
-        );
-
-        if (response.data.status === "success") {
-            toast.success("Order processed successfully!");
-            emit("confirmed", response.data);
-
-            // Handle redirect if needed
-            if (response.data.redirect && response.data.order_id) {
-                router.visit(
-                    route("order.invoice", { order_id: response.data.order_id })
-                );
-                // window.location.href = response.data.payment_url;
-            }
-        } else {
-            toast.error(response.data.message || "An unknown error occurred");
-        }
-    } catch (err) {
-        console.error("Order processing error:", err);
-        toast.error(err.response?.data?.message || "Failed to process order");
-    } finally {
-        processingOrder.value = false;
-        emit("close");
-    }
-};
-</script>
 
 <style scoped>
 .shadow-cosmic {

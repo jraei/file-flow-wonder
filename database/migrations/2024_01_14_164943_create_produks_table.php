@@ -17,6 +17,7 @@ return new class extends Migration
             $table->string('developer')->nullable();
             $table->string('reference')->comment('3rd party code')->nullable();
             $table->foreignId('kategori_id')->constrained('kategoris');
+            $table->integer('moogold_order_category')->nullable();
             $table->string('slug')->unique()->nullable();
             $table->foreignId('provider_id')->constrained('providers');
             $table->string('validasi_id')->default('tidak');

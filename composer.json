@@ -17,7 +17,8 @@
         "medboubazine/moogold": "^1.0",
         "nurfaizfy/digiflazz-php-library": "^1.0",
         "tightenco/ziggy": "^2.0",
-        "zerosdev/tripay-sdk-php": "^1.0"
+        "zerosdev/tripay-sdk-php": "^1.0",
+        "xendit/xendit-php": "6.3.0"
     },
     "require-dev": {
         "fakerphp/faker": "^1.9.1",

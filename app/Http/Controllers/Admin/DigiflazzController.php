@@ -49,14 +49,19 @@ class DigiflazzController extends Controller
         try {
             $params = [
                 'buyer_sku_code' => $data['kode_layanan'],
-                'customer_no' => $data['customer_phone'],
-                'ref_id' => $data['ref_id']
+                'customer_no' => $data['target'],
+                'ref_id' => $data['ref_id'],
+                'testing' => $data['testing'] ?? false
             ];
             $result = Transaction::createTransaction($params);
 
             return $result;
         } catch (ApiException $e) {
-            return back()->with('status', ['type' => 'error', 'action' => 'Request Error', 'text' => $e->getMessage()]);
+            logger()->error("Failed to create transaction: " . $e->getMessage());
+            return collect([
+                'status' => false,
+                'message' => $e->getMessage()
+            ]);
         }
     }
 
@@ -72,7 +77,7 @@ class DigiflazzController extends Controller
             foreach ($res as $data) {
                 $data = collect($data);
                 $produk = collect($produk);
-                if (Str::upper($data['reference']) == Str::upper($produk['reference'])) {
+                if (Str::upper($data['brand']) == Str::upper($produk['reference'])) {
 
                     $layananExist = Layanan::where('kode_layanan', $data['buyer_sku_code'])->first();
                     $params = [
@@ -120,9 +125,9 @@ class DigiflazzController extends Controller
 
         foreach ($res as $item) {
             if ($item->category === 'Games') {
-                $arrGame[] = $item->reference;
+                $arrGame[] = $item->brand;
             } elseif ($item->category === 'Pulsa') {
-                $arrPulsa[] = $item->reference;
+                $arrPulsa[] = $item->brand;
             }
         }
 

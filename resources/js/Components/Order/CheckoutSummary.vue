@@ -214,17 +214,18 @@ const props = defineProps({
 const emit = defineEmits(["checkout", "openModal"]);
 const { toast } = useToast();
 
-// Computed values
 const basePrice = computed(() => {
     if (!props.selectedService) return 0;
+    let value =
+        props.selectedService.flashSaleItem.harga_flashsale ??
+        props.selectedService.harga_jual;
+    return Math.ceil(value);
+});
 
-    if (props.selectedService.flashSaleItem?.is_active) {
-        return (
-            props.selectedService.flashSaleItem.harga_flashsale * props.quantity
-        );
-    }
-
-    const value = props.selectedService.harga_jual * props.quantity;
+// Computed values
+const price = computed(() => {
+    if (!props.selectedService) return 0;
+    let value = basePrice.value * props.quantity;
     return Math.ceil(value);
 });
 
@@ -238,7 +239,7 @@ const voucherDiscount = computed(() => {
         discount = props.voucher.discount_value;
     } else {
         // Percentage discount
-        discount = (basePrice.value * props.voucher.discount_value) / 100;
+        discount = (price.value * props.voucher.discount_value) / 100;
 
         // Apply max discount cap if exists
         if (
@@ -250,14 +251,14 @@ const voucherDiscount = computed(() => {
     }
 
     // Don't allow discount to exceed the base price
-    return Math.min(discount, basePrice.value);
+    return Math.min(discount, price.value);
 });
 
 const totalPrice = computed(() => {
     if (!props.selectedService) return 0;
 
     // Start with base price
-    let total = basePrice.value;
+    let total = price.value;
 
     // Subtract voucher discount if applicable
     if (props.voucher) {

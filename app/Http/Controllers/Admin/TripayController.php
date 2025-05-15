@@ -80,25 +80,38 @@ class TripayController extends Controller
 
     public function createTransaction(array $data)
     {
-        $client = new Client($this->config);
-        $transaction = new Transaction($client);
+        try {
 
-        $result = $transaction->addOrderItem(
-            $data['item'],
-            $data['price'],
-            $data['quantity']
-        )
-            ->create([
-                'method' => $data['method'],
-                'merchant_ref' => $data['merchant_ref'],
-                'customer_name' => $data['customer_name'],
-                'customer_email' => $data['customer_email'],
-                'customer_phone' => $data['customer_phone'],
-                'expired_time' => Helper::makeTimestamp('1 DAY')
+            $client = new Client($this->config);
+            $transaction = new Transaction($client);
+
+            $result = $transaction->addOrderItem(
+                $data['item'],
+                $data['price'],
+                $data['quantity']
+            )
+                ->create([
+                    'method' => $data['method'],
+                    'merchant_ref' => $data['merchant_ref'],
+                    'customer_name' => $data['customer_name'],
+                    'customer_email' => $data['customer_email'],
+                    'customer_phone' => $data['customer_phone'],
+                    'expired_time' => Helper::makeTimestamp('2 SECOND')
+                ]);
+
+            $response = json_decode($result->getBody()->getContents(), true);
+
+            return collect([
+                'status' => true,
+                'data' => $response
             ]);
-
-        $response = json_decode($result->getBody()->getContents(), true);
-        return $response;
+        } catch (\Exception $e) {
+            logger()->error("Failed to create transaction: " . $e->getMessage());
+            return collect([
+                'status' => false,
+                'data' => $e->getMessage()
+            ]);
+        }
     }
 
 

@@ -5,8 +5,9 @@ import CosmicCard from "@/Components/Order/CosmicCard.vue";
 import { usePage } from "@inertiajs/vue3";
 
 const props = defineProps({
-    staticMethods: Object,
+    // staticMethods: Object,
     dynamicMethods: Object,
+    saldoMethod: Object,
     selectedService: Object,
     selectedPayment: [Object, String, Number, null],
     basePrice: {
@@ -24,11 +25,16 @@ const { toast } = useToast();
 let isToastActive = false;
 const page = usePage();
 
-const basePrice = computed(() => {
+const price = computed(() => {
     if (!props.selectedService) return 0;
     const value = props.selectedService.harga_jual * props.quantity;
     return Math.ceil(value);
 });
+console.log("base price", props.basePrice);
+
+console.log(price.value);
+
+const userBalance = computed(() => page.props.auth?.user?.saldo ?? 0);
 
 // Calculate voucher discount
 const voucherDiscount = computed(() => {
@@ -42,7 +48,7 @@ const voucherDiscount = computed(() => {
     }
     // Percentage discount
     else {
-        discount = (basePrice.value * props.voucher.discount_value) / 100;
+        discount = (price.value * props.voucher.discount_value) / 100;
 
         // Apply max discount cap if exists
         if (
@@ -54,7 +60,7 @@ const voucherDiscount = computed(() => {
     }
 
     // Don't allow discount to exceed the base price
-    return Math.min(discount, basePrice.value);
+    return Math.min(discount, price.value);
 });
 
 const emit = defineEmits(["update:selectedPayment", "update:fee"]);
@@ -66,18 +72,14 @@ function calculateTotal(
     fee_percent = 0,
     feeType = "none"
 ) {
-    let total = price;
+    let total = price - voucherDiscount.value;
 
     if (feeType === "fixed") {
-        total = total + fee_fixed - voucherDiscount.value;
+        total = total + fee_fixed;
     } else if (feeType === "percent") {
-        total = total + price * (fee_percent / 100) - voucherDiscount.value;
+        total = total + total * (fee_percent / 100);
     } else if (feeType === "mixed") {
-        total =
-            total +
-            fee_fixed +
-            price * (fee_percent / 100) -
-            voucherDiscount.value;
+        total = total + fee_fixed + total * (fee_percent / 100);
     }
 
     return Math.ceil(total); // bulatkan hasil akhir ke angka terdekat
@@ -86,74 +88,36 @@ function calculateTotal(
 // UI state
 const expandedGroups = ref([]);
 
-function selectStatic(type) {
+function selectDynamic(group, method) {
     const user = page.props.auth?.user;
-    const methodId = props.staticMethods[type]?.id;
 
-    // check min and max amount for qris
-    if (
-        type == "qris" &&
-        props.staticMethods[type]?.min_amount >
-            basePrice.value - voucherDiscount.value
-    ) {
-        toast.error(
-            `Minimal pembelian ${props.staticMethods[type]?.min_amount} untuk metode pembayaran ini`
-        );
-        return;
-    } else if (
-        type == "qris" &&
-        props.staticMethods[type]?.max_amount <
-            basePrice.value - voucherDiscount.value
-    ) {
-        toast.error(
-            `Maksimal pembelian ${props.staticMethods[type]?.max_amount} untuk metode pembayaran ini`
-        );
-        return;
-    }
-
-    if (type == "saldo" && !user) {
+    if (group === "Saldo Akun" && !user) {
         if (!isToastActive) {
             isToastActive = true;
             toast.error("Login terlebih dahulu untuk menggunakan saldo!");
-
-            // Reset setelah 2 detik
-            setTimeout(() => {
-                isToastActive = false;
-            }, 5000);
+            setTimeout(() => (isToastActive = false), 5000);
         }
         return;
     }
-    emit("update:selectedPayment", { type, channel: null });
-    emit("update:fee", {
-        fee_fixed: props.staticMethods[type]?.fee_fixed ?? 0,
-        fee_percent: props.staticMethods[type]?.fee_percent ?? 0,
-        feeType: props.staticMethods[type]?.fee_type ?? "fixed",
-        methodLabel: type === "saldo" ? "NaelCoin" : "QRIS (Semua Pembayaran)",
-        image: props.staticMethods[type]?.gambar,
-    });
-}
 
-function selectDynamic(group, method) {
     // check min and max amount
-    if (
-        method.min_amount &&
-        method.min_amount > basePrice.value - voucherDiscount.value
-    ) {
-        toast.error(
-            `Minimal pembelian ${method.min_amount} untuk metode pembayaran ini`
-        );
+    const finalPrice = price.value - voucherDiscount.value;
+
+    if (method.min_amount && method.min_amount > finalPrice) {
+        toast.error(`Minimal pembelian ${method.min_amount} untuk metode ini`);
         return;
-    } else if (
-        method.max_amount &&
-        method.max_amount < basePrice.value - voucherDiscount.value
-    ) {
-        toast.error(
-            `Maksimal pembelian ${method.max_amount} untuk metode pembayaran ini`
-        );
+    }
+    if (method.max_amount && method.max_amount < finalPrice) {
+        toast.error(`Maksimal pembelian ${method.max_amount} untuk metode ini`);
         return;
     }
 
-    emit("update:selectedPayment", { type: group, channel: method.id });
+    emit("update:selectedPayment", {
+        type: group,
+        channel: method.id,
+        provider: method.payment_provider?.id,
+    });
+
     emit("update:fee", {
         fee_fixed: method.fee_fixed,
         fee_percent: method.fee_percent,
@@ -180,35 +144,44 @@ const isSelected = (payment) => {
 <template>
     <CosmicCard :title="'Select Payment'" :step-number="4">
         <div class="space-y-4">
-            <!-- Static Methods -->
             <div class="relative flex flex-col gap-4">
                 <!-- NaelCoin -->
                 <button
-                    @click="selectStatic('saldo')"
+                    @click="selectDynamic('Saldo Akun', props.saldoMethod)"
                     type="button"
                     class="relative flex items-center flex-1 min-w-0 p-4 pr-8 transition-all border-2 rounded-lg outline-none group bg-secondary/20 shadow-glow-primary"
                     :class="[
-                        isSelected({ type: 'saldo' })
+                        isSelected({
+                            group: 'Saldo Akun',
+                            id: props.saldoMethod?.id,
+                        })
                             ? 'border-primary animate-pulse ring-2 ring-primary/40'
                             : 'border-secondary/60',
                     ]"
                 >
                     <img
-                        :src="'/storage/' + staticMethods.saldo?.gambar"
+                        :src="props.saldoMethod?.gambar"
                         alt="NaelCoin"
                         class="w-10 h-10 mr-4 rounded"
                     />
+
                     <span class="flex-1 font-bold text-left text-primary_text"
-                        >NaelCoin</span
-                    >
+                        >{{ props.saldoMethod?.nama }}
+                        <span
+                            class="block text-xs font-normal text-secondary/80"
+                            v-if="userBalance"
+                        >
+                            Saldo: Rp {{ userBalance.toLocaleString() }}
+                        </span>
+                    </span>
                     <span class="ml-auto text-lg font-bold text-secondary">
                         Rp
                         {{
                             calculateTotal(
-                                basePrice,
-                                staticMethods.saldo?.fee_fixed ?? 0,
-                                staticMethods.saldo?.fee_percent ?? 0,
-                                staticMethods.saldo?.fee_type ?? "fixed"
+                                price,
+                                props.saldoMethod?.fee_fixed ?? 0,
+                                props.saldoMethod?.fee_percent ?? 0,
+                                props.saldoMethod?.fee_type ?? "fixed"
                             ).toLocaleString()
                         }}
                     </span>
@@ -221,24 +194,29 @@ const isSelected = (payment) => {
                                 transparent 0 8px
                             );
                         "
-                        v-if="true"
                     >
                         BEST PRICE
                     </span>
                 </button>
+
                 <!-- QRIS -->
+                <!-- Dynamic QRIS -->
                 <button
-                    @click="selectStatic('qris')"
+                    v-if="dynamicMethods.QRIS && dynamicMethods.QRIS.length"
+                    @click="selectDynamic('QRIS', dynamicMethods.QRIS[0])"
                     type="button"
                     class="relative flex items-center flex-1 min-w-0 p-4 pr-8 transition-all border-2 rounded-lg outline-none group bg-secondary/20 shadow-glow-secondary"
                     :class="[
-                        isSelected({ type: 'qris' })
+                        isSelected({
+                            group: 'QRIS',
+                            id: dynamicMethods.QRIS[0].id,
+                        })
                             ? 'border-secondary animate-pulse ring-2 ring-secondary/40'
                             : 'border-secondary/60',
                     ]"
                 >
                     <img
-                        :src="'/storage/' + staticMethods.qris?.gambar"
+                        :src="dynamicMethods.QRIS[0].gambar"
                         alt="QRIS"
                         class="w-10 h-10 mr-4 rounded"
                     />
@@ -248,13 +226,14 @@ const isSelected = (payment) => {
                         <span class="">QRIS (Semua Pembayaran)</span>
                         <span class="text-xs font-light">
                             {{
-                                staticMethods.qris?.fee_type === "percent"
-                                    ? `Fee: ${staticMethods.qris?.fee_percent}%`
-                                    : staticMethods.qris?.fee_type === "fixed"
-                                    ? `Fee: Rp ${staticMethods.qris?.fee_fixed?.toLocaleString()}`
+                                dynamicMethods.QRIS[0].fee_type === "percent"
+                                    ? `Fee: ${dynamicMethods.QRIS[0].fee_percent}%`
+                                    : dynamicMethods.QRIS[0].fee_type ===
+                                      "fixed"
+                                    ? `Fee: Rp ${dynamicMethods.QRIS[0].fee_fixed?.toLocaleString()}`
                                     : `Fee: ${
-                                          staticMethods.qris?.fee_percent
-                                      }% + Rp ${staticMethods.qris?.fee_fixed?.toLocaleString()}`
+                                          dynamicMethods.QRIS[0].fee_percent
+                                      }% + Rp ${dynamicMethods.QRIS[0].fee_fixed?.toLocaleString()}`
                             }}
                         </span>
                     </div>
@@ -262,10 +241,10 @@ const isSelected = (payment) => {
                         Rp
                         {{
                             calculateTotal(
-                                basePrice,
-                                staticMethods.qris?.fee_fixed ?? 0,
-                                staticMethods.qris?.fee_percent ?? 0,
-                                staticMethods.qris?.fee_type ?? "fixed"
+                                price,
+                                dynamicMethods.QRIS[0].fee_fixed,
+                                dynamicMethods.QRIS[0].fee_percent,
+                                dynamicMethods.QRIS[0].fee_type
                             ).toLocaleString()
                         }}
                     </span>
@@ -276,7 +255,10 @@ const isSelected = (payment) => {
             <div v-for="(group, tipe) in dynamicMethods" :key="tipe">
                 <div
                     class="mb-3 overflow-hidden border rounded-lg border-secondary/60"
-                    v-if="group[0].tipe !== 'Saldo Akun'"
+                    v-if="
+                        group[0].tipe !== 'Saldo Akun' &&
+                        group[0].tipe !== 'QRIS'
+                    "
                 >
                     <!-- Collapsed Header -->
                     <button
@@ -303,24 +285,7 @@ const isSelected = (payment) => {
                                 />
                             </div>
                         </div>
-                        <!-- <div
-                            class="flex items-center space-x-1 text-sm font-bold text-secondary"
-                        >
-                            <span>
-                                {{
-                                    Math.min(
-                                        ...group.map((m) =>
-                                            calculateTotal(
-                                                basePrice,
-                                                m.fee,
-                                                m.fee_type
-                                            )
-                                        )
-                                    ).toLocaleString()
-                                }}
-                            </span>
-                            <span class="text-xs">min</span>
-                        </div> -->
+
                         <span
                             class="absolute -translate-y-1/2 right-4 top-1/2 text-secondary"
                         >
@@ -406,7 +371,7 @@ const isSelected = (payment) => {
                                         Total: Rp
                                         {{
                                             calculateTotal(
-                                                basePrice,
+                                                price,
                                                 meth.fee_fixed,
                                                 meth.fee_percent,
                                                 meth.fee_type

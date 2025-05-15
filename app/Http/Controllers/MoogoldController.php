@@ -80,13 +80,14 @@ class MoogoldController extends Controller
             $categoryCode = $category->kode_kategori;
             $categoryName = $category->kategori_name;
             $categoryId = $category->id;
+            $moogoldOrderCategory = $category->kode_kategori == 50 ? 1 : 2;
             try {
                 // Call API Moogold per kategori
                 $response = $products->list($categoryCode);
+
                 // // Tambahkan hasil ke array utama
                 if (!empty($response)) {
                     foreach ($response as $product) {
-                        // dd($product->getName());
                         $productName = $product->getName();
 
                         // Skip produk yang mengandung karakter Chinese/non-Latin
@@ -103,6 +104,7 @@ class MoogoldController extends Controller
                                 "nama" => $product->getName(),
                                 "developer" => 'Unknown Developer',
                                 "kategori_id" => $categoryId,
+                                "moogold_order_category" => $moogoldOrderCategory,
                                 "slug" => Str::slug($product->getName(), '-') ?? null,
                                 "status" => 'active',
                             ]

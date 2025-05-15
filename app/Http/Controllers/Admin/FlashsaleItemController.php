@@ -159,12 +159,12 @@ class FlashsaleItemController extends Controller
         $layanan = Layanan::findOrFail($flashsaleItem->layanan_id);
 
         // Validate flash sale price must be lower than original price
-        $hargaBeli = $layanan->harga_beli_idr ?: $layanan->harga_beli;
-        if ($validatedData['harga_flashsale'] >= $hargaBeli) {
-            throw ValidationException::withMessages([
-                'harga_flashsale' => ['Flash sale price must be lower than the original price.'],
-            ]);
-        }
+        // $hargaBeli = $layanan->harga_beli_idr ?: $layanan->harga_beli;
+        // if ($validatedData['harga_flashsale'] >= $hargaBeli) {
+        //     throw ValidationException::withMessages([
+        //         'harga_flashsale' => ['Flash sale price must be lower than the original price.'],
+        //     ]);
+        // }
 
         $flashsaleItem->update($validatedData);
 
