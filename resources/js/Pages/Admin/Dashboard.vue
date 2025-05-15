@@ -1,577 +1,1120 @@
-
 <script setup>
 import AdminLayout from "@/Layouts/AdminLayout.vue";
-import { ref, onMounted, computed } from "vue";
-import axios from "axios";
-import { BarChart, LineChart, PieChart } from "vue-chartjs";
-import { Chart as ChartJS, Title, Tooltip, Legend, BarElement, CategoryScale, LinearScale, PointElement, LineElement, ArcElement } from 'chart.js';
+import { ref, onMounted, computed, nextTick } from "vue";
+import { Head } from "@inertiajs/vue3";
+import { router } from "@inertiajs/vue3";
+import Chart from "chart.js/auto";
 
-// Register Chart.js components
-ChartJS.register(Title, Tooltip, Legend, BarElement, CategoryScale, LinearScale, PointElement, LineElement, ArcElement);
-
-// Props to receive data from controller
 const props = defineProps({
-  metrics: Object,
-  charts: Object,
-  tables: Object,
-  period: {
-    type: String,
-    default: 'day'
-  }
+    metrics: Object,
+    charts: Object,
+    tables: Object,
+    period: String,
 });
 
-// State
-const isLoading = ref(false);
-const selectedPeriod = ref(props.period || 'day');
-const startDate = ref('');
-const endDate = ref('');
-const selectedProduct = ref('');
-const productsList = ref([]);
-const productServices = ref([]);
-const flashsaleEvents = ref([]);
-const voucherData = ref([]);
+// Charts references
+const revenueChartCanvas = ref(null);
+const statusChartCanvas = ref(null);
+let revenueChart = null;
+let statusChart = null;
 
-// Computed properties for charts
-const revenueChartData = computed(() => {
-  if (!props.charts?.revenue_trend) {
-    return {
-      labels: [],
-      datasets: [
-        {
-          label: 'Revenue',
-          data: [],
-          borderColor: 'rgba(155, 135, 245, 1)',
-          backgroundColor: 'rgba(155, 135, 245, 0.05)',
-          fill: true,
-        },
-        {
-          label: 'Profit',
-          data: [],
-          borderColor: 'rgba(51, 195, 240, 1)',
-          backgroundColor: 'rgba(51, 195, 240, 0.05)',
-          fill: true,
-        }
-      ]
-    };
-  }
-  
-  return {
-    labels: props.charts.revenue_trend.labels,
-    datasets: props.charts.revenue_trend.datasets
-  };
+// Period selector
+const periodOptions = [
+    { label: "Day", value: "day" },
+    { label: "Week", value: "week" },
+    { label: "Month", value: "month" },
+    { label: "Year", value: "year" },
+    { label: "Lifetime", value: "lifetime" },
+];
+
+// Custom date range
+const showCustomDatePicker = ref(false);
+const customDateRange = ref({
+    start: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+        .toISOString()
+        .split("T")[0],
+    end: new Date().toISOString().split("T")[0],
 });
 
-const orderStatusChartData = computed(() => {
-  if (!props.charts?.order_stats?.statusDistribution) {
-    return {
-      labels: [],
-      datasets: [
-        {
-          data: [],
-          backgroundColor: [],
-          borderWidth: 1,
-        }
-      ]
-    };
-  }
-  
-  return {
-    labels: props.charts.order_stats.statusDistribution.labels,
-    datasets: props.charts.order_stats.statusDistribution.datasets
-  };
-});
+// Product and service data
+const selectedProductId = ref("");
+const products = ref([]);
+const topServices = ref([]);
+const loading = ref(false);
 
-// Methods
-const updatePeriod = async () => {
-  if (selectedPeriod.value !== 'custom') {
-    isLoading.value = true;
-    try {
-      const response = await axios.get('/admin/dashboard', {
-        params: {
-          period: selectedPeriod.value
-        }
-      });
-      // Process and update the data
-      Object.assign(props.metrics, response.data.metrics);
-      Object.assign(props.charts, response.data.charts);
-      Object.assign(props.tables, response.data.tables);
-    } catch (error) {
-      console.error('Error fetching dashboard data:', error);
-    } finally {
-      isLoading.value = false;
-    }
-  }
+// Flashsales and vouchers
+const flashsales = ref([]);
+const vouchers = ref([]);
+
+// Format helpers
+const formatCurrency = (value) => {
+    return new Intl.NumberFormat("id-ID", {
+        style: "currency",
+        currency: "IDR",
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0,
+    }).format(value);
 };
 
-const updateCustomRange = async () => {
-  if (!startDate.value || !endDate.value) return;
-  
-  isLoading.value = true;
-  try {
-    const response = await axios.get('/admin/dashboard', {
-      params: {
-        period: 'custom',
-        start_date: startDate.value,
-        end_date: endDate.value
-      }
+const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString("id-ID", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
     });
-    // Process and update the data
-    Object.assign(props.metrics, response.data.metrics);
-    Object.assign(props.charts, response.data.charts);
-    Object.assign(props.tables, response.data.tables);
-  } catch (error) {
-    console.error('Error fetching dashboard data:', error);
-  } finally {
-    isLoading.value = false;
-  }
 };
 
-const loadProductsList = async () => {
-  try {
-    const response = await axios.get('/admin/dashboard/products');
-    productsList.value = response.data;
-  } catch (error) {
-    console.error('Error fetching products list:', error);
-  }
+// Change period and reload dashboard
+const changePeriod = (newPeriod) => {
+    router.visit(route("admin.dashboard", { period: newPeriod }), {
+        preserveState: true,
+        preserveScroll: true,
+    });
 };
 
+// Apply custom date range
+const applyCustomRange = () => {
+    router.visit(
+        route("admin.dashboard", {
+            period: "custom",
+            start_date: customDateRange.value.start,
+            end_date: customDateRange.value.end,
+        }),
+        {
+            preserveState: true,
+            preserveScroll: true,
+        }
+    );
+    showCustomDatePicker.value = false;
+};
+
+// Load product-specific services
 const loadProductServices = async () => {
-  if (!selectedProduct.value && selectedProduct.value !== 0) return;
-  
-  try {
-    const response = await axios.get(`/admin/dashboard/product-services/${selectedProduct.value}`, {
-      params: { period: selectedPeriod.value }
-    });
-    productServices.value = response.data.services;
-  } catch (error) {
-    console.error('Error fetching product services:', error);
-  }
+    loading.value = true;
+    try {
+        const response = await fetch(
+            `/admin/dashboard/product-services${
+                selectedProductId.value ? `/${selectedProductId.value}` : ""
+            }?period=${props.period}`
+        );
+
+        const data = await response.json();
+        topServices.value = data.services;
+    } catch (error) {
+        console.error("Failed to load services:", error);
+        topServices.value = [];
+    } finally {
+        loading.value = false;
+    }
 };
 
-const loadFlashsaleEvents = async () => {
-  try {
-    const response = await axios.get('/admin/dashboard/flashsales', {
-      params: { period: selectedPeriod.value }
-    });
-    flashsaleEvents.value = response.data;
-  } catch (error) {
-    console.error('Error fetching flashsale events:', error);
-  }
+// Calculate flashsale progress percentage
+const calculateFlashsaleProgress = (event) => {
+    const now = new Date();
+    const start = new Date(event.event_start_date);
+    const end = new Date(event.event_end_date);
+
+    const totalDuration = end - start;
+    const elapsed = now - start;
+
+    if (elapsed < 0) return 0;
+    if (elapsed > totalDuration) return 100;
+
+    return (elapsed / totalDuration) * 100;
 };
 
-const loadVoucherData = async () => {
-  try {
-    const response = await axios.get('/admin/dashboard/vouchers', {
-      params: { period: selectedPeriod.value }
+// Export functions
+const exportTransactions = () => {
+    window.location.href = route("admin.dashboard.export", {
+        type: "transactions",
+        period: props.period,
     });
-    voucherData.value = response.data;
-  } catch (error) {
-    console.error('Error fetching voucher data:', error);
-  }
 };
 
-// Initialize
+const exportTopProducts = () => {
+    window.location.href = route("admin.dashboard.export", {
+        type: "products",
+        period: props.period,
+    });
+};
+
+// Initialize UI components
+const setupCharts = () => {
+    // Revenue trend chart
+    if (revenueChartCanvas.value && props.charts?.revenue_trend) {
+        const ctx = revenueChartCanvas.value.getContext("2d");
+
+        // Destroy previous chart instance if it exists
+        if (revenueChart) revenueChart.destroy();
+
+        revenueChart = new Chart(ctx, {
+            type: "line",
+            data: {
+                labels: props.charts.revenue_trend.labels,
+                datasets: props.charts.revenue_trend.datasets,
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: "top",
+                        labels: {
+                            color: "rgba(255, 255, 255, 0.7)",
+                            font: {
+                                family: "'Inter', sans-serif",
+                            },
+                        },
+                    },
+                    tooltip: {
+                        backgroundColor: "rgba(0, 0, 0, 0.7)",
+                        titleColor: "#fff",
+                        bodyColor: "#fff",
+                        borderColor: "rgba(255, 255, 255, 0.2)",
+                        borderWidth: 1,
+                    },
+                },
+                scales: {
+                    x: {
+                        grid: {
+                            color: "rgba(255, 255, 255, 0.05)",
+                        },
+                        ticks: {
+                            color: "rgba(255, 255, 255, 0.5)",
+                            font: {
+                                family: "'Inter', sans-serif",
+                            },
+                        },
+                    },
+                    y: {
+                        grid: {
+                            color: "rgba(255, 255, 255, 0.05)",
+                        },
+                        ticks: {
+                            color: "rgba(255, 255, 255, 0.5)",
+                            font: {
+                                family: "'Inter', sans-serif",
+                            },
+                            callback: function (value) {
+                                return new Intl.NumberFormat("id-ID", {
+                                    style: "currency",
+                                    currency: "IDR",
+                                    notation: "compact",
+                                    compactDisplay: "short",
+                                }).format(value);
+                            },
+                        },
+                    },
+                },
+                interaction: {
+                    mode: "index",
+                    intersect: false,
+                },
+                animation: {
+                    duration: 1000,
+                },
+                elements: {
+                    point: {
+                        radius: 3,
+                        hoverRadius: 5,
+                    },
+                    line: {
+                        tension: 0.2,
+                    },
+                },
+            },
+        });
+    }
+
+    // Order status chart
+    if (statusChartCanvas.value && props.charts?.order_stats) {
+        const ctx = statusChartCanvas.value.getContext("2d");
+
+        // Destroy previous chart instance if it exists
+        if (statusChart) statusChart.destroy();
+
+        statusChart = new Chart(ctx, {
+            type: "doughnut",
+            data: props.charts.order_stats.statusDistribution,
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: "right",
+                        labels: {
+                            color: "rgba(255, 255, 255, 0.7)",
+                            font: {
+                                family: "'Inter', sans-serif",
+                            },
+                        },
+                    },
+                    tooltip: {
+                        backgroundColor: "rgba(0, 0, 0, 0.7)",
+                        titleColor: "#fff",
+                        bodyColor: "#fff",
+                    },
+                },
+                cutout: "65%",
+                animation: {
+                    animateRotate: true,
+                    animateScale: true,
+                },
+            },
+        });
+    }
+};
+
+// Load initial data
+const loadDashboardData = async () => {
+    // Load products for the dropdown
+    try {
+        const response = await fetch("/admin/dashboard/products");
+        const data = await response.json();
+        products.value = data;
+    } catch (error) {
+        console.error("Failed to load products:", error);
+        products.value = [];
+    }
+
+    // Load flashsale events
+    try {
+        const response = await fetch(
+            `/admin/dashboard/flashsales?period=${props.period}`
+        );
+        const data = await response.json();
+        flashsales.value = data;
+    } catch (error) {
+        console.error("Failed to load flashsales:", error);
+        flashsales.value = [];
+    }
+
+    // Load vouchers
+    try {
+        const response = await fetch(
+            `/admin/dashboard/vouchers?period=${props.period}`
+        );
+        const data = await response.json();
+        vouchers.value = data;
+    } catch (error) {
+        console.error("Failed to load vouchers:", error);
+        vouchers.value = [];
+    }
+
+    // Load initial services data (all products)
+    loadProductServices();
+};
+
+// Set up everything when component mounts
 onMounted(() => {
-  loadProductsList();
-  loadFlashsaleEvents();
-  loadVoucherData();
+    nextTick(() => {
+        setupCharts();
+        loadDashboardData();
+    });
 });
 </script>
 
 <template>
-  <AdminLayout>
-    <div class="px-4 py-6 space-y-8">
-      <!-- Dashboard Header -->
-      <div class="flex flex-wrap items-center justify-between gap-4">
-        <h1 class="text-2xl font-bold text-white">Dashboard Analytics</h1>
-        
-        <!-- Period Filter -->
-        <div class="flex flex-wrap gap-4">
-          <div class="flex items-center gap-2">
-            <label for="period" class="text-sm font-medium text-white/80">Period:</label>
-            <select 
-              id="period" 
-              v-model="selectedPeriod"
-              @change="updatePeriod"
-              class="bg-secondary/10 border border-secondary/20 text-white text-sm rounded-lg focus:ring-primary/50 focus:border-primary/50 p-2"
+    <Head title="Admin Dashboard" />
+    <AdminLayout title="Dashboard">
+        <div class="w-full space-y-8">
+            <!-- Period Selector -->
+            <div
+                class="flex flex-wrap items-center gap-3 p-4 mb-6 rounded-lg shadow-md bg-secondary/10"
             >
-              <option value="day">Today</option>
-              <option value="week">This Week</option>
-              <option value="month">This Month</option>
-              <option value="year">This Year</option>
-              <option value="lifetime">Lifetime</option>
-              <option value="custom">Custom Range</option>
-            </select>
-          </div>
-          
-          <!-- Date Range Picker (shown only when custom is selected) -->
-          <div v-if="selectedPeriod === 'custom'" class="flex items-center gap-2">
-            <input 
-              type="date" 
-              v-model="startDate" 
-              class="bg-secondary/10 border border-secondary/20 text-white text-sm rounded-lg focus:ring-primary/50 focus:border-primary/50 p-2"
-            />
-            <span class="text-white">to</span>
-            <input 
-              type="date" 
-              v-model="endDate" 
-              class="bg-secondary/10 border border-secondary/20 text-white text-sm rounded-lg focus:ring-primary/50 focus:border-primary/50 p-2"
-            />
-            <button 
-              @click="updateCustomRange"
-              class="bg-primary/80 hover:bg-primary text-white px-4 py-2 rounded-lg shadow-sm"
-            >
-              Apply
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Key Metrics Cards -->
-      <div class="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-4">
-        <!-- Users Card -->
-        <div class="p-6 rounded-lg shadow-lg bg-secondary/10">
-          <div class="flex items-center justify-between mb-4">
-            <h3 class="text-lg font-medium text-white">Users</h3>
-            <div class="p-3 rounded-full bg-primary/20">
-              <svg class="w-5 h-5 text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-              </svg>
-            </div>
-          </div>
-          <div class="mb-1 text-3xl font-bold text-white">
-            {{ isLoading ? '...' : (metrics?.users?.total?.toLocaleString() || '0') }}
-          </div>
-          <div class="flex items-center text-sm">
-            <span :class="[(metrics?.users?.isPositive ? 'text-green-400' : 'text-red-400')]">
-              <span v-if="isLoading">Loading...</span>
-              <span v-else>
-                {{ metrics?.users?.isPositive ? '↑' : '↓' }} {{ Math.abs(metrics?.users?.growthPercent || 0).toFixed(1) }}%
-              </span>
-            </span>
-            <span class="ml-1 text-white/70">from previous period</span>
-          </div>
-        </div>
-
-        <!-- Revenue Card -->
-        <div class="p-6 rounded-lg shadow-lg bg-secondary/10">
-          <div class="flex items-center justify-between mb-4">
-            <h3 class="text-lg font-medium text-white">Revenue</h3>
-            <div class="p-3 rounded-full bg-primary/20">
-              <svg class="w-5 h-5 text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-          </div>
-          <div class="mb-1 text-3xl font-bold text-white">
-            {{ isLoading ? '...' : `Rp ${(metrics?.revenue?.total || 0).toLocaleString()}` }}
-          </div>
-          <div class="flex items-center text-sm">
-            <span :class="[(metrics?.revenue?.isPositive ? 'text-green-400' : 'text-red-400')]">
-              <span v-if="isLoading">Loading...</span>
-              <span v-else>
-                {{ metrics?.revenue?.isPositive ? '↑' : '↓' }} {{ Math.abs(metrics?.revenue?.growthPercent || 0).toFixed(1) }}%
-              </span>
-            </span>
-            <span class="ml-1 text-white/70">from previous period</span>
-          </div>
-        </div>
-
-        <!-- Orders Card -->
-        <div class="p-6 rounded-lg shadow-lg bg-secondary/10">
-          <div class="flex items-center justify-between mb-4">
-            <h3 class="text-lg font-medium text-white">Orders</h3>
-            <div class="p-3 rounded-full bg-primary/20">
-              <svg class="w-5 h-5 text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
-              </svg>
-            </div>
-          </div>
-          <div class="mb-1 text-3xl font-bold text-white">
-            {{ isLoading ? '...' : (metrics?.orders?.total?.toLocaleString() || '0') }}
-          </div>
-          <div class="flex items-center text-sm">
-            <span :class="[(metrics?.orders?.isPositive ? 'text-green-400' : 'text-red-400')]">
-              <span v-if="isLoading">Loading...</span>
-              <span v-else>
-                {{ metrics?.orders?.isPositive ? '↑' : '↓' }} {{ Math.abs(metrics?.orders?.growthPercent || 0).toFixed(1) }}%
-              </span>
-            </span>
-            <span class="ml-1 text-white/70">from previous period</span>
-          </div>
-        </div>
-
-        <!-- Products Card -->
-        <div class="p-6 rounded-lg shadow-lg bg-secondary/10">
-          <div class="flex items-center justify-between mb-4">
-            <h3 class="text-lg font-medium text-white">Products</h3>
-            <div class="p-3 rounded-full bg-primary/20">
-              <svg class="w-5 h-5 text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-              </svg>
-            </div>
-          </div>
-          <div class="mb-1 text-3xl font-bold text-white">
-            {{ isLoading ? '...' : (metrics?.products?.total?.toLocaleString() || '0') }}
-          </div>
-          <div class="flex items-center text-sm">
-            <span :class="[(metrics?.products?.isPositive ? 'text-green-400' : 'text-red-400')]">
-              <span v-if="isLoading">Loading...</span>
-              <span v-else>
-                {{ metrics?.products?.isPositive ? '↑' : '↓' }} {{ Math.abs(metrics?.products?.growthPercent || 0).toFixed(1) }}%
-              </span>
-            </span>
-            <span class="ml-1 text-white/70">from previous period</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Charts Row -->
-      <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <!-- Revenue Trend Chart (takes 2/3 width on large screens) -->
-        <div class="p-6 rounded-lg shadow-lg lg:col-span-2 bg-secondary/10">
-          <h3 class="mb-4 text-lg font-medium text-white">Revenue & Profit Trend</h3>
-          <div v-if="isLoading" class="flex items-center justify-center h-80">
-            <div class="text-secondary">Loading chart data...</div>
-          </div>
-          <div v-else class="h-80">
-            <LineChart 
-              v-if="charts?.revenue_trend"
-              :data="revenueChartData"
-              :options="{
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                  y: {
-                    beginAtZero: true,
-                    grid: {
-                      color: 'rgba(255, 255, 255, 0.1)'
-                    },
-                    ticks: {
-                      color: 'rgba(255, 255, 255, 0.7)'
-                    }
-                  },
-                  x: {
-                    grid: {
-                      color: 'rgba(255, 255, 255, 0.1)'
-                    },
-                    ticks: {
-                      color: 'rgba(255, 255, 255, 0.7)'
-                    }
-                  }
-                },
-                plugins: {
-                  legend: {
-                    labels: {
-                      color: 'rgba(255, 255, 255, 0.7)'
-                    }
-                  }
-                }
-              }"
-            />
-          </div>
-        </div>
-
-        <!-- Order Status Distribution (takes 1/3 width on large screens) -->
-        <div class="p-6 rounded-lg shadow-lg bg-secondary/10">
-          <h3 class="mb-4 text-lg font-medium text-white">Order Status</h3>
-          <div v-if="isLoading" class="flex items-center justify-center h-80">
-            <div class="text-secondary">Loading chart data...</div>
-          </div>
-          <div v-else class="h-80">
-            <PieChart
-              v-if="charts?.order_stats?.statusDistribution"
-              :data="orderStatusChartData"
-              :options="{
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                  legend: {
-                    position: 'bottom',
-                    labels: {
-                      color: 'rgba(255, 255, 255, 0.7)'
-                    }
-                  }
-                }
-              }"
-            />
-          </div>
-        </div>
-      </div>
-
-      <!-- Top Products Section -->
-      <div class="p-6 rounded-lg shadow-lg bg-secondary/10">
-        <div class="flex items-center justify-between mb-4">
-          <h3 class="text-lg font-medium text-white">Top Products</h3>
-          <select 
-            v-model="selectedProduct"
-            @change="loadProductServices"
-            class="bg-secondary/20 border border-secondary/30 text-white text-sm rounded-lg focus:ring-primary/50 focus:border-primary/50 p-2"
-          >
-            <option value="">All Products</option>
-            <option v-for="product in productsList" :key="product.id" :value="product.id">
-              {{ product.name }}
-            </option>
-          </select>
-        </div>
-
-        <div class="overflow-x-auto">
-          <table class="w-full text-sm text-left text-white">
-            <thead class="text-xs uppercase bg-secondary/20">
-              <tr>
-                <th scope="col" class="px-6 py-3">Product</th>
-                <th scope="col" class="px-6 py-3">Sales</th>
-                <th scope="col" class="px-6 py-3">Revenue</th>
-                <th scope="col" class="px-6 py-3">Profit</th>
-                <th scope="col" class="px-6 py-3">Growth</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-if="isLoading">
-                <td colspan="5" class="px-6 py-4 text-center">Loading top products...</td>
-              </tr>
-              <tr v-else-if="!tables?.top_products?.length">
-                <td colspan="5" class="px-6 py-4 text-center">No products data available</td>
-              </tr>
-              <tr v-for="product in tables?.top_products" :key="product.id" class="bg-secondary/5 border-b border-white/5 hover:bg-secondary/10">
-                <td class="px-6 py-4 font-medium whitespace-nowrap">{{ product.name }}</td>
-                <td class="px-6 py-4">{{ product.sales?.toLocaleString() || '0' }}</td>
-                <td class="px-6 py-4">Rp {{ product.revenue?.toLocaleString() || '0' }}</td>
-                <td class="px-6 py-4">Rp {{ product.profit?.toLocaleString() || '0' }}</td>
-                <td class="px-6 py-4">
-                  <span :class="[product.growth >= 0 ? 'text-green-400' : 'text-red-400']">
-                    {{ product.growth >= 0 ? '↑' : '↓' }} {{ Math.abs(product.growth || 0).toFixed(1) }}%
-                  </span>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <!-- Recent Transactions Section -->
-      <div class="p-6 rounded-lg shadow-lg bg-secondary/10">
-        <h3 class="mb-4 text-lg font-medium text-white">Recent Transactions</h3>
-        <div class="overflow-x-auto">
-          <table class="w-full text-sm text-left text-white">
-            <thead class="text-xs uppercase bg-secondary/20">
-              <tr>
-                <th scope="col" class="px-6 py-3">ID</th>
-                <th scope="col" class="px-6 py-3">User</th>
-                <th scope="col" class="px-6 py-3">Game</th>
-                <th scope="col" class="px-6 py-3">Amount</th>
-                <th scope="col" class="px-6 py-3">Profit</th>
-                <th scope="col" class="px-6 py-3">Status</th>
-                <th scope="col" class="px-6 py-3">Date</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-if="isLoading">
-                <td colspan="7" class="px-6 py-4 text-center">Loading transactions...</td>
-              </tr>
-              <tr v-else-if="!tables?.recent_transactions?.length">
-                <td colspan="7" class="px-6 py-4 text-center">No recent transactions</td>
-              </tr>
-              <tr v-for="tx in tables?.recent_transactions" :key="tx.id" class="bg-secondary/5 border-b border-white/5 hover:bg-secondary/10">
-                <td class="px-6 py-4">{{ tx.id }}</td>
-                <td class="px-6 py-4">{{ tx.user }}</td>
-                <td class="px-6 py-4">{{ tx.game }}</td>
-                <td class="px-6 py-4">Rp {{ tx.amount?.toLocaleString() || '0' }}</td>
-                <td class="px-6 py-4">Rp {{ tx.profit?.toLocaleString() || '0' }}</td>
-                <td class="px-6 py-4">
-                  <span :class="{
-                    'px-2 py-1 text-xs rounded-full': true,
-                    'bg-green-700/30 text-green-200': tx.status === 'completed',
-                    'bg-yellow-600/30 text-yellow-200': tx.status === 'pending',
-                    'bg-blue-600/30 text-blue-200': tx.status === 'processing',
-                    'bg-red-700/30 text-red-200': tx.status === 'failed' || tx.status === 'cancelled',
-                  }">
-                    {{ tx.status }}
-                  </span>
-                </td>
-                <td class="px-6 py-4">{{ tx.date }}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <!-- Flashsale Events Section -->
-      <div class="p-6 rounded-lg shadow-lg bg-secondary/10">
-        <h3 class="mb-4 text-lg font-medium text-white">Flashsale Events</h3>
-        <div v-if="flashsaleEvents.length === 0" class="text-center py-8 text-white/70">
-          No active flashsale events found
-        </div>
-        <div v-else class="grid grid-cols-1 gap-6 md:grid-cols-2">
-          <div v-for="event in flashsaleEvents" :key="event.id" class="p-4 rounded-lg bg-secondary/5">
-            <div class="flex items-center justify-between mb-2">
-              <h4 class="font-semibold text-white">{{ event.event_name }}</h4>
-              <span :class="{
-                'px-2 py-1 text-xs rounded-full': true,
-                'bg-green-700/30 text-green-200': new Date(event.event_end_date) > new Date(),
-                'bg-red-700/30 text-red-200': new Date(event.event_end_date) <= new Date(),
-              }">
-                {{ new Date(event.event_end_date) > new Date() ? 'Active' : 'Ended' }}
-              </span>
-            </div>
-            <div class="grid grid-cols-2 gap-2 mb-2 text-sm">
-              <div class="text-white/70">Start:</div>
-              <div class="text-white">{{ new Date(event.event_start_date).toLocaleString() }}</div>
-              <div class="text-white/70">End:</div>
-              <div class="text-white">{{ new Date(event.event_end_date).toLocaleString() }}</div>
-              <div class="text-white/70">Revenue:</div>
-              <div class="text-white">Rp {{ event.total_revenue?.toLocaleString() || '0' }}</div>
-            </div>
-            <div class="mt-4">
-              <h5 class="text-sm font-medium text-secondary mb-2">Top Items:</h5>
-              <div v-if="event.top_items?.length" class="space-y-2">
-                <div v-for="item in event.top_items" :key="item.id" class="flex justify-between text-sm">
-                  <span class="text-white">{{ item.service_name }}</span>
-                  <span class="text-white/70">{{ item.sold }} sold</span>
+                <h2 class="mr-4 text-xl font-bold text-white">
+                    Dashboard Analytics
+                </h2>
+                <div class="flex gap-2">
+                    <button
+                        v-for="option in periodOptions"
+                        :key="option.value"
+                        @click="changePeriod(option.value)"
+                        :class="[
+                            'px-3 py-1 rounded-lg transition-all duration-300 text-sm',
+                            period === option.value
+                                ? 'bg-primary text-white shadow-lg'
+                                : 'bg-secondary/20 text-white/70 hover:bg-secondary/30',
+                        ]"
+                    >
+                        {{ option.label }}
+                    </button>
                 </div>
-              </div>
-              <div v-else class="text-sm text-white/70">No items sold yet</div>
-            </div>
-          </div>
-        </div>
-      </div>
 
-      <!-- Voucher Utilization Section -->
-      <div class="p-6 rounded-lg shadow-lg bg-secondary/10">
-        <h3 class="mb-4 text-lg font-medium text-white">Voucher Utilization</h3>
-        <div class="overflow-x-auto">
-          <table class="w-full text-sm text-left text-white">
-            <thead class="text-xs uppercase bg-secondary/20">
-              <tr>
-                <th scope="col" class="px-6 py-3">Code</th>
-                <th scope="col" class="px-6 py-3">Value</th>
-                <th scope="col" class="px-6 py-3">Usage</th>
-                <th scope="col" class="px-6 py-3">Limit</th>
-                <th scope="col" class="px-6 py-3">Utilization</th>
-                <th scope="col" class="px-6 py-3">Expires</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-if="voucherData.length === 0">
-                <td colspan="6" class="px-6 py-4 text-center">No active vouchers found</td>
-              </tr>
-              <tr v-for="voucher in voucherData" :key="voucher.id" class="bg-secondary/5 border-b border-white/5 hover:bg-secondary/10">
-                <td class="px-6 py-4 font-medium">{{ voucher.kode_voucher }}</td>
-                <td class="px-6 py-4">{{ voucher.nilai }}</td>
-                <td class="px-6 py-4">{{ voucher.usage_count }}</td>
-                <td class="px-6 py-4">{{ voucher.usage_limit || 'Unlimited' }}</td>
-                <td class="px-6 py-4">
-                  <div class="w-full bg-secondary/20 rounded-full h-2.5 dark:bg-gray-700">
-                    <div class="bg-secondary h-2.5 rounded-full" :style="`width: ${voucher.utilization_pct}%`"></div>
-                  </div>
-                  <span class="text-xs mt-1 inline-block">{{ voucher.utilization_pct.toFixed(0) }}%</span>
-                </td>
-                <td class="px-6 py-4">{{ voucher.expired_at ? new Date(voucher.expired_at).toLocaleDateString() : 'Never' }}</td>
-              </tr>
-            </tbody>
-          </table>
+                <!-- Custom Date Range -->
+                <div class="flex items-center gap-2 ml-auto">
+                    <button
+                        @click="showCustomDatePicker = !showCustomDatePicker"
+                        class="flex items-center gap-1 px-3 py-1 text-sm transition-all duration-300 rounded-lg bg-secondary/20 text-white/70 hover:bg-secondary/30"
+                    >
+                        <span>Custom Range</span>
+                        <svg
+                            width="16"
+                            height="16"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                        >
+                            <path d="M3 6h18M3 12h18M3 18h18"></path>
+                        </svg>
+                    </button>
+                    <div
+                        class="px-3 py-1 text-sm text-white rounded-lg bg-primary/20"
+                        v-if="period === 'custom'"
+                    >
+                        {{ formatDate(customDateRange.start) }} -
+                        {{ formatDate(customDateRange.end) }}
+                    </div>
+                </div>
+
+                <!-- Custom Date Picker (conditionally rendered) -->
+                <div
+                    v-if="showCustomDatePicker"
+                    class="flex flex-wrap items-end w-full gap-4 p-4 mt-4 rounded-lg bg-secondary/20"
+                >
+                    <div>
+                        <label class="block mb-1 text-sm text-white/70"
+                            >Start Date</label
+                        >
+                        <input
+                            type="date"
+                            v-model="customDateRange.start"
+                            class="px-3 py-2 text-white border rounded bg-secondary/30 border-secondary/40"
+                        />
+                    </div>
+                    <div>
+                        <label class="block mb-1 text-sm text-white/70"
+                            >End Date</label
+                        >
+                        <input
+                            type="date"
+                            v-model="customDateRange.end"
+                            class="px-3 py-2 text-white border rounded bg-secondary/30 border-secondary/40"
+                        />
+                    </div>
+                    <button
+                        @click="applyCustomRange"
+                        class="px-4 py-2 text-white transition-all duration-300 rounded-lg bg-primary hover:bg-primary/90"
+                    >
+                        Apply
+                    </button>
+                    <button
+                        @click="showCustomDatePicker = false"
+                        class="px-4 py-2 transition-all duration-300 rounded-lg bg-secondary/40 text-white/80 hover:bg-secondary/60"
+                    >
+                        Cancel
+                    </button>
+                </div>
+            </div>
+
+            <!-- Key Metrics Cards -->
+            <div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+                <!-- Users Metric -->
+                <div class="p-5 rounded-lg shadow-md bg-primary/20">
+                    <div class="flex justify-between mb-2">
+                        <h3 class="text-primary/80">Users</h3>
+                        <div
+                            class="text-xs px-2 py-0.5 rounded-full"
+                            :class="{
+                                'bg-green-500/20 text-green-300':
+                                    metrics.users.isPositive,
+                                'bg-red-500/20 text-red-300':
+                                    !metrics.users.isPositive,
+                            }"
+                        >
+                            {{ metrics.users.growthPercent > 0 ? "+" : ""
+                            }}{{ metrics.users.growthPercent }}%
+                        </div>
+                    </div>
+                    <div class="mb-1 text-2xl font-bold text-white">
+                        {{ metrics.users.total }}
+                    </div>
+                    <div class="text-sm text-white/60">
+                        {{ metrics.users.newUsers }} new in this period
+                    </div>
+                </div>
+
+                <!-- Revenue Metric -->
+                <div class="p-5 rounded-lg shadow-md bg-secondary/10">
+                    <div class="flex justify-between mb-2">
+                        <h3 class="text-secondary">Revenue</h3>
+                        <div
+                            class="text-xs px-2 py-0.5 rounded-full"
+                            :class="{
+                                'bg-green-500/20 text-green-300':
+                                    metrics.revenue.isPositive,
+                                'bg-red-500/20 text-red-300':
+                                    !metrics.revenue.isPositive,
+                            }"
+                        >
+                            {{ metrics.revenue.growthPercent > 0 ? "+" : ""
+                            }}{{ metrics.revenue.growthPercent }}%
+                        </div>
+                    </div>
+                    <div class="mb-1 text-2xl font-bold text-white">
+                        {{ formatCurrency(metrics.revenue.total) }}
+                    </div>
+                    <div class="text-sm text-white/60">
+                        {{ metrics.revenue.currency }}
+                    </div>
+                </div>
+
+                <!-- Orders Metric -->
+                <div class="p-5 rounded-lg shadow-md bg-primary/20">
+                    <div class="flex justify-between mb-2">
+                        <h3 class="text-primary/80">Orders</h3>
+                        <div
+                            class="text-xs px-2 py-0.5 rounded-full"
+                            :class="{
+                                'bg-green-500/20 text-green-300':
+                                    metrics.orders.isPositive,
+                                'bg-red-500/20 text-red-300':
+                                    !metrics.orders.isPositive,
+                            }"
+                        >
+                            {{ metrics.orders.growthPercent > 0 ? "+" : ""
+                            }}{{ metrics.orders.growthPercent }}%
+                        </div>
+                    </div>
+                    <div class="mb-1 text-2xl font-bold text-white">
+                        {{ metrics.orders.total }}
+                    </div>
+                    <div class="text-sm text-white/60">Total transactions</div>
+                </div>
+
+                <!-- Products Metric -->
+                <div class="p-5 rounded-lg shadow-md bg-secondary/10">
+                    <div class="flex justify-between mb-2">
+                        <h3 class="text-secondary">Products</h3>
+                        <div
+                            class="text-xs px-2 py-0.5 rounded-full"
+                            :class="{
+                                'bg-green-500/20 text-green-300':
+                                    metrics.products.isPositive,
+                                'bg-red-500/20 text-red-300':
+                                    !metrics.products.isPositive,
+                            }"
+                        >
+                            {{ metrics.products.growthPercent > 0 ? "+" : ""
+                            }}{{ metrics.products.growthPercent }}%
+                        </div>
+                    </div>
+                    <div class="mb-1 text-2xl font-bold text-white">
+                        {{ metrics.products.total }}
+                    </div>
+                    <div class="text-sm text-white/60">Active products</div>
+                </div>
+            </div>
+
+            <!-- Charts Row -->
+            <div class="grid grid-cols-1 gap-6 lg:grid-cols-5">
+                <!-- Revenue Chart -->
+                <div
+                    class="p-5 rounded-lg shadow-md lg:col-span-3 bg-secondary/10"
+                >
+                    <h3 class="mb-4 text-xl font-semibold text-white">
+                        Revenue Trend
+                    </h3>
+                    <div class="h-80">
+                        <canvas ref="revenueChartCanvas"></canvas>
+                    </div>
+                </div>
+
+                <!-- Status Distribution -->
+                <div
+                    class="p-5 rounded-lg shadow-md lg:col-span-2 bg-primary/20"
+                >
+                    <h3 class="mb-4 text-xl font-semibold text-white">
+                        Order Status
+                    </h3>
+                    <div class="h-80">
+                        <canvas ref="statusChartCanvas"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Product Selector and Service Analytics -->
+            <div class="p-5 rounded-lg shadow-md bg-secondary/10">
+                <div class="flex flex-wrap items-center justify-between mb-4">
+                    <h3 class="text-xl font-semibold text-white">
+                        Product-Specific Analytics
+                    </h3>
+
+                    <div class="relative flex items-center space-x-2">
+                        <select
+                            v-model="selectedProductId"
+                            @change="loadProductServices"
+                            class="px-4 py-2 text-white border rounded-lg appearance-none bg-primary/20 border-primary/30"
+                        >
+                            <option value="">All Products</option>
+                            <option
+                                v-for="product in products"
+                                :key="product.id"
+                                :value="product.id"
+                            >
+                                {{ product.name }}
+                            </option>
+                        </select>
+
+                        <!-- Cosmic selector icon -->
+                        <div class="absolute pointer-events-none right-3">
+                            <div
+                                class="w-4 h-4 rounded-full bg-primary/50 animate-pulse"
+                            ></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Service Data Table -->
+                <div class="overflow-x-auto">
+                    <table class="w-full text-white/90">
+                        <thead>
+                            <tr class="text-left">
+                                <th class="px-4 py-2 border-b border-white/10">
+                                    Service Name
+                                </th>
+                                <th
+                                    class="px-4 py-2 text-right border-b border-white/10"
+                                >
+                                    Orders
+                                </th>
+                                <th
+                                    class="px-4 py-2 text-right border-b border-white/10"
+                                >
+                                    Revenue
+                                </th>
+                                <th
+                                    class="px-4 py-2 text-right border-b border-white/10"
+                                >
+                                    Profit
+                                </th>
+                                <th
+                                    class="px-4 py-2 text-right border-b border-white/10"
+                                >
+                                    Growth
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <template v-if="loading">
+                                <tr v-for="i in 5" :key="i">
+                                    <td class="px-4 py-3">
+                                        <div
+                                            class="h-4 rounded bg-white/10 animate-pulse"
+                                        ></div>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <div
+                                            class="h-4 rounded bg-white/10 animate-pulse"
+                                        ></div>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <div
+                                            class="h-4 rounded bg-white/10 animate-pulse"
+                                        ></div>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <div
+                                            class="h-4 rounded bg-white/10 animate-pulse"
+                                        ></div>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <div
+                                            class="h-4 rounded bg-white/10 animate-pulse"
+                                        ></div>
+                                    </td>
+                                </tr>
+                            </template>
+                            <template v-else>
+                                <tr
+                                    v-for="service in topServices"
+                                    :key="service.id"
+                                    class="hover:bg-white/5"
+                                >
+                                    <td class="px-4 py-3">
+                                        {{ service.name }}
+                                    </td>
+                                    <td class="px-4 py-3 text-right">
+                                        {{ service.sales }}
+                                    </td>
+                                    <td class="px-4 py-3 text-right">
+                                        {{ formatCurrency(service.revenue) }}
+                                    </td>
+                                    <td class="px-4 py-3 text-right">
+                                        {{ formatCurrency(service.profit) }}
+                                    </td>
+                                    <td class="px-4 py-3 text-right">
+                                        <div
+                                            class="flex items-center justify-end"
+                                        >
+                                            <span
+                                                :class="
+                                                    service.growth > 0
+                                                        ? 'text-green-400'
+                                                        : 'text-red-400'
+                                                "
+                                            >
+                                                {{
+                                                    service.growth > 0
+                                                        ? "+"
+                                                        : ""
+                                                }}{{ service.growth }}%
+                                            </span>
+                                            <svg
+                                                v-if="service.growth > 0"
+                                                width="16"
+                                                height="16"
+                                                viewBox="0 0 24 24"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                stroke-width="2"
+                                                class="ml-1 text-green-400"
+                                            >
+                                                <path d="M7 17l5-5 5 5"></path>
+                                                <path d="M7 7h10"></path>
+                                            </svg>
+                                            <svg
+                                                v-else
+                                                width="16"
+                                                height="16"
+                                                viewBox="0 0 24 24"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                stroke-width="2"
+                                                class="ml-1 text-red-400"
+                                            >
+                                                <path d="M7 7l5 5 5-5"></path>
+                                                <path d="M7 17h10"></path>
+                                            </svg>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Flashsale Event Monitoring -->
+            <div class="p-5 rounded-lg shadow-md bg-primary/20">
+                <h3 class="mb-4 text-xl font-semibold text-white">
+                    Flashsale Events
+                </h3>
+
+                <div
+                    v-if="flashsales.length === 0"
+                    class="py-6 text-center text-white/60"
+                >
+                    No active flashsale events
+                </div>
+
+                <div v-else class="space-y-4">
+                    <div
+                        v-for="event in flashsales"
+                        :key="event.id"
+                        class="p-4 rounded-lg bg-secondary/10"
+                    >
+                        <div
+                            class="flex flex-wrap items-center justify-between mb-3"
+                        >
+                            <div>
+                                <h4 class="text-lg font-medium text-secondary">
+                                    {{ event.event_name }}
+                                </h4>
+                                <p class="text-sm text-white/60">
+                                    {{ formatDate(event.event_start_date) }} -
+                                    {{ formatDate(event.event_end_date) }}
+                                </p>
+                            </div>
+                            <div class="text-right">
+                                <div class="font-medium text-white">
+                                    {{ event.item.length }} Items
+                                </div>
+                                <div class="text-sm text-white/60">
+                                    {{ formatCurrency(event.total_revenue) }}
+                                    Revenue
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Progress bar showing time remaining -->
+                        <div
+                            class="relative h-2 mb-3 overflow-hidden rounded-full bg-secondary/10"
+                        >
+                            <div
+                                class="absolute top-0 left-0 h-full bg-gradient-to-r from-primary to-secondary"
+                                :style="{
+                                    width: `${calculateFlashsaleProgress(
+                                        event
+                                    )}%`,
+                                }"
+                            ></div>
+                        </div>
+
+                        <!-- Top selling items -->
+                        <div
+                            v-if="event.item && event.item.length > 0"
+                            class="mt-3"
+                        >
+                            <h5 class="mb-2 text-sm font-medium text-white/70">
+                                Top Performing Items:
+                            </h5>
+                            <div class="flex flex-wrap gap-2">
+                                <div
+                                    v-for="item in event.top_items.slice(0, 3)"
+                                    :key="item.id"
+                                    class="px-3 py-1 text-xs rounded-full bg-white/10 text-white/90"
+                                >
+                                    {{ item.service_name }} ({{ item.sold }})
+                                </div>
+                                <div
+                                    v-if="event.top_items.length > 3"
+                                    class="px-3 py-1 text-xs rounded-full bg-white/10 text-white/90"
+                                >
+                                    +{{ event.top_items.length - 3 }} more
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Voucher Utilization Dashboard -->
+            <div class="p-5 rounded-lg shadow-md bg-secondary/10">
+                <h3 class="mb-4 text-xl font-semibold text-white">
+                    Voucher Utilization
+                </h3>
+
+                <div
+                    v-if="vouchers.length === 0"
+                    class="py-6 text-center text-white/60"
+                >
+                    No active vouchers
+                </div>
+
+                <div
+                    v-else
+                    class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3"
+                >
+                    <div
+                        v-for="voucher in vouchers"
+                        :key="voucher.id"
+                        class="p-4 rounded-lg bg-primary/20"
+                    >
+                        <div class="flex justify-between mb-2">
+                            <h4 class="font-medium text-white">
+                                {{ voucher.kode_voucher }}
+                            </h4>
+                            <span
+                                class="text-sm"
+                                :class="{
+                                    'text-green-300':
+                                        voucher.utilization_pct < 50,
+                                    'text-yellow-300':
+                                        voucher.utilization_pct >= 50 &&
+                                        voucher.utilization_pct < 80,
+                                    'text-red-300':
+                                        voucher.utilization_pct >= 80,
+                                }"
+                            >
+                                {{ Math.round(voucher.utilization_pct) }}% Used
+                            </span>
+                        </div>
+
+                        <div class="mb-3 text-sm text-white/60">
+                            {{ voucher.usage_count }}/{{ voucher.usage_limit }}
+                            Redeemed
+                        </div>
+
+                        <!-- Usage progress bar with cosmic styling -->
+                        <div
+                            class="relative h-3 overflow-hidden rounded-full bg-white/10"
+                        >
+                            <div
+                                class="absolute top-0 left-0 h-full"
+                                :class="{
+                                    'bg-gradient-to-r from-green-500 to-green-300':
+                                        voucher.utilization_pct < 50,
+                                    'bg-gradient-to-r from-yellow-500 to-yellow-300':
+                                        voucher.utilization_pct >= 50 &&
+                                        voucher.utilization_pct < 80,
+                                    'bg-gradient-to-r from-red-500 to-red-300':
+                                        voucher.utilization_pct >= 80,
+                                }"
+                                :style="{
+                                    width: `${voucher.utilization_pct}%`,
+                                }"
+                            ></div>
+
+                            <!-- Cosmic particles effect -->
+                            <div
+                                class="absolute top-0 left-0 w-full h-full opacity-50"
+                            >
+                                <div
+                                    v-for="i in 5"
+                                    :key="i"
+                                    class="absolute w-1 h-1 rounded-full bg-white/80 animate-pulse"
+                                    :style="{
+                                        left: `${Math.random() * 100}%`,
+                                        top: `${Math.random() * 100}%`,
+                                        animationDelay: `${i * 0.1}s`,
+                                    }"
+                                ></div>
+                            </div>
+                        </div>
+
+                        <div
+                            class="flex justify-between mt-3 text-xs text-white/60"
+                        >
+                            <span
+                                >Valid until:
+                                {{ formatDate(voucher.expired_at) }}</span
+                            >
+                            <span>{{ voucher.nilai }}% OFF</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Table Section -->
+            <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                <!-- Recent Transactions -->
+                <div class="p-5 rounded-lg shadow-md bg-secondary/10">
+                    <div class="flex justify-between mb-4">
+                        <h3 class="text-xl font-semibold text-white">
+                            Recent Transactions
+                        </h3>
+                        <button
+                            @click="exportTransactions"
+                            class="flex items-center gap-1 px-3 py-1 text-white transition-colors rounded-lg bg-primary/20 hover:bg-primary/30"
+                        >
+                            <svg
+                                width="16"
+                                height="16"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                            >
+                                <path
+                                    d="M3 15v4c0 1.1.9 2 2 2h14a2 2 0 0 0 2-2v-4M17 9l-5 5-5-5M12 12.8V3"
+                                ></path>
+                            </svg>
+                            <span>Export</span>
+                        </button>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-white/90">
+                            <thead>
+                                <tr class="text-left">
+                                    <th
+                                        class="px-4 py-2 border-b border-white/10"
+                                    >
+                                        ID
+                                    </th>
+                                    <th
+                                        class="px-4 py-2 border-b border-white/10"
+                                    >
+                                        User
+                                    </th>
+                                    <th
+                                        class="px-4 py-2 border-b border-white/10"
+                                    >
+                                        Game
+                                    </th>
+                                    <th
+                                        class="px-4 py-2 text-right border-b border-white/10"
+                                    >
+                                        Amount
+                                    </th>
+                                    <th
+                                        class="px-4 py-2 text-right border-b border-white/10"
+                                    >
+                                        Profit
+                                    </th>
+                                    <th
+                                        class="px-4 py-2 text-center border-b border-white/10"
+                                    >
+                                        Status
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr
+                                    v-for="tx in tables.recent_transactions"
+                                    :key="tx.id"
+                                    class="hover:bg-white/5"
+                                >
+                                    <td class="px-4 py-2">{{ tx.id }}</td>
+                                    <td class="px-4 py-2">{{ tx.user }}</td>
+                                    <td class="px-4 py-2">{{ tx.game }}</td>
+                                    <td class="px-4 py-2 text-right">
+                                        {{ formatCurrency(tx.amount) }}
+                                    </td>
+                                    <td class="px-4 py-2 text-right">
+                                        {{ formatCurrency(tx.profit || 0) }}
+                                    </td>
+                                    <td class="px-4 py-2">
+                                        <div class="flex justify-center">
+                                            <span
+                                                class="px-2 py-1 text-xs rounded-full"
+                                                :class="{
+                                                    'bg-green-500/20 text-green-300':
+                                                        tx.status ===
+                                                        'completed',
+                                                    'bg-yellow-500/20 text-yellow-300':
+                                                        tx.status === 'pending',
+                                                    'bg-red-500/20 text-red-300':
+                                                        tx.status === 'failed',
+                                                    'bg-blue-500/20 text-blue-300':
+                                                        tx.status ===
+                                                        'processing',
+                                                    'bg-gray-500/20 text-gray-300':
+                                                        tx.status ===
+                                                        'cancelled',
+                                                }"
+                                            >
+                                                {{ tx.status }}
+                                            </span>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Top Products -->
+                <div class="p-5 rounded-lg shadow-md bg-primary/20">
+                    <div class="flex justify-between mb-4">
+                        <h3 class="text-xl font-semibold text-white">
+                            Top Products
+                        </h3>
+                        <button
+                            @click="exportTopProducts"
+                            class="flex items-center gap-1 px-3 py-1 text-white transition-colors rounded-lg bg-secondary/20 hover:bg-secondary/30"
+                        >
+                            <svg
+                                width="16"
+                                height="16"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                            >
+                                <path
+                                    d="M3 15v4c0 1.1.9 2 2 2h14a2 2 0 0 0 2-2v-4M17 9l-5 5-5-5M12 12.8V3"
+                                ></path>
+                            </svg>
+                            <span>Export</span>
+                        </button>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-white/90">
+                            <thead>
+                                <tr class="text-left">
+                                    <th
+                                        class="px-4 py-2 border-b border-white/10"
+                                    >
+                                        Product
+                                    </th>
+                                    <th
+                                        class="px-4 py-2 text-right border-b border-white/10"
+                                    >
+                                        Sales
+                                    </th>
+                                    <th
+                                        class="px-4 py-2 text-right border-b border-white/10"
+                                    >
+                                        Revenue
+                                    </th>
+                                    <th
+                                        class="px-4 py-2 text-right border-b border-white/10"
+                                    >
+                                        Profit
+                                    </th>
+                                    <th
+                                        class="px-4 py-2 text-right border-b border-white/10"
+                                    >
+                                        Growth
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr
+                                    v-for="product in tables.top_products"
+                                    :key="product.id"
+                                    class="hover:bg-white/5"
+                                >
+                                    <td class="px-4 py-2">
+                                        {{ product.name }}
+                                    </td>
+                                    <td class="px-4 py-2 text-right">
+                                        {{ product.sales }}
+                                    </td>
+                                    <td class="px-4 py-2 text-right">
+                                        {{ formatCurrency(product.revenue) }}
+                                    </td>
+                                    <td class="px-4 py-2 text-right">
+                                        {{
+                                            formatCurrency(product.profit || 0)
+                                        }}
+                                    </td>
+                                    <td class="px-4 py-2 text-right">
+                                        <div
+                                            class="flex items-center justify-end"
+                                        >
+                                            <span
+                                                :class="
+                                                    product.growth >= 0
+                                                        ? 'text-green-400'
+                                                        : 'text-red-400'
+                                                "
+                                            >
+                                                {{
+                                                    product.growth >= 0
+                                                        ? "+"
+                                                        : ""
+                                                }}{{ product.growth }}%
+                                            </span>
+                                            <svg
+                                                v-if="product.growth >= 0"
+                                                width="16"
+                                                height="16"
+                                                viewBox="0 0 24 24"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                stroke-width="2"
+                                                class="ml-1 text-green-400"
+                                            >
+                                                <path d="M7 17l5-5 5 5"></path>
+                                                <path d="M7 7h10"></path>
+                                            </svg>
+                                            <svg
+                                                v-else
+                                                width="16"
+                                                height="16"
+                                                viewBox="0 0 24 24"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                stroke-width="2"
+                                                class="ml-1 text-red-400"
+                                            >
+                                                <path d="M7 7l5 5 5-5"></path>
+                                                <path d="M7 17h10"></path>
+                                            </svg>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
         </div>
-      </div>
-    </div>
-  </AdminLayout>
+    </AdminLayout>
 </template>

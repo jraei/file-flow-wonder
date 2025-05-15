@@ -1,22 +1,19 @@
-
 <?php
 
 namespace App\Http\Controllers\Admin;
 
-use App\Http\Controllers\Controller;
-use App\Models\FlashsaleEvent;
-use App\Models\FlashsaleItem;
-use App\Models\Layanan;
-use App\Models\Pembayaran;
-use App\Models\Pembelian;
-use App\Models\Produk;
-use App\Models\User;
-use App\Models\Voucher;
 use Carbon\Carbon;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
+use App\Models\User;
 use Inertia\Inertia;
-use Illuminate\Support\Facades\DB;
+use App\Models\Produk;
+use App\Models\Layanan;
+use App\Models\Voucher;
+use App\Models\Pembelian;
+use App\Models\Pembayaran;
+use Illuminate\Http\Request;
+use App\Models\FlashsaleEvent;
+use App\Http\Controllers\Controller;
+use Illuminate\Support\Facades\Cache;
 
 class DashboardController extends Controller
 {
@@ -57,8 +54,8 @@ class DashboardController extends Controller
             $cacheKey .= '_' . $startDate->format('Ymd') . '_' . $endDate->format('Ymd');
         }
 
-        // Cache dashboard data for 15 minutes
-        $dashboardData = Cache::remember($cacheKey, 900, function () use ($startDate, $endDate, $period) {
+        // Cache dashboard data for 30 minutes
+        $dashboardData = Cache::remember($cacheKey, 1800, function () use ($startDate, $endDate, $period) {
             return [
                 'metrics' => $this->getMetrics($startDate, $endDate, $period),
                 'charts' => $this->getCharts($startDate, $endDate, $period),
@@ -109,26 +106,20 @@ class DashboardController extends Controller
 
             $revenueGrowthPercent = $previousRevenue > 0 ? round((($currentRevenue - $previousRevenue) / $previousRevenue) * 100, 1) : ($currentRevenue > 0 ? 100 : 0);
 
-            // Order metrics - exclude failed/cancelled
-            $currentOrders = Pembelian::whereBetween('created_at', [$startDate, $endDate])
-                ->whereIn('status', ['completed', 'processing'])
-                ->count();
-                
-            $previousOrders = Pembelian::whereBetween('created_at', [$previousStartDate, $previousEndDate])
-                ->whereIn('status', ['completed', 'processing'])
-                ->count();
-                
+            // Order metrics
+            $currentOrders = Pembelian::whereBetween('created_at', [$startDate, $endDate])->count();
+            $previousOrders = Pembelian::whereBetween('created_at', [$previousStartDate, $previousEndDate])->count();
             $orderGrowthPercent = $previousOrders > 0 ? round((($currentOrders - $previousOrders) / $previousOrders) * 100, 1) : ($currentOrders > 0 ? 100 : 0);
 
             // Product metrics - active products
             $activeProducts = Produk::where('status', 'active')->count();
-            
+
             // For product growth, compare with products that were active in previous period
-            $previousActiveProducts = Produk::where('status', 'active')
+            $previousProductCount = Produk::where('status', 'active')
                 ->where('created_at', '<', $previousEndDate)
                 ->count();
-            
-            $productGrowthPercent = $previousActiveProducts > 0 ? round((($activeProducts - $previousActiveProducts) / $previousActiveProducts) * 100, 1) : ($activeProducts > 0 ? 100 : 0);
+
+            $productGrowthPercent = $previousProductCount > 0 ? round((($activeProducts - $previousProductCount) / $previousProductCount) * 100, 1) : ($activeProducts > 0 ? 100 : 0);
         } else {
             // Lifetime period - no comparison
             $userGrowthPercent = 0;
@@ -138,7 +129,7 @@ class DashboardController extends Controller
 
             // Get total revenue for all time - only completed or processing
             $currentRevenue = Pembelian::whereIn('status', ['completed', 'processing'])->sum('total_price');
-            $currentOrders = Pembelian::whereIn('status', ['completed', 'processing'])->count();
+            $currentOrders = Pembelian::count();
             $activeProducts = Produk::where('status', 'active')->count();
         }
 
@@ -313,8 +304,8 @@ class DashboardController extends Controller
             ->when($startDate, function ($query) use ($startDate, $endDate) {
                 return $query->whereBetween('created_at', [$startDate, $endDate]);
             })
-            ->whereIn('status', ['completed', 'processing'])
             ->latest()
+            ->where('status', 'completed')
             ->take(10)
             ->get()
             ->map(function ($transaction) {
@@ -416,9 +407,9 @@ class DashboardController extends Controller
             $cacheKey .= '_' . md5($request->input('start_date') . $request->input('end_date'));
         }
 
-        // Cache for 15 minutes
+        // Cache for 30 minutes
         return response()->json([
-            'services' => Cache::remember($cacheKey, 900, function () use ($startDate, $endDate, $productId) {
+            'services' => Cache::remember($cacheKey, 1800, function () use ($startDate, $endDate, $productId) {
                 $query = Layanan::query();
 
                 if ($productId) {
@@ -483,12 +474,12 @@ class DashboardController extends Controller
      */
     public function products()
     {
-        return Cache::remember('products_list', 3600, function () {
-            return Produk::where('status', 'active')
-                ->select('id', 'nama as name')
-                ->orderBy('nama')
-                ->get();
-        });
+        $products = Produk::where('status', 'active')
+            ->select('id', 'nama as name')
+            ->orderBy('nama')
+            ->get();
+
+        return response()->json($products);
     }
 
     /**
@@ -501,11 +492,11 @@ class DashboardController extends Controller
 
         $cacheKey = 'admin_flashsales_' . $period;
         if ($period === 'custom') {
-            $cacheKey .= '_' . md5($request->input('start_date') . $request->input('end_date'));
+            $cacheKey .= '_' . md5($request->input('start_date') . $request->input('end_end'));
         }
 
         return response()->json(
-            Cache::remember($cacheKey, 900, function () use ($startDate, $endDate) {
+            Cache::remember($cacheKey, 1800, function () use ($startDate, $endDate) {
                 $flashsales = FlashsaleEvent::with(['item.layanan'])
                     ->when($startDate, function ($query) use ($startDate, $endDate) {
                         return $query->where(function ($q) use ($startDate, $endDate) {
@@ -522,46 +513,45 @@ class DashboardController extends Controller
                     ->get();
 
                 return $flashsales->map(function ($event) use ($startDate, $endDate) {
-                    $eventStartDate = $event->event_start_date;
-                    $eventEndDate = $event->event_end_date;
-                    
-                    // Calculate revenue from sales within this period
-                    $totalRevenue = DB::table('pembelians')
-                        ->join('flashsale_items', 'pembelians.flashsale_item_id', '=', 'flashsale_items.id')
-                        ->where('flashsale_items.flashsale_event_id', $event->id)
-                        ->whereIn('pembelians.status', ['completed', 'processing'])
-                        ->when($startDate, function ($query) use ($startDate, $endDate) {
-                            return $query->whereBetween('pembelians.created_at', [$startDate, $endDate]);
+                    // Calculate real revenue from purchases
+                    $totalRevenue = Pembelian::whereIn('status', ['completed', 'processing'])
+                        ->whereHas('layanan', function ($q) use ($event) {
+                            $q->whereHas('flashsaleItems', function ($q2) use ($event) {
+                                $q2->where('flashsale_event_id', $event->id);
+                            });
                         })
-                        ->sum('pembelians.total_price');
+                        ->when($startDate, function ($q) use ($startDate, $endDate) {
+                            return $q->whereBetween('created_at', [$startDate, $endDate]);
+                        })
+                        ->sum('total_price');
 
-                    // Get top selling items
-                    $topItems = DB::table('pembelians')
-                        ->select('flashsale_items.id', 'layanans.nama_layanan', DB::raw('COUNT(*) as sold'))
-                        ->join('flashsale_items', 'pembelians.flashsale_item_id', '=', 'flashsale_items.id')
-                        ->join('layanans', 'flashsale_items.layanan_id', '=', 'layanans.id')
-                        ->where('flashsale_items.flashsale_event_id', $event->id)
-                        ->where('pembelians.status', 'completed')
-                        ->when($startDate, function ($query) use ($startDate, $endDate) {
-                            return $query->whereBetween('pembelians.created_at', [$startDate, $endDate]);
-                        })
-                        ->groupBy('flashsale_items.id', 'layanans.nama_layanan')
-                        ->orderByDesc('sold')
-                        ->limit(5)
-                        ->get()
-                        ->map(function ($item) {
-                            return [
-                                'id' => $item->id,
-                                'service_name' => $item->nama_layanan,
-                                'sold' => $item->sold,
-                            ];
-                        });
+                    // Calculate top items based on actual sales
+                    $itemSales = [];
+                    foreach ($event->item as $item) {
+                        $salesCount = Pembelian::where('status', 'completed')
+                            ->where('flashsale_item_id', $item->id)
+                            ->when($startDate, function ($q) use ($startDate, $endDate) {
+                                return $q->whereBetween('created_at', [$startDate, $endDate]);
+                            })
+                            ->count();
+
+                        $itemSales[$item->id] = [
+                            'id' => $item->id,
+                            'service_name' => $item->layanan->nama_layanan ?? 'Unknown Service',
+                            'sold' => $salesCount,
+                        ];
+                    }
+
+                    // Sort by sales and get top 5
+                    arsort($itemSales);
+                    $topItems = array_slice(array_values($itemSales), 0, 5);
 
                     return [
                         'id' => $event->id,
                         'event_name' => $event->event_name,
-                        'event_start_date' => $eventStartDate,
-                        'event_end_date' => $eventEndDate,
+                        'event_start_date' => $event->event_start_date,
+                        'event_end_date' => $event->event_end_date,
+                        'item' => $event->item,
                         'total_revenue' => $totalRevenue,
                         'top_items' => $topItems,
                     ];
@@ -584,18 +574,18 @@ class DashboardController extends Controller
         }
 
         return response()->json(
-            Cache::remember($cacheKey, 900, function () use ($startDate, $endDate) {
+            Cache::remember($cacheKey, 1800, function () use ($startDate, $endDate) {
                 $vouchers = Voucher::when($startDate, function ($query) use ($startDate, $endDate) {
                     // Show vouchers valid within the time period
                     return $query->where(function ($q) use ($startDate, $endDate) {
-                        $q->where('start_date', '<=', $endDate)
+                        $q->where('valid_from', '<=', $endDate)
                             ->where(function ($q2) use ($startDate) {
-                                $q2->where('end_date', '>=', $startDate)
-                                    ->orWhereNull('end_date');
+                                $q2->where('expired_at', '>=', $startDate)
+                                    ->orWhereNull('expired_at');
                             });
                     });
                 })
-                    ->where('status', 'active')
+                    ->where('is_active', true)
                     ->get()
                     ->map(function ($voucher) use ($startDate, $endDate) {
                         // Count actual usage within the period
@@ -605,29 +595,42 @@ class DashboardController extends Controller
                             })
                             ->count();
 
-                        // Calculate utilization percentage
+                        // Update the usage count based on the period filter 
+                        // (but keeping the original in the database)
                         $utilizationPct = $voucher->usage_limit > 0
                             ? ($usageCount / $voucher->usage_limit) * 100
                             : 0;
 
-                        $discountValue = $voucher->discount_type === 'percentage' 
-                            ? $voucher->discount_value . '%' 
-                            : 'Rp ' . number_format($voucher->discount_value, 0, ',', '.');
-
                         return [
                             'id' => $voucher->id,
-                            'kode_voucher' => $voucher->code,
-                            'nilai' => $discountValue,
+                            'kode_voucher' => $voucher->kode_voucher,
+                            'nilai' => $voucher->nilai,
                             'usage_count' => $usageCount,
                             'usage_limit' => $voucher->usage_limit,
                             'utilization_pct' => $utilizationPct,
-                            'expired_at' => $voucher->end_date,
+                            'expired_at' => $voucher->expired_at,
                         ];
                     });
 
                 return $vouchers;
             })
         );
+    }
+
+    /**
+     * Export dashboard data
+     */
+    public function export(Request $request)
+    {
+        $type = $request->input('type');
+        $period = $request->input('period', 'day');
+
+        // This would be implemented with a proper CSV/Excel export
+        // For now just return a placeholder response
+        return response()->json([
+            'success' => true,
+            'message' => "Exporting {$type} data for period: {$period}",
+        ]);
     }
 
     /**

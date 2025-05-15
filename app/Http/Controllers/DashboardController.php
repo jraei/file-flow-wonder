@@ -13,58 +13,14 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Response;
 use Illuminate\Support\Facades\Validator;
-use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
 {
-    /**
-     * Display the dashboard with user-specific data
-     */
     public function index()
     {
         $user = Auth::user();
         $now = Carbon::now();
         $weekAgo = $now->copy()->subDays(7);
-
-        // Get user's transaction stats for the past week (cached for 5 minutes)
-        $transactionMetrics = Cache::remember('user_transaction_stats_' . $user->id, 300, function () use ($user, $weekAgo) {
-            // Total transactions
-            $total = Pembelian::where('user_id', $user->id)
-                ->where('created_at', '>=', $weekAgo)
-                ->count();
-            
-            // Total sales amount (only completed/processing)
-            $totalSales = Pembelian::where('user_id', $user->id)
-                ->where('created_at', '>=', $weekAgo)
-                ->whereIn('status', ['completed', 'processing'])
-                ->sum('total_price');
-                
-            // Pending transactions
-            $pending = Pembelian::where('user_id', $user->id)
-                ->where('created_at', '>=', $weekAgo)
-                ->where('status', 'pending')
-                ->count();
-                
-            // Successful transactions
-            $success = Pembelian::where('user_id', $user->id)
-                ->where('created_at', '>=', $weekAgo)
-                ->where('status', 'completed')
-                ->count();
-                
-            // Failed transactions
-            $failed = Pembelian::where('user_id', $user->id)
-                ->where('created_at', '>=', $weekAgo)
-                ->whereIn('status', ['failed', 'cancelled'])
-                ->count();
-                
-            return [
-                'total' => $total,
-                'total_sales' => $totalSales,
-                'pending' => $pending,
-                'success' => $success,
-                'failed' => $failed,
-            ];
-        });
 
         // Get user's recent transactions (last 7 days)
         $recentTransactions = Cache::remember('recent_transactions_' . $user->id, 300, function () use ($user, $weekAgo) {
@@ -75,16 +31,11 @@ class DashboardController extends Controller
                 ->limit(10)
                 ->get()
                 ->map(function ($transaction) {
-                    $userInput = $transaction->input_zone 
-                        ? "{$transaction->input_id} (Zone {$transaction->input_zone})" 
-                        : $transaction->input_id;
-                        
                     return [
                         'id' => $transaction->reference_id ?? $transaction->id,
                         'order_id' => $transaction->order_id,
                         'product' => $transaction->layanan->produk->nama ?? 'Unknown',
                         'service' => $transaction->layanan->nama_layanan ?? 'Unknown Service',
-                        'user_input' => $userInput,
                         'amount' => $transaction->total_price,
                         'status' => $transaction->status,
                         'date' => $transaction->created_at->format('Y-m-d H:i:s'),
@@ -95,15 +46,14 @@ class DashboardController extends Controller
         // Get user details with role
         $userData = [
             'username' => $user->username,
-            'role' => $user->role->role_name ?? 'User',
-            'phone_number' => $user->phone ?? $user->phone_number ?? '-',
+            'role' => $user->role->name ?? 'User',
+            'phone_number' => $user->phone_number,
             'balance' => $user->saldo,
             'email' => $user->email,
         ];
 
         return Inertia::render('Dashboard/Index', [
             'userData' => $userData,
-            'transactionMetrics' => $transactionMetrics,
             'recentTransactions' => $recentTransactions,
         ]);
     }
