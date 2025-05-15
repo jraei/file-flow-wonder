@@ -1,5 +1,7 @@
+
 <script setup>
 import { computed, ref, onMounted } from "vue";
+import { Link } from "@inertiajs/vue3";
 import CssCosmicParticles from "./CssCosmicParticles.vue";
 
 const props = defineProps({
@@ -86,8 +88,19 @@ const particleDensity = computed(() => {
     return 0.5; // Reduced from 1.0 to 0.5 for better performance
 });
 
+// Create URL params for order page
+const orderPageParams = computed(() => {
+    if (!layanan.value || !produk.value) return {};
+    
+    return {
+        productId: produk.value.id,
+        flashsaleId: props.flashItem.id,
+        layananId: layanan.value.id
+    };
+});
+
 onMounted(() => {
-    // Apply parallax effect on desktop (simplified and optimized)
+    // Apply simpler parallax effect on desktop (optimized)
     if (window.innerWidth >= 768 && !isLowPowerDevice.value) {
         const handleMouseMove = (e) => {
             if (!cardRef.value) return;
@@ -99,12 +112,12 @@ onMounted(() => {
             const centerX = rect.width / 2;
             const centerY = rect.height / 2;
 
-            const moveX = (x - centerX) / 30; // Reduced movement for better performance
-            const moveY = (y - centerY) / 30;
+            // Reduced movement and optimized for performance
+            const moveX = (x - centerX) / 40; 
+            const moveY = (y - centerY) / 40;
 
             const cosmicLayer = cardRef.value.querySelector(".cosmic-layer");
             if (cosmicLayer) {
-                // Use transform with will-change for better performance
                 cosmicLayer.style.transform = `translate(${moveX}px, ${moveY}px)`;
             }
         };
@@ -124,62 +137,25 @@ onMounted(() => {
 </script>
 
 <template>
-    <div
-        ref="cardRef"
-        class="border flashsale-card group bg-primary/20 border-secondary/20"
+    <!-- Link to order page with flashsale item pre-selected -->
+    <Link
+        :href="`/order/${produk.slug}`"
+        :data="orderPageParams"
+        class="block cursor-pointer"
     >
-        <!-- User Limit Badge -->
-        <div v-if="flashItem.batas_user" class="absolute z-20 top-2 right-2">
-            <div
-                class="px-2 py-1 text-xs text-white border rounded-full bg-primary/10 border-primary/50"
-            >
-                <span class="flex items-center">
-                    <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        class="w-3 h-3 mr-1"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                    >
-                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-                    </svg>
-                    Max. {{ flashItem.batas_user }}/user
-                </span>
-            </div>
-        </div>
-
-        <!-- Card Body - New Layout -->
-        <div class="card-content">
-            <!-- Left Section -->
-            <div class="left-section">
-                <!-- Product Image -->
-
-                <!-- Product Info -->
-                <div class="product-info">
-                    <h3 class="product-name">
-                        {{ layanan.nama_layanan }}
-                    </h3>
-                    <p class="product-category">{{ produk.nama }}</p>
-                </div>
-
-                <!-- Price Section -->
-                <div class="price-section">
-                    <!-- <div class="product-image">
-                        <img
-                            v-if="thumbnailImage"
-                            :src="'/storage/' + thumbnailImage"
-                            alt=""
-                            loading="lazy"
-                        />
-                        <div class="image-glow"></div>
-                    </div> -->
-                    <div class="flash-price">
+        <div
+            ref="cardRef"
+            class="border flashsale-card group bg-primary/20 border-secondary/20 transition-transform hover:-translate-y-1"
+        >
+            <!-- User Limit Badge -->
+            <div v-if="flashItem.batas_user" class="absolute z-20 top-2 right-2">
+                <div
+                    class="px-2 py-1 text-xs text-white border rounded-full bg-primary/10 border-primary/50"
+                >
+                    <span class="flex items-center">
                         <svg
                             xmlns="http://www.w3.org/2000/svg"
-                            class="flash-icon"
+                            class="w-3 h-3 mr-1"
                             viewBox="0 0 24 24"
                             fill="none"
                             stroke="currentColor"
@@ -187,91 +163,128 @@ onMounted(() => {
                             stroke-linecap="round"
                             stroke-linejoin="round"
                         >
-                            <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
                         </svg>
-                        {{ formatPrice(flashItem.harga_flashsale) }}
-                    </div>
-                    <div class="regular-price">
-                        <span>{{ formatPrice(layanan.harga_jual) }}</span>
-                        <span
-                            v-if="discountPercentage > 0"
-                            class="discount-badge"
-                        >
-                            -{{ discountPercentage }}%
-                        </span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Right Section - CSS-based Cosmic Elements -->
-            <div class="right-section">
-                <div class="cosmic-layer" style="will-change: transform">
-                    <!-- CSS Planet Decoration -->
-                    <div class="cosmic-planet"></div>
-                    <div class="planet-ring"></div>
-
-                    <!-- Use minimal CSS particles -->
-                    <CssCosmicParticles
-                        v-if="!isLowPowerDevice"
-                        :density="particleDensity"
-                        theme="primary"
-                    />
-                </div>
-
-                <div class="thermal-edge"></div>
-            </div>
-        </div>
-
-        <!-- Enhanced Card Footer - Progress Bar -->
-        <div class="card-footer bg-content_background/20">
-            <!-- Progress Container with Integrated Text -->
-            <div class="relative progress-container-wrapper">
-                <!-- Stock text moved above progress bar -->
-                <div
-                    class="text-xs absolute inset-x-0 top-[-18px] text-white opacity-90"
-                >
-                    <span v-if="flashItem.stok_tersedia !== null">
-                        Tersisa {{ flashItem.stok_tersedia }}
+                        Max. {{ flashItem.batas_user }}/user
                     </span>
-                    <span v-else>Stok tersedia</span>
+                </div>
+            </div>
+
+            <!-- Card Body - Updated Layout -->
+            <div class="card-content">
+                <!-- Left Section -->
+                <div class="left-section">
+                    <!-- Product Image - Added -->
+                    <div v-if="thumbnailImage" class="product-image">
+                        <img
+                            :src="'/storage/' + thumbnailImage"
+                            alt="Product"
+                            loading="lazy"
+                            class="w-full h-full object-cover rounded-md"
+                        />
+                    </div>
+                    <div v-else class="product-image bg-gray-800 flex items-center justify-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                            <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                            <polyline points="21 15 16 10 5 21"></polyline>
+                        </svg>
+                    </div>
+
+                    <!-- Product Info -->
+                    <div class="product-info">
+                        <h3 class="product-name">
+                            {{ layanan.nama_layanan }}
+                        </h3>
+                        <p class="product-category">{{ produk.nama }}</p>
+                    </div>
+
+                    <!-- Price Section -->
+                    <div class="price-section">
+                        <div class="flash-price">
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                class="flash-icon"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                            >
+                                <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+                            </svg>
+                            {{ formatPrice(flashItem.harga_flashsale) }}
+                        </div>
+                        <div class="regular-price">
+                            <span>{{ formatPrice(layanan.harga_jual) }}</span>
+                            <span
+                                v-if="discountPercentage > 0"
+                                class="discount-badge"
+                            >
+                                -{{ discountPercentage }}%
+                            </span>
+                        </div>
+                    </div>
                 </div>
 
-                <!-- Progress Bar with enhanced styling -->
-                <div class="progress-container px-1 py-0.5 rounded-full">
+                <!-- Right Section - Simplified Cosmic Elements -->
+                <div class="right-section">
+                    <div class="cosmic-layer">
+                        <!-- Simplified CSS Planet -->
+                        <div class="cosmic-planet"></div>
+                        <div class="planet-ring"></div>
+
+                        <!-- Use minimal CSS particles -->
+                        <CssCosmicParticles
+                            v-if="!isLowPowerDevice"
+                            :density="particleDensity"
+                            theme="primary"
+                        />
+                    </div>
+
+                    <div class="thermal-edge"></div>
+                </div>
+            </div>
+
+            <!-- Enhanced Card Footer - Progress Bar -->
+            <div class="card-footer bg-content_background/20">
+                <!-- Progress Container with Integrated Text -->
+                <div class="relative progress-container-wrapper">
+                    <!-- Stock text moved above progress bar -->
                     <div
-                        class="h-3 rounded-full progress-bar"
-                        :class="[isStockLow ? 'low-stock' : '']"
-                        :style="{ width: `${stockPercentage}%` }"
+                        class="text-xs absolute inset-x-0 top-[-18px] text-white opacity-90"
                     >
-                        <!-- CSS-based sparks -->
-                        <!-- <div class="spark-container" v-if="!isLowPowerDevice">
-                            <div class="spark"></div>
-                            <div class="spark"></div>
-                        </div> -->
+                        <span v-if="flashItem.stok_tersedia !== null">
+                            Tersisa {{ flashItem.stok_tersedia }}
+                        </span>
+                        <span v-else>Stok tersedia</span>
+                    </div>
+
+                    <!-- Progress Bar with enhanced styling -->
+                    <div class="progress-container px-1 py-0.5 rounded-full">
+                        <div
+                            class="h-3 rounded-full progress-bar"
+                            :class="[isStockLow ? 'low-stock' : '']"
+                            :style="{ width: `${stockPercentage}%` }"
+                        ></div>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
+    </Link>
 </template>
 
 <style scoped>
 .flashsale-card {
     position: relative;
     overflow: hidden;
-    transition: all 0.3s ease;
     border-radius: 1rem;
-    /* border: 1px solid rgba(51, 195, 240, 0.2);
-    background: rgba(28, 41, 83, 1); */
     aspect-ratio: 5/3;
     height: 200px;
     max-width: 100%;
     transform-origin: center bottom;
-}
-
-.flashsale-card:hover {
-    transform: translateY(-5px);
-    border: 2px solid rgba(155, 135, 245, 1);
+    will-change: transform;
 }
 
 /* Card content layout */
@@ -300,29 +313,7 @@ onMounted(() => {
     margin-bottom: 0.75rem;
     overflow: hidden;
     background: transparent;
-}
-
-.product-image img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    transition: transform 0.5s ease;
-}
-
-.flashsale-card:hover .product-image img {
-    transform: scale(1.1);
-}
-
-.image-glow {
-    position: absolute;
-    inset: 0;
-    box-shadow: 0 0 10px rgba(155, 135, 245, 0.7);
-    opacity: 0;
-    transition: opacity 0.3s ease;
-}
-
-.flashsale-card:hover .image-glow {
-    opacity: 1;
+    border-radius: 0.5rem;
 }
 
 .product-name {
@@ -330,7 +321,6 @@ onMounted(() => {
     font-weight: bold;
     color: #33c3f0; /* secondary color */
     margin-bottom: 0.25rem;
-    transition: all 0.3s ease;
 }
 
 .product-category {
@@ -394,7 +384,7 @@ onMounted(() => {
     transition: transform 0.3s ease;
 }
 
-/* CSS-based planet */
+/* CSS-based planet - simplified */
 .cosmic-planet {
     position: absolute;
     width: 60px;
@@ -409,17 +399,7 @@ onMounted(() => {
         transparent
     );
     box-shadow: inset -2px -2px 4px rgba(0, 0, 0, 0.5);
-    /* animation: planet-rotate 20s linear infinite; */
 }
-
-/* @keyframes planet-rotate {
-    0% {
-        transform: rotate(0deg);
-    }
-    100% {
-        transform: rotate(360deg);
-    }
-} */
 
 .planet-ring {
     position: absolute;
@@ -468,8 +448,6 @@ onMounted(() => {
 .card-footer {
     height: 20%;
     padding: 0.75rem;
-    /* border-top: 1px solid rgba(155, 135, 245, 0.1);
-    background-color: rgba(26, 40, 78, 1); */
     display: flex;
     flex-direction: column;
     justify-content: flex-end;
@@ -515,51 +493,6 @@ onMounted(() => {
     );
     box-shadow: 0 0 10px rgba(239, 68, 68, 0.5);
 }
-
-/* CSS-based spark effect */
-/* .spark-container {
-    position: absolute;
-    right: 0;
-    top: 0;
-    height: 100%;
-    width: 20px;
-    overflow: hidden;
-}
-
-.spark {
-    position: absolute;
-    width: 2px;
-    height: 2px;
-    background-color: rgba(255, 200, 50, 0.8);
-    border-radius: 50%;
-    box-shadow: 0 0 4px rgba(255, 200, 50, 0.6);
-    animation: spark-float 2s infinite ease-out;
-}
-
-.spark:nth-child(1) {
-    top: 30%;
-    right: 5px;
-}
-
-.spark:nth-child(2) {
-    top: 60%;
-    right: 10px;
-    animation-delay: 1s;
-}
-
-@keyframes spark-float {
-    0% {
-        transform: translateY(0) scale(0.8);
-        opacity: 0;
-    }
-    50% {
-        opacity: 1;
-    }
-    100% {
-        transform: translateY(-10px) scale(1.2);
-        opacity: 0;
-    }
-} */
 
 /* Hexagonal grid pattern overlay - lightweight version */
 .flashsale-card::before {
@@ -613,10 +546,6 @@ onMounted(() => {
 /* Prevent animations for users who prefer reduced motion */
 @media (prefers-reduced-motion: reduce) {
     .cosmic-planet {
-        animation: none;
-    }
-
-    .spark {
         animation: none;
     }
 }
