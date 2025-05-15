@@ -1,3 +1,4 @@
+
 <script setup>
 import { ref, onMounted, onUnmounted, nextTick } from "vue";
 
@@ -19,13 +20,14 @@ const dropdownStyles = ref({});
 
 const emit = defineEmits(["toggleDropdown"]);
 
-const toggleDropdown = async () => {
+const toggleDropdown = () => {
     open.value = !open.value;
     emit("toggleDropdown", open.value);
 
     if (open.value) {
-        await nextTick();
-        positionDropdown();
+        nextTick(() => {
+            positionDropdown();
+        });
     }
 };
 
@@ -35,29 +37,37 @@ const positionDropdown = () => {
     const triggerRect = triggerRef.value.getBoundingClientRect();
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
-
+    
+    // Get dropdown dimensions after it's rendered
     const dropdownRect = dropdownRef.value.getBoundingClientRect();
-
-    let top = triggerRect.bottom + 4; // Default position below button
+    
+    // Calculate dropdown width (use trigger width as minimum)
+    const width = Math.max(triggerRect.width, dropdownRect.width);
+    
+    // Set default position (below trigger)
+    let top = triggerRect.bottom + 4;
     let left = triggerRect.left;
-
-    // Horizontal positioning - prevent overflow on the right side
-    if (left + dropdownRect.width > viewportWidth) {
-        left = Math.max(0, viewportWidth - dropdownRect.width - 8);
+    
+    // Handle horizontal positioning - prevent overflow
+    if (left + width > viewportWidth) {
+        // Align right edge of dropdown with right edge of trigger
+        left = Math.max(0, triggerRect.right - width);
     }
-
-    // Vertical positioning - flip to above trigger if not enough space below
+    
+    // Handle vertical positioning - flip if not enough space below
     if (top + dropdownRect.height > viewportHeight) {
+        // Position above the trigger
         top = Math.max(8, triggerRect.top - dropdownRect.height - 4);
     }
-
+    
     // Apply positioning - use fixed to avoid scroll issues
     dropdownStyles.value = {
-        position: "fixed",
-        top: `${top}px`,
+        position: "absolute",
+        top: `${top - window.scrollY}px`,
         left: `${left}px`,
         zIndex: 9999,
-        width: dropdownRect.width > 0 ? `${dropdownRect.width}px` : undefined,
+        width: `${width}px`,
+        minWidth: `${triggerRect.width}px`,
     };
 };
 
@@ -105,17 +115,17 @@ onUnmounted(() => {
 
         <!-- Dropdown content with improved transitions -->
         <Transition
-            enter-active-class="transition duration-200 ease-out"
-            enter-from-class="scale-95 opacity-0"
-            enter-to-class="scale-100 opacity-100"
-            leave-active-class="transition duration-75 ease-in"
-            leave-from-class="scale-100 opacity-100"
-            leave-to-class="scale-95 opacity-0"
+            enter-active-class="transition ease-out duration-100"
+            enter-from-class="transform opacity-0 scale-95"
+            enter-to-class="transform opacity-100 scale-100"
+            leave-active-class="transition ease-in duration-75"
+            leave-from-class="transform opacity-100 scale-100"
+            leave-to-class="transform opacity-0 scale-95"
         >
             <div
                 v-show="open"
                 ref="dropdownRef"
-                class="w-48 border rounded-md shadow-lg bg-secondary/20 backdrop-blur border-primary/60 will-change-transform"
+                class="absolute border rounded-md shadow-lg bg-secondary/20 backdrop-blur border-primary/60 will-change-transform"
                 :style="dropdownStyles"
             >
                 <slot name="content" />

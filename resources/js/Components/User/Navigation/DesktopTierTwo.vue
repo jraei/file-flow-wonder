@@ -163,19 +163,15 @@ const getIconName = (emojiName) => {
                         </div>
                     </NavLink>
 
-                    <!-- Enhanced Dropdown menu with fixed position -->
+                    <!-- Fixed Dropdown menu for Kalkulator -->
                     <div
                         v-if="link.dropdown && activeDropdown === index"
-                        class="fixed z-50 w-64 mt-1 transition-all duration-300 origin-top-right"
+                        class="absolute z-50 mt-1 origin-top-right rounded-md shadow-lg"
                         :style="{
-                            top: `${
-                                dropdownRefs[index]?.getBoundingClientRect()
-                                    .bottom + window.scrollY
-                            }px`,
-                            left: `${
-                                dropdownRefs[index]?.getBoundingClientRect()
-                                    .left
-                            }px`,
+                            top: `${dropdownRefs[index]?.getBoundingClientRect().bottom}px`,
+                            left: `${dropdownRefs[index]?.getBoundingClientRect().left}px`,
+                            width: '16rem', // 64px = 16rem
+                            minWidth: `${dropdownRefs[index]?.getBoundingClientRect().width}px`,
                         }"
                     >
                         <div
