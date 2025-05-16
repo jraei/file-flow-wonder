@@ -10,6 +10,7 @@ use App\Http\Controllers\XenditController;
 use App\Http\Controllers\MoogoldController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\CalculatorController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\AdminController;
 use App\Http\Controllers\Admin\BannerController;
@@ -190,3 +191,6 @@ Route::middleware(['auth', 'verified'])->prefix('dashboard')->group(function () 
     Route::get('/affiliate', [DashboardController::class, 'affiliate'])->name('dashboard.affiliate');
     Route::get('/topup', [DashboardController::class, 'topup'])->name('dashboard.topup');
 });
+
+// Calculator Routes
+Route::get('/calculator/winrate', [CalculatorController::class, 'winrate'])->name('calculator.winrate');
