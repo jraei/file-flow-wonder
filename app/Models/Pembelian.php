@@ -118,28 +118,6 @@ class Pembelian extends Model
     }
 
     /**
-     * Get top 10 users with highest total purchases for custom date range
-     */
-    public static function customDateRangeTop10($startDate, $endDate)
-    {
-        return self::select('users.username', DB::raw('SUM(pembelians.total_price) as total'))
-            ->join('users', 'users.id', '=', 'pembelians.user_id')
-            ->whereBetween('pembelians.created_at', [$startDate, $endDate])
-            ->whereIn('pembelians.status', ['completed'])
-            ->groupBy('pembelians.user_id', 'users.username')
-            ->orderByDesc('total')
-            ->limit(10)
-            ->get()
-            ->map(function ($item) {
-                return [
-                    'username' => $item->username,
-                    'total' => $item->total,
-                    'formatted_total' => 'Rp ' . number_format($item->total, 0, ',', '.'),
-                ];
-            });
-    }
-
-    /**
      * Scope for transactions belonging to a specific user
      */
     public function scopeForUser($query, $userId)
@@ -196,53 +174,5 @@ class Pembelian extends Model
         $query->orderBy($sortBy, $sortOrder === 'asc' ? 'asc' : 'desc');
 
         return $query;
-    }
-
-    public static function getComparisonStats($startDate, $endDate)
-    {
-        // Get current period stats
-        $currentStats = self::whereIn('status', ['completed', 'processing'])
-            ->whereBetween('created_at', [$startDate, $endDate])
-            ->selectRaw('COUNT(*) as sales, SUM(total_price) as revenue, SUM(profit) as profit')
-            ->first();
-
-        // Calculate previous period of same duration
-        $periodDuration = $endDate->diffInSeconds($startDate);
-        $previousStartDate = (clone $startDate)->subSeconds($periodDuration);
-        $previousEndDate = (clone $startDate)->subSecond();
-
-        // Get previous period stats
-        $previousStats = self::whereIn('status', ['completed', 'processing'])
-            ->whereBetween('created_at', [$previousStartDate, $previousEndDate])
-            ->selectRaw('COUNT(*) as sales, SUM(total_price) as revenue, SUM(profit) as profit')
-            ->first();
-
-        // Calculate growth percentages
-        $salesGrowth = $previousStats->sales > 0 ?
-            (($currentStats->sales - $previousStats->sales) / $previousStats->sales) * 100 : ($currentStats->sales > 0 ? 100 : 0);
-
-        $revenueGrowth = $previousStats->revenue > 0 ?
-            (($currentStats->revenue - $previousStats->revenue) / $previousStats->revenue) * 100 : ($currentStats->revenue > 0 ? 100 : 0);
-
-        $profitGrowth = $previousStats->profit > 0 ?
-            (($currentStats->profit - $previousStats->profit) / $previousStats->profit) * 100 : ($currentStats->profit > 0 ? 100 : 0);
-
-        return [
-            'current' => [
-                'sales' => $currentStats->sales ?? 0,
-                'revenue' => $currentStats->revenue ?? 0,
-                'profit' => $currentStats->profit ?? 0,
-            ],
-            'previous' => [
-                'sales' => $previousStats->sales ?? 0,
-                'revenue' => $previousStats->revenue ?? 0,
-                'profit' => $previousStats->profit ?? 0,
-            ],
-            'growth' => [
-                'sales' => round($salesGrowth, 2),
-                'revenue' => round($revenueGrowth, 2),
-                'profit' => round($profitGrowth, 2),
-            ]
-        ];
     }
 }

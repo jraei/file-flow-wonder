@@ -18,44 +18,8 @@ class DashboardController extends Controller
 {
     public function index()
     {
-        $user = Auth::user();
-        $now = Carbon::now();
-        $weekAgo = $now->copy()->subDays(7);
-
-        // Get user's recent transactions (last 7 days)
-        $recentTransactions = Cache::remember('recent_transactions_' . $user->id, 300, function () use ($user, $weekAgo) {
-            return Pembelian::with(['layanan', 'layanan.produk'])
-                ->where('user_id', $user->id)
-                ->where('created_at', '>=', $weekAgo)
-                ->orderBy('created_at', 'desc')
-                ->limit(10)
-                ->get()
-                ->map(function ($transaction) {
-                    return [
-                        'id' => $transaction->reference_id ?? $transaction->id,
-                        'order_id' => $transaction->order_id,
-                        'product' => $transaction->layanan->produk->nama ?? 'Unknown',
-                        'service' => $transaction->layanan->nama_layanan ?? 'Unknown Service',
-                        'amount' => $transaction->total_price,
-                        'status' => $transaction->status,
-                        'date' => $transaction->created_at->format('Y-m-d H:i:s'),
-                    ];
-                });
-        });
-
-        // Get user details with role
-        $userData = [
-            'username' => $user->username,
-            'role' => $user->role->name ?? 'User',
-            'phone_number' => $user->phone_number,
-            'balance' => $user->saldo,
-            'email' => $user->email,
-        ];
-
-        return Inertia::render('Dashboard/Index', [
-            'userData' => $userData,
-            'recentTransactions' => $recentTransactions,
-        ]);
+        // Will pass dashboard overview data here in the future
+        return Inertia::render('Dashboard/Index');
     }
 
     /**
