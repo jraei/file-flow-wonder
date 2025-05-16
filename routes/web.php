@@ -10,6 +10,7 @@ use App\Http\Controllers\XenditController;
 use App\Http\Controllers\MoogoldController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\CalculatorController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\AdminController;
 use App\Http\Controllers\Admin\BannerController;
@@ -42,6 +43,8 @@ use App\Http\Controllers\Admin\ProdukInputOptionController;
 | contains the "web" middleware group. Now create something great!
 |
 */
+// Calculator Routes
+Route::get('/calculator/winrate', [CalculatorController::class, 'winrate'])->name('calculator.winrate');
 
 Route::get('/xendit/get-payment-methods', [XenditController::class, 'getPaymentMethods']);
 

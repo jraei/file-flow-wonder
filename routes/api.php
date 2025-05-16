@@ -1,3 +1,4 @@
+
 <?php
 
 use App\Models\Produk;
@@ -5,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Admin\CheckUsernameController;
 use App\Http\Controllers\Admin\TripayCallbackController;
+use App\Http\Controllers\CalculatorController;
 
 /*
 |--------------------------------------------------------------------------
@@ -36,6 +38,9 @@ Route::get('/search/products', function (Request $request) {
 
     return response()->json($products);
 })->name('api.search.products');
+
+// Calculator endpoints
+Route::post('/calculator/winrate', [CalculatorController::class, 'calculateWinrate']);
 
 // payment gateway callback handle
 Route::prefix('callback')->group(function () {
