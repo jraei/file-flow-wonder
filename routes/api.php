@@ -50,3 +50,4 @@ Route::prefix('callback')->group(function () {
 
 // We no longer need a separate validate-account endpoint as validation
 // is now integrated with the order/confirm endpoint
+

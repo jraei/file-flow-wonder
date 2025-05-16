@@ -1,3 +1,4 @@
+
 <script setup>
 import { ref, onMounted, onUnmounted } from "vue";
 import DesktopTierOne from "./DesktopTierOne.vue";
@@ -68,7 +69,7 @@ const navLinks = [
         active: false,
         dropdown: [
             { name: "Winrate", icon: "🌠", route: "calculator.winrate" },
-            { name: "Magic Wheel", icon: "🎡", route: "dashboard" },
+            { name: "Magic Wheel", icon: "🎡", route: "calculator.magic-wheel" },
             { name: "Zodiac", icon: "♈️", route: "dashboard" },
         ],
     },

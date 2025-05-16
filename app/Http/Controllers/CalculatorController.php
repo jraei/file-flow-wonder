@@ -1,3 +1,4 @@
+
 <?php
 
 namespace App\Http\Controllers;
@@ -15,6 +16,16 @@ class CalculatorController extends Controller
     public function winrate()
     {
         return Inertia::render('Calculator/Winrate');
+    }
+
+    /**
+     * Display the magic wheel calculator page.
+     *
+     * @return \Inertia\Response
+     */
+    public function magicWheel()
+    {
+        return Inertia::render('Calculator/MagicWheel');
     }
 
     /**
