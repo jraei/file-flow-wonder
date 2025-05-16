@@ -309,8 +309,8 @@ watch(shouldAutoScroll, (val) => {
                 </button>
 
                 <!-- Scroll indicators (fade edges) for visual effect -->
-                <div class="scroll-fade-left"></div>
-                <div class="scroll-fade-right"></div>
+                <!-- <div class="scroll-fade-left"></div>
+                <div class="scroll-fade-right"></div> -->
 
                 <!-- Main carousel container with optimized scrolling -->
                 <div
@@ -324,7 +324,7 @@ watch(shouldAutoScroll, (val) => {
                     :class="{ 'auto-scroll': shouldAutoScroll }"
                 >
                     <!-- Clone items at the beginning for seamless loop (lg screens) -->
-                    <template v-if="hasClonedItems">
+                    <!-- <template v-if="hasClonedItems">
                         <FlashsaleCard
                             v-for="(item, index) in event.item.slice(
                                 -cloneCount
@@ -341,7 +341,7 @@ watch(shouldAutoScroll, (val) => {
                                 minWidth: '290px',
                             }"
                         />
-                    </template>
+                    </template> -->
 
                     <!-- Original flashsale items -->
                     <FlashsaleCard
@@ -360,7 +360,7 @@ watch(shouldAutoScroll, (val) => {
                     />
 
                     <!-- Clone items at the end for seamless loop (lg screens) -->
-                    <template v-if="hasClonedItems">
+                    <!-- <template v-if="hasClonedItems">
                         <FlashsaleCard
                             v-for="(item, index) in event.item.slice(
                                 0,
@@ -378,7 +378,7 @@ watch(shouldAutoScroll, (val) => {
                                 minWidth: '290px',
                             }"
                         />
-                    </template>
+                    </template> -->
 
                     <!-- Spacer element to ensure proper scrolling -->
                     <div class="flex-none w-4"></div>

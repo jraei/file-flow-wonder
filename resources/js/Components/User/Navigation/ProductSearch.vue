@@ -1,6 +1,5 @@
-
 <script setup>
-import { ref, watch, onMounted, onUnmounted } from "vue";
+import { ref, watch, onMounted, onUnmounted, nextTick } from "vue";
 import { debounce } from "lodash";
 import axios from "axios";
 import { Link } from "@inertiajs/vue3";
@@ -44,7 +43,7 @@ const performSearch = debounce(async (query) => {
     } finally {
         isLoading.value = false;
     }
-}, 500); // Increased to 500ms as required
+}, 100); // Increased to 500ms as required
 
 // Watch for changes to search query
 watch(searchQuery, (newValue) => {
@@ -83,28 +82,28 @@ const handleClickOutside = (event) => {
 // Position dropdown correctly relative to viewport
 const updateResultsPosition = () => {
     if (!resultsRef.value || !showResults.value) return;
-    
+
     const inputRect = searchInputRef.value?.getBoundingClientRect();
     if (!inputRect) return;
-    
+
     const viewportHeight = window.innerHeight;
     const resultsHeight = resultsRef.value.offsetHeight;
-    
+
     // Check if there's enough space below
     const spaceBelow = viewportHeight - inputRect.bottom;
-    
+
     if (spaceBelow < resultsHeight && inputRect.top > resultsHeight) {
         // Position above if not enough space below
-        resultsRef.value.style.top = 'auto';
-        resultsRef.value.style.bottom = '100%';
-        resultsRef.value.style.marginTop = '0';
-        resultsRef.value.style.marginBottom = '0.5rem';
+        resultsRef.value.style.top = "auto";
+        resultsRef.value.style.bottom = "100%";
+        resultsRef.value.style.marginTop = "0";
+        resultsRef.value.style.marginBottom = "0.5rem";
     } else {
         // Position below (default)
-        resultsRef.value.style.top = '100%';
-        resultsRef.value.style.bottom = 'auto';
-        resultsRef.value.style.marginTop = '0.5rem';
-        resultsRef.value.style.marginBottom = '0';
+        resultsRef.value.style.top = "100%";
+        resultsRef.value.style.bottom = "auto";
+        resultsRef.value.style.marginTop = "0.5rem";
+        resultsRef.value.style.marginBottom = "0";
     }
 };
 
@@ -188,13 +187,13 @@ watch(showResults, (newValue) => {
             v-if="showResults && searchResults.length > 0"
             ref="resultsRef"
             class="absolute z-50 w-full mt-2 overflow-hidden overflow-y-auto transition-all duration-300 origin-top border rounded-md bg-content_background shadow-glow-primary max-h-60 border-primary/30"
-            style="max-height: 50vh; will-change: transform, opacity;"
+            style="max-height: 50vh; will-change: transform, opacity"
         >
             <div class="py-1">
                 <Link
                     v-for="(product, index) in searchResults"
                     :key="product.id"
-                    :href="route('products.show', product.id)"
+                    :href="route('order.index', product.slug)"
                     class="flex items-center gap-3 px-4 py-2 transition-all hover:bg-primary/10"
                     @mousedown.prevent
                 >
@@ -218,11 +217,11 @@ watch(showResults, (newValue) => {
                     </div>
 
                     <!-- Orbiting Planet (Cosmetic Enhancement) -->
-                    <div class="relative w-3 h-3">
+                    <!-- <div class="relative w-3 h-3">
                         <div
                             class="absolute inset-0 w-2 h-2 rounded-full bg-secondary animate-pulse-slow"
                         ></div>
-                    </div>
+                    </div> -->
                 </Link>
             </div>
         </div>

@@ -80,7 +80,7 @@ const navLinks = [
         class="sticky top-0 z-50 w-full transition-all duration-300"
         :class="{ 'shadow-md backdrop-blur-md': isScrolled }"
     >
-        <div class="relative overflow-hidden">
+        <div class="relative">
             <!-- Cosmic background with starfield -->
             <div class="absolute inset-0 overflow-hidden">
                 <div

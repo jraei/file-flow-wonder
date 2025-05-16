@@ -32,7 +32,7 @@ Route::get('/search/products', function (Request $request) {
     $products = Produk::where('nama', 'LIKE', "%{$query}%")
         ->where('status', 'active')
         ->take(5)
-        ->get(['id', 'nama', 'thumbnail']);
+        ->get(['id', 'nama', 'thumbnail', 'slug']);
 
     return response()->json($products);
 })->name('api.search.products');

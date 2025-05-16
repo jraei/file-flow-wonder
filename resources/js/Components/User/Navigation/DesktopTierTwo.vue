@@ -5,6 +5,7 @@ import NavLink from "@/Components/NavLink.vue";
 import CosmicIcon from "./CosmicIcon.vue";
 import Dropdown from "@/Components/Dropdown.vue";
 import DropdownLink from "@/Components/DropdownLink.vue";
+import { LogOut, LayoutDashboard } from "lucide-vue-next";
 
 const props = defineProps({
     navLinks: {
@@ -94,48 +95,58 @@ const getIconName = (emojiName) => {
                     "
                     @mouseleave="closeDropdown"
                 >
-                    <button
-                        v-if="link.dropdown"
-                        @click="toggleDropdown(index)"
-                        @mouseenter="toggleDropdown(index)"
-                        class="flex items-center px-3 py-2 space-x-1 text-sm text-gray-200 transition-all rounded-md group hover:bg-primary/10 hover:text-primary"
-                        :class="{
-                            'text-primary bg-primary/5':
-                                link.active || activeDropdown === index,
-                        }"
-                    >
-                        <CosmicIcon
-                            :name="getIconName(link.icon)"
-                            size="md"
-                            className="mr-1.5"
-                        />
-                        <span>{{ link.name }}</span>
-                        <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            class="w-4 h-4 transition-transform duration-200"
-                            :class="{ 'rotate-180': activeDropdown === index }"
-                            viewBox="0 0 20 20"
-                            fill="currentColor"
-                        >
-                            <path
-                                fill-rule="evenodd"
-                                d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
-                                clip-rule="evenodd"
-                            />
-                        </svg>
+                    <Dropdown align="right" width="48" v-if="link.dropdown">
+                        <template #trigger>
+                            <span class="inline-flex rounded-md">
+                                <button
+                                    type="button"
+                                    class="flex items-center px-3 py-2 space-x-1 text-sm text-gray-200 transition-all rounded-md group hover:bg-primary/10 hover:text-primary"
+                                    :class="{
+                                        'text-primary bg-primary/5':
+                                            link.active ||
+                                            activeDropdown === index,
+                                    }"
+                                >
+                                    <CosmicIcon
+                                        :name="getIconName(link.icon)"
+                                        size="md"
+                                        className="mr-1.5"
+                                    />
+                                    <span>{{ link.name }}</span>
 
-                        <!-- Hover effect: orbiting planets -->
-                        <div
-                            class="absolute inset-0 transition-opacity duration-300 opacity-0 -z-10 group-hover:opacity-100"
-                        >
-                            <div
-                                class="absolute w-1 h-1 rounded-full top-1 right-1 bg-primary animate-pulse-slow"
-                            ></div>
-                            <div
-                                class="absolute bottom-1 left-2 w-1.5 h-1.5 bg-secondary rounded-full animate-ping"
-                            ></div>
-                        </div>
-                    </button>
+                                    <svg
+                                        class="ms-2 -me-0.5 h-4 w-4"
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        viewBox="0 0 20 20"
+                                        fill="currentColor"
+                                    >
+                                        <path
+                                            fill-rule="evenodd"
+                                            d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+                                            clip-rule="evenodd"
+                                        />
+                                    </svg>
+                                </button>
+                            </span>
+                        </template>
+
+                        <template #content>
+                            <DropdownLink
+                                :href="route(item.route)"
+                                v-for="(item, itemIndex) in link.dropdown"
+                                :key="itemIndex"
+                            >
+                                <div class="flex items-start gap-2">
+                                    <CosmicIcon
+                                        :name="getIconName(item.icon)"
+                                        size="md"
+                                        className="text-primary"
+                                    />
+                                    {{ item.name }}
+                                </div>
+                            </DropdownLink>
+                        </template>
+                    </Dropdown>
 
                     <NavLink
                         v-else
@@ -164,7 +175,8 @@ const getIconName = (emojiName) => {
                     </NavLink>
 
                     <!-- Enhanced Dropdown menu with fixed position -->
-                    <div
+
+                    <!-- <div
                         v-if="link.dropdown && activeDropdown === index"
                         class="fixed z-50 w-64 mt-1 transition-all duration-300 origin-top-right"
                         :style="{
@@ -181,36 +193,6 @@ const getIconName = (emojiName) => {
                         <div
                             class="overflow-hidden border rounded-md bg-gradient-to-b from-content_background to-content_background/90 backdrop-blur-sm shadow-glow-primary border-primary/30"
                         >
-                            <!-- Constellation Background (Cosmetic Enhancement) -->
-                            <div
-                                class="absolute inset-0 overflow-hidden pointer-events-none opacity-5"
-                            >
-                                <div
-                                    class="absolute w-1 h-1 rounded-full top-[10%] left-[20%] bg-white"
-                                ></div>
-                                <div
-                                    class="absolute w-1 h-1 rounded-full top-[15%] left-[22%] bg-white"
-                                ></div>
-                                <div
-                                    class="absolute w-1 h-1 rounded-full top-[20%] left-[25%] bg-white"
-                                ></div>
-                                <div
-                                    class="absolute w-1 h-1 rounded-full top-[30%] left-[40%] bg-white"
-                                ></div>
-                                <div
-                                    class="absolute w-1 h-1 rounded-full top-[70%] left-[80%] bg-white"
-                                ></div>
-                                <div
-                                    class="absolute w-1 h-1 rounded-full top-[60%] left-[70%] bg-white"
-                                ></div>
-                                <div
-                                    class="absolute w-1 h-1 rounded-full top-[50%] left-[60%] bg-white"
-                                ></div>
-                                <div
-                                    class="absolute w-1.5 h-1.5 rounded-full top-[40%] left-[30%] bg-white"
-                                ></div>
-                            </div>
-
                             <div class="py-2">
                                 <Link
                                     v-for="(item, itemIndex) in link.dropdown"
@@ -247,20 +229,11 @@ const getIconName = (emojiName) => {
                                                 }}
                                             </p>
                                         </div>
-
-                                        <!-- Orbiting Planet (Cosmetic Enhancement) -->
-                                        <div
-                                            class="relative w-6 h-6 transition-opacity opacity-0 group-hover:opacity-100"
-                                        >
-                                            <div
-                                                class="absolute inset-0 w-1.5 h-1.5 bg-secondary rounded-full animate-ping"
-                                            ></div>
-                                        </div>
                                     </div>
                                 </Link>
                             </div>
                         </div>
-                    </div>
+                    </div> -->
                 </div>
             </div>
 
@@ -316,18 +289,26 @@ const getIconName = (emojiName) => {
                             </template>
 
                             <template #content>
-                                <DropdownLink :href="route('profile.edit')">
+                                <!-- <DropdownLink :href="route('profile.edit')">
                                     Profile
+                                </DropdownLink> -->
+                                <DropdownLink :href="route('dashboard')">
+                                    <div class="flex items-center gap-2">
+                                        <LayoutDashboard
+                                            class="w-4 h-4 text-primary"
+                                        />
+                                        Dashboard
+                                    </div>
                                 </DropdownLink>
                                 <DropdownLink
                                     :href="route('logout')"
                                     method="post"
                                     as="button"
                                 >
-                                    Log Out
-                                </DropdownLink>
-                                <DropdownLink :href="route('dashboard')">
-                                    Dashboard
+                                    <div class="flex items-center gap-2">
+                                        <LogOut class="w-4 h-4 text-primary" />
+                                        Log Out
+                                    </div>
                                 </DropdownLink>
                             </template>
                         </Dropdown>

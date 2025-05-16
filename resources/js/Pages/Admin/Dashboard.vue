@@ -590,11 +590,11 @@ onMounted(() => {
                                 >
                                     Profit
                                 </th>
-                                <th
+                                <!-- <th
                                     class="px-4 py-2 text-right border-b border-white/10"
                                 >
                                     Growth
-                                </th>
+                                </th> -->
                             </tr>
                         </thead>
                         <tbody>
@@ -645,7 +645,7 @@ onMounted(() => {
                                     <td class="px-4 py-3 text-right">
                                         {{ formatCurrency(service.profit) }}
                                     </td>
-                                    <td class="px-4 py-3 text-right">
+                                    <!-- <td class="px-4 py-3 text-right">
                                         <div
                                             class="flex items-center justify-end"
                                         >
@@ -689,7 +689,7 @@ onMounted(() => {
                                                 <path d="M7 17h10"></path>
                                             </svg>
                                         </div>
-                                    </td>
+                                    </td> -->
                                 </tr>
                             </template>
                         </tbody>
@@ -698,7 +698,7 @@ onMounted(() => {
             </div>
 
             <!-- Flashsale Event Monitoring -->
-            <div class="p-5 rounded-lg shadow-md bg-primary/20">
+            <!-- <div class="p-5 rounded-lg shadow-md bg-primary/20">
                 <h3 class="mb-4 text-xl font-semibold text-white">
                     Flashsale Events
                 </h3>
@@ -739,7 +739,7 @@ onMounted(() => {
                             </div>
                         </div>
 
-                        <!-- Progress bar showing time remaining -->
+                        
                         <div
                             class="relative h-2 mb-3 overflow-hidden rounded-full bg-secondary/10"
                         >
@@ -753,7 +753,7 @@ onMounted(() => {
                             ></div>
                         </div>
 
-                        <!-- Top selling items -->
+                      
                         <div
                             v-if="event.item && event.item.length > 0"
                             class="mt-3"
@@ -779,10 +779,10 @@ onMounted(() => {
                         </div>
                     </div>
                 </div>
-            </div>
+            </div> -->
 
             <!-- Voucher Utilization Dashboard -->
-            <div class="p-5 rounded-lg shadow-md bg-secondary/10">
+            <!-- <div class="p-5 rounded-lg shadow-md bg-secondary/10">
                 <h3 class="mb-4 text-xl font-semibold text-white">
                     Voucher Utilization
                 </h3>
@@ -828,7 +828,6 @@ onMounted(() => {
                             Redeemed
                         </div>
 
-                        <!-- Usage progress bar with cosmic styling -->
                         <div
                             class="relative h-3 overflow-hidden rounded-full bg-white/10"
                         >
@@ -848,7 +847,6 @@ onMounted(() => {
                                 }"
                             ></div>
 
-                            <!-- Cosmic particles effect -->
                             <div
                                 class="absolute top-0 left-0 w-full h-full opacity-50"
                             >
@@ -876,7 +874,7 @@ onMounted(() => {
                         </div>
                     </div>
                 </div>
-            </div>
+            </div> -->
 
             <!-- Table Section -->
             <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
@@ -1037,11 +1035,11 @@ onMounted(() => {
                                     >
                                         Profit
                                     </th>
-                                    <th
+                                    <!-- <th
                                         class="px-4 py-2 text-right border-b border-white/10"
                                     >
                                         Growth
-                                    </th>
+                                    </th> -->
                                 </tr>
                             </thead>
                             <tbody>
@@ -1064,7 +1062,7 @@ onMounted(() => {
                                             formatCurrency(product.profit || 0)
                                         }}
                                     </td>
-                                    <td class="px-4 py-2 text-right">
+                                    <!-- <td class="px-4 py-2 text-right">
                                         <div
                                             class="flex items-center justify-end"
                                         >
@@ -1108,7 +1106,7 @@ onMounted(() => {
                                                 <path d="M7 17h10"></path>
                                             </svg>
                                         </div>
-                                    </td>
+                                    </td> -->
                                 </tr>
                             </tbody>
                         </table>
