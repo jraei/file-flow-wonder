@@ -1,3 +1,4 @@
+
 <?php
 
 namespace App\Http\Controllers;
@@ -25,6 +26,16 @@ class CalculatorController extends Controller
     public function magicWheel()
     {
         return Inertia::render('Calculator/MagicWheel');
+    }
+
+    /**
+     * Display the zodiac calculator page.
+     *
+     * @return \Inertia\Response
+     */
+    public function zodiac()
+    {
+        return Inertia::render('Calculator/Zodiac');
     }
 
     /**

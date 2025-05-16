@@ -46,6 +46,7 @@ use App\Http\Controllers\Admin\ProdukInputOptionController;
 // Calculator Routes
 Route::get('/calculator/winrate', [CalculatorController::class, 'winrate'])->name('calculator.winrate');
 Route::get('/calculator/magic-wheel', [CalculatorController::class, 'magicWheel'])->name('calculator.magic-wheel');
+Route::get('/calculator/zodiac', [CalculatorController::class, 'zodiac'])->name('calculator.zodiac');
 
 Route::get('/xendit/get-payment-methods', [XenditController::class, 'getPaymentMethods']);
 
