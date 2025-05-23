@@ -9,9 +9,9 @@ module.exports = {
         hover: "#5ed4f5",
         text: "#ffffff",
     },
-    header_background: "#040c24",
-    footer_background: "#040c24",
-    content_background: "#0a205a",
+    header_background: "#2754d2",
+    footer_background: "#000787",
+    content_background: "#000787",
     dark: {
         DEFAULT: "#070c16",
         lighter: "#111927",
