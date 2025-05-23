@@ -76,6 +76,7 @@ class DigiflazzController extends Controller
         foreach ($activeProducts as $produk) {
             foreach ($res as $data) {
                 $data = collect($data);
+
                 $produk = collect($produk);
                 if (Str::upper($data['brand']) == Str::upper($produk['reference'])) {
 

@@ -27,10 +27,11 @@ class LoginRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'email' => ['required', 'string', 'email'],
+            'identifier' => ['required', 'string'], // ubah dari 'email'
             'password' => ['required', 'string'],
         ];
     }
+
 
     /**
      * Attempt to authenticate the request's credentials.
@@ -41,16 +42,25 @@ class LoginRequest extends FormRequest
     {
         $this->ensureIsNotRateLimited();
 
-        if (! Auth::attempt($this->only('email', 'password'), $this->boolean('remember'))) {
+        $identifier = $this->input('identifier');
+        $password = $this->input('password');
+
+        // Coba deteksi jenis identifier
+        $field = filter_var($identifier, FILTER_VALIDATE_EMAIL) ? 'email' : (
+            is_numeric($identifier) ? 'phone' : 'username'
+        );
+
+        if (! Auth::attempt([$field => $identifier, 'password' => $password], $this->boolean('remember'))) {
             RateLimiter::hit($this->throttleKey());
 
             throw ValidationException::withMessages([
-                'email' => trans('auth.failed'),
+                'identifier' => trans('auth.failed'),
             ]);
         }
 
         RateLimiter::clear($this->throttleKey());
     }
+
 
     /**
      * Ensure the login request is not rate limited.
@@ -80,6 +90,6 @@ class LoginRequest extends FormRequest
      */
     public function throttleKey(): string
     {
-        return Str::transliterate(Str::lower($this->string('email')).'|'.$this->ip());
+        return Str::transliterate(Str::lower($this->string('identifier')) . '|' . $this->ip());
     }
 }

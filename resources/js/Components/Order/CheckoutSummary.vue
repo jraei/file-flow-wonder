@@ -217,7 +217,7 @@ const { toast } = useToast();
 const basePrice = computed(() => {
     if (!props.selectedService) return 0;
     let value =
-        props.selectedService.flashSaleItem.harga_flashsale ??
+        props.selectedService.harga_flashsale ??
         props.selectedService.harga_jual;
     return Math.ceil(value);
 });
@@ -302,6 +302,8 @@ const formatPrice = (price) => {
 };
 
 const handleOrderProcess = () => {
+    console.log(props.selectedService);
+
     if (!isOrderReady.value) {
         // Check what's missing and show appropriate message
         if (!props.selectedService) {

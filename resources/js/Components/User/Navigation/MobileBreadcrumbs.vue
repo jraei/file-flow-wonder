@@ -1,10 +1,15 @@
-
 <script setup>
-import { ref } from "vue";
+import { ref, computed, resolveComponent } from "vue";
 import { Link } from "@inertiajs/vue3";
 import ApplicationLogo from "@/Components/ApplicationLogo.vue";
 import ProductSearch from "./ProductSearch.vue";
 import CosmicIcon from "./CosmicIcon.vue";
+import {
+    Compass,
+    LogOut,
+    BanknoteArrowUp,
+    UserRoundCog,
+} from "lucide-vue-next";
 
 const props = defineProps({
     isOpen: {
@@ -23,11 +28,24 @@ const props = defineProps({
         type: Array,
         required: true,
     },
+    authenticatedLinks: {
+        type: Array,
+    },
+    user: {
+        type: Object,
+    },
+    userRole: {
+        type: String,
+    },
 });
 
 const showSearch = ref(false);
 const isSearchFocused = ref(false);
 const expandedItems = ref([]);
+
+const isAuthenticated = computed(() => {
+    return !!props.user;
+});
 
 const toggleSearch = () => {
     showSearch.value = !showSearch.value;
@@ -35,7 +53,7 @@ const toggleSearch = () => {
 
 const toggleExpand = (index) => {
     if (expandedItems.value.includes(index)) {
-        expandedItems.value = expandedItems.value.filter(i => i !== index);
+        expandedItems.value = expandedItems.value.filter((i) => i !== index);
     } else {
         expandedItems.value.push(index);
     }
@@ -44,17 +62,21 @@ const toggleExpand = (index) => {
 // Function to get icon name from emoji
 const getIconName = (emojiName) => {
     const iconMappings = {
-        '🌌': 'topup',
-        '📊': 'transaction',
-        '🏆': 'leaderboard',
-        '🧮': 'calculator',
-        '🌠': 'winrate',
-        '🎡': 'magicwheel',
-        '♈️': 'zodiac'
+        "🌌": "topup",
+        "📊": "transaction",
+        "🏆": "leaderboard",
+        "🧮": "calculator",
+        "🌠": "winrate",
+        "🎡": "magicwheel",
+        "♈️": "zodiac",
     };
-    
-    return iconMappings[emojiName] || 'default';
+
+    return iconMappings[emojiName] || "default";
 };
+
+const isAdmin = computed(() => {
+    return props.userRole === "admin";
+});
 </script>
 
 <template>
@@ -205,7 +227,11 @@ const getIconName = (emojiName) => {
                 <div class="flex-1 px-2 py-4 space-y-1">
                     <template v-for="(link, index) in navLinks" :key="index">
                         <!-- Regular Link or Dropdown Trigger -->
-                        <div v-if="link.dropdown" class="relative" :key="`dropdown-${index}`">
+                        <div
+                            v-if="link.dropdown"
+                            class="relative"
+                            :key="`dropdown-${index}`"
+                        >
                             <button
                                 class="flex items-center justify-between w-full px-4 py-3 text-gray-200 transition-all rounded-md hover:bg-primary/10 hover:text-primary"
                                 :class="{
@@ -214,17 +240,22 @@ const getIconName = (emojiName) => {
                                 @click="toggleExpand(index)"
                             >
                                 <div class="flex items-center">
-                                    <CosmicIcon 
-                                        :name="getIconName(link.icon)" 
-                                        size="md" 
-                                        className="mr-3" 
+                                    <CosmicIcon
+                                        :name="getIconName(link.icon)"
+                                        size="md"
+                                        className="mr-3"
                                     />
-                                    <span class="font-medium">{{ link.name }}</span>
+                                    <span class="font-medium">{{
+                                        link.name
+                                    }}</span>
                                 </div>
                                 <svg
                                     xmlns="http://www.w3.org/2000/svg"
                                     class="w-5 h-5 transition-transform duration-300"
-                                    :class="{ 'rotate-180': expandedItems.includes(index) }"
+                                    :class="{
+                                        'rotate-180':
+                                            expandedItems.includes(index),
+                                    }"
                                     fill="none"
                                     viewBox="0 0 24 24"
                                     stroke="currentColor"
@@ -237,11 +268,11 @@ const getIconName = (emojiName) => {
                                     />
                                 </svg>
                             </button>
-                            
+
                             <!-- Dropdown Items (Accordion) -->
                             <div
                                 v-if="expandedItems.includes(index)"
-                                class="overflow-hidden transition-all duration-300 bg-primary/5 rounded-md mt-1 mb-1"
+                                class="mt-1 mb-1 overflow-hidden transition-all duration-300 rounded-md bg-primary/5"
                             >
                                 <Link
                                     v-for="(item, itemIndex) in link.dropdown"
@@ -250,47 +281,90 @@ const getIconName = (emojiName) => {
                                     class="flex items-center py-3 pl-12 pr-4 text-gray-200 transition-all hover:bg-primary/10 hover:text-primary"
                                     @click="closeMenu"
                                 >
-                                    <CosmicIcon 
-                                        :name="getIconName(item.icon)" 
-                                        size="md" 
-                                        className="mr-2 text-primary-text/70" 
+                                    <CosmicIcon
+                                        :name="getIconName(item.icon)"
+                                        size="md"
+                                        className="mr-2 text-primary-text/70"
                                     />
                                     <div>
-                                        <p class="font-medium">{{ item.name }}</p>
+                                        <p class="font-medium">
+                                            {{ item.name }}
+                                        </p>
                                         <p class="text-xs text-primary-text/60">
-                                            {{ 
-                                                item.name === 'Winrate' ? 'Calculate matches needed' :
-                                                item.name === 'Magic Wheel' ? 'Estimate diamond cost' :
-                                                'Calculate skin probability'
+                                            {{
+                                                item.name === "Winrate"
+                                                    ? "Calculate matches needed"
+                                                    : item.name ===
+                                                      "Magic Wheel"
+                                                    ? "Estimate diamond cost"
+                                                    : "Calculate skin probability"
                                             }}
                                         </p>
                                     </div>
                                 </Link>
                             </div>
                         </div>
-                        
+
                         <!-- Regular Link (No Dropdown) -->
                         <Link
                             v-else
                             :href="route(link.route)"
                             class="flex items-center px-4 py-3 text-gray-200 transition-all rounded-md hover:bg-primary/10 hover:text-primary"
                             :class="{
-                                'bg-primary/5 text-primary': link.active,
+                                'bg-primary/5 text-primary': route().current(
+                                    link.route
+                                ),
                             }"
                             @click="closeMenu"
                         >
-                            <CosmicIcon 
-                                :name="getIconName(link.icon)" 
-                                size="md" 
-                                className="mr-3" 
+                            <CosmicIcon
+                                :name="getIconName(link.icon)"
+                                size="md"
+                                className="mr-3"
                             />
                             <span class="font-medium">{{ link.name }}</span>
                         </Link>
+
+                        <!-- authenticated links -->
                     </template>
+                    <div
+                        v-if="isAuthenticated"
+                        class="pt-2 border-t border-primary/20"
+                    >
+                        <Link
+                            :href="route('dashboard')"
+                            class="flex items-center px-4 py-3 text-gray-200 transition-all rounded-md hover:bg-primary/10 hover:text-primary"
+                            :class="{
+                                'bg-primary/5 text-primary':
+                                    route().current('dashboard'),
+                            }"
+                            @click="closeMenu"
+                        >
+                            <Compass class="w-5 h-5 mr-3" />
+
+                            <span class="font-medium">Dashboard</span>
+                        </Link>
+                        <Link
+                            :href="route('dashboard.transactions')"
+                            class="flex items-center px-4 py-3 text-gray-200 transition-all rounded-md hover:bg-primary/10 hover:text-primary"
+                            :class="{
+                                'bg-primary/5 text-primary':
+                                    route().current('dashboard'),
+                            }"
+                            @click="closeMenu"
+                        >
+                            <BanknoteArrowUp class="w-5 h-5 mr-3" />
+
+                            <span class="font-medium">Riwayat Transaksi</span>
+                        </Link>
+                    </div>
                 </div>
 
                 <!-- Auth Buttons -->
-                <div class="p-4 border-t border-primary/20">
+                <div
+                    class="p-4 border-t border-primary/20"
+                    v-if="!isAuthenticated"
+                >
                     <div class="grid grid-cols-2 gap-3">
                         <Link
                             :href="route('login')"
@@ -312,6 +386,35 @@ const getIconName = (emojiName) => {
                                 <CosmicIcon name="register" size="md" />
                             </span>
                             <span>Register</span>
+                        </Link>
+                    </div>
+                </div>
+
+                <div
+                    class="p-4 border-t border-primary/20"
+                    v-if="isAuthenticated"
+                >
+                    <div class="grid grid-cols-2 gap-3">
+                        <Link
+                            :href="route('admin.dashboard')"
+                            class="flex items-center justify-center px-4 py-2 text-sm font-medium text-center text-white transition-all rounded-md bg-primary hover:bg-primary-hover"
+                            @click="closeMenu"
+                        >
+                            <span class="mr-1.5">
+                                <LogOut class="w-5 h-5" />
+                            </span>
+                            <span>Logout</span>
+                        </Link>
+                        <Link
+                            :href="route('admin.dashboard')"
+                            class="flex items-center justify-center px-4 py-2 text-sm font-medium text-center text-white transition-all rounded-md bg-primary hover:bg-primary-hover"
+                            @click="closeMenu"
+                            v-if="isAdmin"
+                        >
+                            <span class="mr-1.5">
+                                <UserRoundCog class="w-5 h-5" />
+                            </span>
+                            <span>Admin</span>
                         </Link>
                     </div>
                 </div>

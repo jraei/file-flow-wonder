@@ -14,6 +14,7 @@ use App\Http\Controllers\CalculatorController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\AdminController;
 use App\Http\Controllers\Admin\BannerController;
+use App\Http\Controllers\Admin\CronjobController;
 use App\Http\Controllers\Admin\ProdukController;
 use App\Http\Controllers\Admin\TripayController;
 use App\Http\Controllers\Admin\DepositController;
@@ -62,6 +63,10 @@ Route::post('/order/process', [OrderController::class, 'processOrder'])->name('o
 // Order Invoice
 Route::get('/order/invoice/{order_id}', [OrderController::class, 'invoice'])->name('order.invoice');
 
+// Cronjob routes
+Route::get('/getMoogold', [CronjobController::class, 'getMoogold'])->name('cronjob.getMoogold');
+Route::get('/getDigiflazz', [CronjobController::class, 'getDigiflazz'])->name('cronjob.getDigiflazz');
+
 
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
@@ -76,6 +81,17 @@ Route::middleware('auth')->group(function () {
     Route::get('/dashboard/transactions', [DashboardController::class, 'transactions'])->name('dashboard.transactions');
     Route::get('/dashboard/mutations', [DashboardController::class, 'mutations'])->name('dashboard.mutations');
     Route::get('/dashboard/affiliate', [DashboardController::class, 'affiliate'])->name('dashboard.affiliate');
+});
+
+// Dashboard routes - use auth middleware
+Route::middleware(['auth', 'verified'])->prefix('dashboard')->group(function () {
+    Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
+    Route::get('/balance', [DashboardController::class, 'balance'])->name('dashboard.balance');
+    Route::get('/transactions', [DashboardController::class, 'transactions'])->name('dashboard.transactions');
+    Route::get('/transactions/export', [DashboardController::class, 'exportTransactions'])->name('dashboard.transactions.export');
+    Route::get('/mutations', [DashboardController::class, 'mutations'])->name('dashboard.mutations');
+    Route::get('/affiliate', [DashboardController::class, 'affiliate'])->name('dashboard.affiliate');
+    Route::get('/topup', [DashboardController::class, 'topup'])->name('dashboard.topup');
 });
 
 // Route::get('moogold/product', [MoogoldController::class, 'getMoogoldProducts'])->name('moogold.balance');
@@ -145,6 +161,7 @@ Route::prefix('admin')->middleware(['auth', 'admin'])->group(function () {
     Route::resource('/providers', ProviderController::class);
     Route::patch('/providers/{id}/rate-kurs', [ProviderController::class, 'updateRateKurs'])->name('providers.updateRateKurs');
     Route::post('providers/getBalances/{provider}', [ProviderController::class, 'getBalancesByProvider'])->name('providers.getBalancesByProvider');
+    Route::post('providers/syncHargaLayanan', [ProviderController::class, 'syncHargaLayanan'])->name('providers.syncHargaLayanan');
 
     // Profit Produk routes
     Route::resource('profit-produks', ProfitProdukController::class);
@@ -184,14 +201,3 @@ Route::prefix('admin')->middleware(['auth', 'admin'])->group(function () {
 });
 
 require __DIR__ . '/auth.php';
-
-// Dashboard routes - use auth middleware
-Route::middleware(['auth', 'verified'])->prefix('dashboard')->group(function () {
-    Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
-    Route::get('/balance', [DashboardController::class, 'balance'])->name('dashboard.balance');
-    Route::get('/transactions', [DashboardController::class, 'transactions'])->name('dashboard.transactions');
-    Route::get('/transactions/export', [DashboardController::class, 'exportTransactions'])->name('dashboard.transactions.export');
-    Route::get('/mutations', [DashboardController::class, 'mutations'])->name('dashboard.mutations');
-    Route::get('/affiliate', [DashboardController::class, 'affiliate'])->name('dashboard.affiliate');
-    Route::get('/topup', [DashboardController::class, 'topup'])->name('dashboard.topup');
-});

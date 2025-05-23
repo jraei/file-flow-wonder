@@ -18,8 +18,50 @@ class DashboardController extends Controller
 {
     public function index()
     {
-        // Will pass dashboard overview data here in the future
-        return Inertia::render('Dashboard/Index');
+        $user = Auth::user();
+        $yesterday = now()->subDays(1);
+
+        // Ambil data pembelian 1 hari terakhir
+        $pembelian = Pembelian::with('layanan')
+            ->where('user_id', $user->id)
+            ->where('created_at', '>=', $yesterday)
+            ->limit(10)
+            ->get();
+
+        // Hitung total pembelian 1hari terakhir
+        $totalPembelian = Pembelian::where('user_id', $user->id)
+            ->where('created_at', '>=', $yesterday)
+            ->count();
+
+        // Hitung berdasarkan status, dalam 1hari terakhir
+        $pendingPembelian = Pembelian::where('user_id', $user->id)
+            ->where('status', 'pending')
+            ->where('created_at', '>=', $yesterday)
+            ->count();
+
+        $processingPembelian = Pembelian::where('user_id', $user->id)
+            ->where('status', 'processing')
+            ->where('created_at', '>=', $yesterday)
+            ->count();
+
+        $completedPembelian = Pembelian::where('user_id', $user->id)
+            ->where('status', 'completed')
+            ->where('created_at', '>=', $yesterday)
+            ->count();
+
+        $failedPembelian = Pembelian::where('user_id', $user->id)
+            ->whereIn('status', ['failed', 'cancelled'])
+            ->where('created_at', '>=', $yesterday)
+            ->count();
+
+        return Inertia::render('Dashboard/Index', [
+            'pembelian' => $pembelian,
+            'totalPembelian' => $totalPembelian,
+            'pendingPembelian' => $pendingPembelian,
+            'processingPembelian' => $processingPembelian,
+            'completedPembelian' => $completedPembelian,
+            'failedPembelian' => $failedPembelian
+        ]);
     }
 
     /**
@@ -63,6 +105,7 @@ class DashboardController extends Controller
      */
     public function processTopup(Request $request)
     {
+
         $user = Auth::user();
 
         // Validate the request
@@ -77,14 +120,16 @@ class DashboardController extends Controller
             ->exists();
 
         if ($hasPendingDeposit) {
-            return redirect()->route('dashboard.topup')
-                ->with('error', 'You have a pending deposit. Please complete or wait for it to expire.');
+            abort(422, 'You have a pending deposit. Please complete or wait for it to expire.');
+            // return redirect()->route('dashboard.topup')
+            //     ->with('error', 'You have a pending deposit. Please complete or wait for it to expire.');
         }
 
         // Get the payment method
         $payMethod = PayMethod::where('nama', $validated['methodName'])->first();
         if (!$payMethod) {
-            return redirect()->back()->with('error', 'Invalid payment method');
+            abort(422, 'Invalid payment method');
+            // return redirect()->back()->with('error', 'Invalid payment method');
         }
 
         // Create merchant reference
@@ -105,11 +150,14 @@ class DashboardController extends Controller
             'customer_phone' => $user->phone_number ?? '08000000000'
         ]);
 
-        if (!isset($response['data']) || !isset($response['data']['reference'])) {
-            return redirect()->back()->with('error', 'Payment gateway error. Please try again later.');
+        if (!isset($response['data']['status']) || !isset($response['data']['data']['reference'])) {
+            abort(422, 'Payment gateway error. Please try again later.');
+
+            // return redirect()->back()->with('error', 'Payment gateway error. Please try again later.');
         }
 
-        $responseData = $response['data'];
+
+        $responseData = $response['data']['data'];
 
         // Create deposit record
         $deposit = Deposit::create([

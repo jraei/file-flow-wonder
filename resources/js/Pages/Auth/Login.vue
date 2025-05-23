@@ -17,7 +17,7 @@ defineProps({
 
 const authCardRef = ref(null);
 const form = useForm({
-    email: "",
+    identifier: "", // ganti dari email
     password: "",
     remember: false,
 });
@@ -54,11 +54,11 @@ const submit = () => {
 
         <form @submit.prevent="submit">
             <CosmicFormField
-                id="email"
+                id="identifier"
                 type="text"
                 label="Email / Username / Phone"
-                v-model="form.email"
-                :error="form.errors.email"
+                v-model="form.identifier"
+                :error="form.errors.identifier"
                 required
                 autofocus
                 autocomplete="username"

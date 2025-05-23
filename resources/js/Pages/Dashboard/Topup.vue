@@ -4,11 +4,14 @@ import DashboardSidebar from "@/Components/Dashboard/Sidebar.vue";
 import { Link, useForm } from "@inertiajs/vue3";
 import { computed, ref } from "vue";
 import { Image, Wallet, CreditCard, Loader } from "lucide-vue-next";
+import { useToast } from "@/Composables/useToast";
 
+const { toast } = useToast();
 const props = defineProps({
     balance: { type: Number, required: true },
     payMethods: { type: Object, required: true },
     hasPendingDeposit: { type: Boolean, default: false },
+    errors: { type: Object },
 });
 
 const isLoading = ref(false);
@@ -51,29 +54,19 @@ const form = useForm({
 
 const submit = () => {
     if (!form.nominal || !form.methodName) {
-        window.$swal.fire({
-            icon: "error",
-            title: "Oops...",
-            text: "Please select both amount and payment method",
-        });
+        toast.error("Nominal and payment method are required");
         return;
     }
 
     if (form.nominal < 10000) {
-        window.$swal.fire({
-            icon: "error",
-            title: "Minimum Deposit",
-            text: "Minimum deposit amount is Rp 10,000",
-        });
+        toast.error("Minimal deposit is IDR 10,000");
         return;
     }
 
     if (props.hasPendingDeposit) {
-        window.$swal.fire({
-            icon: "warning",
-            title: "Pending Deposit",
-            text: "You have a pending deposit. Please complete it or wait for it to expire before creating a new one.",
-        });
+        toast.error(
+            "You have a pending deposit. Please complete or wait for it to expire."
+        );
         return;
     }
 
@@ -82,15 +75,24 @@ const submit = () => {
         preserveScroll: true,
         onSuccess: () => {
             isLoading.value = false;
+            console.log("sukses");
         },
         onError: () => {
             isLoading.value = false;
+
+            if (form.hasErrors) {
+                toast.error(
+                    "Terjadi kesalahan saat memproses deposit".form.errors
+                );
+            } else if (errors) {
+                // Jika pakai abort(422, "Some message")
+                toast.error("Terjadi kesalahan saat memproses deposit", errors);
+            }
         },
     });
 };
 
 const paymentAmounts = [10000, 50000, 100000, 200000, 500000];
-console.log(payMethod.value);
 </script>
 
 <template>
@@ -99,6 +101,14 @@ console.log(payMethod.value);
             <DashboardSidebar />
 
             <div class="flex-1 p-6">
+                <div
+                    v-if="Object.keys(errors).length > 0"
+                    class="px-4 py-3 mb-4 text-sm text-white rounded-lg bg-red-500/80"
+                >
+                    <ul v-for="error in errors">
+                        <li>{{ error }}</li>
+                    </ul>
+                </div>
                 <Link
                     :href="route('dashboard.balance')"
                     class="flex items-center px-8 py-2 mb-6 rounded-lg text-secondary hover:cursor-pointer"

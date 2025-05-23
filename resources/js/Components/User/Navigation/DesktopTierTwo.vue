@@ -5,7 +5,12 @@ import NavLink from "@/Components/NavLink.vue";
 import CosmicIcon from "./CosmicIcon.vue";
 import Dropdown from "@/Components/Dropdown.vue";
 import DropdownLink from "@/Components/DropdownLink.vue";
-import { LogOut, LayoutDashboard } from "lucide-vue-next";
+import {
+    LogOut,
+    Compass,
+    CircleDollarSign,
+    BanknoteArrowUp,
+} from "lucide-vue-next";
 
 const props = defineProps({
     navLinks: {
@@ -76,6 +81,14 @@ const getIconName = (emojiName) => {
     };
 
     return iconMappings[emojiName] || "default";
+};
+
+const formatCurrency = (amount) => {
+    return new Intl.NumberFormat("id-ID", {
+        style: "currency",
+        currency: "IDR",
+        minimumFractionDigits: 0,
+    }).format(amount);
 };
 </script>
 
@@ -292,12 +305,33 @@ const getIconName = (emojiName) => {
                                 <!-- <DropdownLink :href="route('profile.edit')">
                                     Profile
                                 </DropdownLink> -->
+                                <DropdownLink
+                                    :href="route('dashboard.balance')"
+                                >
+                                    <div class="flex items-center gap-2">
+                                        <CircleDollarSign
+                                            class="w-4 h-4 text-secondary"
+                                        />
+
+                                        {{ formatCurrency(props.user.saldo) }}
+                                    </div>
+                                </DropdownLink>
                                 <DropdownLink :href="route('dashboard')">
                                     <div class="flex items-center gap-2">
-                                        <LayoutDashboard
-                                            class="w-4 h-4 text-primary"
+                                        <Compass
+                                            class="w-4 h-4 text-secondary"
                                         />
                                         Dashboard
+                                    </div>
+                                </DropdownLink>
+                                <DropdownLink
+                                    :href="route('dashboard.transactions')"
+                                >
+                                    <div class="flex items-center gap-2">
+                                        <BanknoteArrowUp
+                                            class="w-4 h-4 text-secondary"
+                                        />
+                                        Transactions
                                     </div>
                                 </DropdownLink>
                                 <DropdownLink
@@ -306,7 +340,9 @@ const getIconName = (emojiName) => {
                                     as="button"
                                 >
                                     <div class="flex items-center gap-2">
-                                        <LogOut class="w-4 h-4 text-primary" />
+                                        <LogOut
+                                            class="w-4 h-4 text-secondary"
+                                        />
                                         Log Out
                                     </div>
                                 </DropdownLink>

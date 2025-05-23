@@ -108,13 +108,26 @@ class ProviderController extends Controller
     /**
      * Update all services' harga_beli_idr for a provider based on rate_kurs
      */
-    private function updateServicesRateKurs(Provider $provider)
+    public function updateServicesRateKurs(Provider $provider)
     {
         $services = Layanan::where('provider_id', $provider->id)->get();
         foreach ($services as $service) {
             $service->harga_beli_idr = $service->harga_beli * $provider->rate_kurs;
             $service->save();
         }
+    }
+
+    public function syncHargaLayanan()
+    {
+        $providers = Provider::where('provider_name', '!=', 'checkUsername')->get();
+        foreach ($providers as $provider) {
+            $this->updateServicesRateKurs($provider);
+        }
+        return back()->with('status', [
+            'type' => 'success',
+            'action' => 'Success',
+            'text' => 'All services are recalculated!'
+        ]);
     }
 
 

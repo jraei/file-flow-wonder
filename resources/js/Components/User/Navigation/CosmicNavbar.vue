@@ -5,6 +5,7 @@ import DesktopTierTwo from "./DesktopTierTwo.vue";
 import MobileBreadcrumbs from "./MobileBreadcrumbs.vue";
 import CosmicStarfield from "./CosmicStarfield.vue";
 import { usePage } from "@inertiajs/vue3";
+import { LogOut, Compass } from "lucide-vue-next";
 
 const page = usePage();
 const user = page.props.auth.user;
@@ -46,8 +47,8 @@ const navLinks = [
     {
         name: "Topup",
         icon: "🌌",
-        route: "dashboard",
-        active: true,
+        route: "index",
+        active: false,
     },
     {
         name: "Cek Transaksi",
@@ -73,7 +74,7 @@ const navLinks = [
                 icon: "🎡",
                 route: "calculator.magic-wheel",
             },
-            { name: "Zodiac", icon: "♈️", route: "dashboard" },
+            { name: "Zodiac", icon: "♈️", route: "calculator.zodiac" },
         ],
     },
 ];

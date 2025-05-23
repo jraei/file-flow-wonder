@@ -148,7 +148,15 @@ const currentYear = new Date().getFullYear();
                     ></div>
                 </div>
 
-                <span>Monitoring active games</span>
+                <span
+                    >Developed by
+                    <a
+                        href="https://instagram.com/justin_reifan"
+                        target="_blank"
+                        class="font-bold cursor-pointer hover:underline"
+                        >Justin Rei</a
+                    ></span
+                >
             </div>
         </div>
 

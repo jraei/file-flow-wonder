@@ -22,7 +22,6 @@ const { proxy } = getCurrentInstance();
 const deposits = computed(() => props.deposits.data || []);
 
 // Column definitions for the table
-console.log(deposits);
 const columns = [
     { key: "deposit_id", label: "Deposit ID" },
     {
